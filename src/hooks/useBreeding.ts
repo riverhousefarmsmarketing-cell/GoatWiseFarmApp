@@ -65,7 +65,7 @@ export function useUpcomingKiddings(days: number = 30) {
           *,
           doe:animals!breeding_records_doe_id_fkey(id, name)
         `)
-        .in('status', ['bred', 'confirmed_pregnant', 'confirmed'])
+        .in('status', ['bred', 'confirmed_pregnant'])
         .not('due_date', 'is', null)
         .gte('due_date', today)
         .lte('due_date', futureDate)
@@ -242,7 +242,7 @@ export function useConfirmPregnancy() {
       const { data, error } = await (supabase
         .from('breeding_records') as any)
         .update({
-          status: 'confirmed',
+          status: 'confirmed_pregnant',
           confirmation_date: confirmationDate || format(new Date(), 'yyyy-MM-dd'),
           confirmation_method: confirmationMethod,
         })

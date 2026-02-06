@@ -96,12 +96,14 @@ export function useAnimalStats() {
       return {
         total: animals.length,
         active: animals.filter((a) => a.status === 'active').length,
-        milkingDoes: animals.filter((a) => a.category === 'milking_doe').length,
-        dryDoes: animals.filter((a) => a.category === 'dry_doe').length,
-        bredDoes: animals.filter((a) => a.category === 'bred_doe').length,
-        bucks: animals.filter((a) => a.category === 'buck').length,
-        kids: animals.filter((a) => a.category === 'kid').length,
-        does: animals.filter((a) => a.sex === 'doe').length,
+        milkingDoes: animals.filter((a) => a.category === 'milking_doe' && a.status === 'active').length,
+        dryDoes: animals.filter((a) => a.category === 'dry_doe' && a.status === 'active').length,
+        bredDoes: animals.filter((a) => a.category === 'bred_doe' && a.status === 'active').length,
+        bucks: animals.filter((a) => a.category === 'buck' && a.status === 'active').length,
+        bucklings: animals.filter((a) => a.category === 'buckling' && a.status === 'active').length,
+        doelings: animals.filter((a) => a.category === 'doeling' && a.status === 'active').length,
+        kids: animals.filter((a) => a.category === 'kid' && a.status === 'active').length,
+        does: animals.filter((a) => a.sex === 'doe' && a.status === 'active').length,
       };
     },
   });
@@ -160,6 +162,16 @@ export function useDeleteAnimal() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Delete related records first to prevent orphans
+      await (supabase.from('milk_records') as any).delete().eq('animal_id', id);
+      await (supabase.from('health_records') as any).delete().eq('animal_id', id);
+      await (supabase.from('weight_records') as any).delete().eq('animal_id', id);
+      await (supabase.from('inspections') as any).delete().eq('animal_id', id);
+      // Breeding records reference both doe and buck
+      await (supabase.from('breeding_records') as any).delete().eq('doe_id', id);
+      await (supabase.from('breeding_records') as any).delete().eq('buck_id', id);
+
+      // Then delete the animal
       const { error } = await (supabase
         .from('animals') as any)
         .delete()

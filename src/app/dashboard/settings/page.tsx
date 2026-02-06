@@ -356,7 +356,7 @@ function SampleDataSection() {
             buck_id: buckId,
             breeding_date: formatDate(breedingDate),
             due_date: formatDate(addDays(breedingDate, 150)),
-            status: 'confirmed',
+            status: 'confirmed_pregnant',
           });
           if (breedError2) {
             console.error('Breeding error:', breedError2);

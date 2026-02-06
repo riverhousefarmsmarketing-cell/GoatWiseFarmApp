@@ -288,7 +288,7 @@ export default function DashboardPage() {
       }
       breedingByAnimal[id].breedings.push({
         date: new Date(b.date || b.breeding_date),
-        successful: b.status === 'confirmed_pregnant' || b.status === 'confirmed' || b.status === 'kidded',
+        successful: b.status === 'confirmed_pregnant' || b.status === 'kidded',
       });
     });
 
@@ -501,7 +501,7 @@ export default function DashboardPage() {
 
     // Pregnant does
     const pregnantDoes = breedingList.filter((b: any) => 
-      b.status === 'confirmed_pregnant' || b.status === 'confirmed' || b.status === 'bred'
+      b.status === 'confirmed_pregnant' || b.status === 'bred'
     ).length;
 
     // Upcoming due dates (next 30 days)
@@ -510,14 +510,14 @@ export default function DashboardPage() {
     thirtyDaysFromNow.setDate(today.getDate() + 30);
     
     const upcomingDues = breedingList.filter((b: any) => {
-      if (!b.due_date || (b.status !== 'confirmed_pregnant' && b.status !== 'confirmed' && b.status !== 'bred')) return false;
+      if (!b.due_date || (b.status !== 'confirmed_pregnant' && b.status !== 'bred')) return false;
       const dueDate = new Date(b.due_date);
       return dueDate >= today && dueDate <= thirtyDaysFromNow;
     }).sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
 
     // Overdue does
     const overdueDoes = breedingList.filter((b: any) => {
-      if (!b.due_date || (b.status !== 'confirmed_pregnant' && b.status !== 'confirmed' && b.status !== 'bred')) return false;
+      if (!b.due_date || (b.status !== 'confirmed_pregnant' && b.status !== 'bred')) return false;
       return new Date(b.due_date) < today;
     });
 
@@ -650,7 +650,7 @@ export default function DashboardPage() {
           <p className="text-gray-500">Welcome back! Here's what's happening on your farm.</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/dashboard/herd">
+          <Link href="/dashboard/add-animal">
             <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>
               Add Animal
             </Button>
@@ -774,7 +774,7 @@ export default function DashboardPage() {
             <h3 className="font-semibold">Quick Actions</h3>
           </div>
           <div className="p-4 space-y-2">
-            <Link href="/dashboard/herd" className="block">
+            <Link href="/dashboard/add-animal" className="block">
               <Button variant="outline" className="w-full justify-start" leftIcon={<Plus className="h-4 w-4" />}>
                 Add Animal
               </Button>

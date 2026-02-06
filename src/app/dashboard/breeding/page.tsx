@@ -57,7 +57,7 @@ interface BreedingRecord {
 const statusColors: Record<string, string> = {
   planned: 'bg-slate-100 text-slate-700',
   bred: 'bg-blue-100 text-blue-700',
-  confirmed: 'bg-purple-100 text-purple-700',
+  confirmed_pregnant: 'bg-purple-100 text-purple-700',
   kidded: 'bg-green-100 text-green-700',
   open: 'bg-gray-100 text-gray-700',
   aborted: 'bg-red-100 text-red-700',
@@ -290,7 +290,7 @@ export default function BreedingPage() {
 
   // Filtered lists
   const pregnantDoes = useMemo(() => 
-    breedingRecords?.filter(r => r.status === 'bred' || r.status === 'confirmed')
+    breedingRecords?.filter(r => r.status === 'bred' || r.status === 'confirmed_pregnant')
       .sort((a, b) => {
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
@@ -601,7 +601,7 @@ export default function BreedingPage() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => updateBreeding.mutate({ id: record.id, status: 'confirmed' })}
+                                  onClick={() => updateBreeding.mutate({ id: record.id, status: 'confirmed_pregnant' })}
                                 >
                                   Confirm
                                 </Button>

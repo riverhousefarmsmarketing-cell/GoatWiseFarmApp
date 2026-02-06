@@ -354,7 +354,7 @@ export default function KiddingPage() {
         <Card padding="sm" className="text-center">
           <p className="text-sm text-gray-500">Confirmed Pregnant</p>
           <p className="text-2xl font-semibold text-blue-600">
-            {breedingRecords?.filter(r => r.status === 'confirmed_pregnant' || r.status === 'confirmed').length || 0}
+            {breedingRecords?.filter(r => r.status === 'confirmed_pregnant' || r.status === 'bred').length || 0}
           </p>
         </Card>
         <Card padding="sm" className="text-center">
