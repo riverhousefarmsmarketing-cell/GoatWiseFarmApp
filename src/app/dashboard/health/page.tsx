@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   useHealthRecords,
   useFollowUpsDue,
@@ -47,6 +47,12 @@ import {
   Eye,
   Camera,
   X,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  Filter,
 } from 'lucide-react';
 
 // Photo categories for health records
@@ -75,6 +81,14 @@ const healthTypeOptions = [
   { value: 'injury', label: 'Injury' },
   { value: 'illness', label: 'Illness' },
   { value: 'other', label: 'Other' },
+];
+
+const dateRangeOptions = [
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+  { value: '365', label: 'Last year' },
+  { value: 'all', label: 'All time' },
 ];
 
 const routeOptions = [
@@ -124,10 +138,30 @@ const attitudeOptions = [
 ];
 
 // ==========================================
+// SORTABLE TABLE HEADER
+// ==========================================
+
+type SortDirection = 'asc' | 'desc' | null;
+
+function SortableHeader({ label, sortKey, currentSort, currentDirection, onSort }: {
+  label: string; sortKey: string; currentSort: string | null; currentDirection: SortDirection; onSort: (key: string) => void;
+}) {
+  const isActive = currentSort === sortKey;
+  return (
+    <th className="px-4 py-3 font-medium cursor-pointer hover:bg-gray-100 select-none transition-colors" onClick={() => onSort(sortKey)}>
+      <div className="flex items-center gap-1">
+        {label}
+        {isActive ? (currentDirection === 'asc' ? <ArrowUp className="h-3 w-3 text-primary-600" /> : <ArrowDown className="h-3 w-3 text-primary-600" />) : <ArrowUpDown className="h-3 w-3 text-gray-300" />}
+      </div>
+    </th>
+  );
+}
+
+// ==========================================
 // FAMACHA CARD COMPONENT
 // ==========================================
 
-function FamachaCard({ score, count, onClick }: { score: number; count: number; onClick: () => void }) {
+function FamachaCard({ score, count, onClick, isSelected }: { score: number; count: number; onClick: () => void; isSelected?: boolean }) {
   const colors: Record<number, string> = {
     1: 'bg-red-600',
     2: 'bg-red-400',
@@ -147,7 +181,7 @@ function FamachaCard({ score, count, onClick }: { score: number; count: number; 
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors w-full text-left"
+      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors w-full text-left ${isSelected ? 'ring-2 ring-primary-500 border-primary-300 bg-primary-50' : 'hover:bg-gray-50'}`}
     >
       <div className={`w-8 h-8 rounded-full ${colors[score]}`} />
       <div className="flex-1">
@@ -173,6 +207,16 @@ export default function HealthPage() {
   
   const [activeTab, setActiveTab] = useState<'overview' | 'records' | 'inspections'>('overview');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [animalFilter, setAnimalFilter] = useState('all');
+  const [dateRange, setDateRange] = useState('90');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [famachaFilter, setFamachaFilter] = useState<number | null>(null);
+  const [recordSort, setRecordSort] = useState<string | null>(null);
+  const [recordSortDir, setRecordSortDir] = useState<SortDirection>(null);
+  const [inspectionSort, setInspectionSort] = useState<string | null>(null);
+  const [inspectionSortDir, setInspectionSortDir] = useState<SortDirection>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showFollowUpResolve, setShowFollowUpResolve] = useState<any>(null);
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
   const [showInspectionModal, setShowInspectionModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -215,7 +259,7 @@ export default function HealthPage() {
   });
 
   // Data hooks
-  const { data: healthRecords, isLoading: recordsLoading } = useHealthRecords({ type: typeFilter, days: 90 });
+  const { data: healthRecords, isLoading: recordsLoading } = useHealthRecords({ type: typeFilter, days: dateRange === 'all' ? 9999 : parseInt(dateRange) });
   const { data: followUps } = useFollowUpsDue();
   const { data: withdrawals } = useActiveWithdrawals();
   const { data: latestInspections } = useLatestInspections();
@@ -238,6 +282,33 @@ export default function HealthPage() {
   const animalsNeedingAttention = latestInspections?.filter(
     (insp: any) => insp.famacha && insp.famacha >= 4
   ) || [];
+
+  // Sort handlers
+  const handleRecordSort = (key: string) => {
+    if (recordSort === key) { setRecordSortDir(recordSortDir === 'asc' ? 'desc' : recordSortDir === 'desc' ? null : 'asc'); if (recordSortDir === 'desc') setRecordSort(null); }
+    else { setRecordSort(key); setRecordSortDir('asc'); }
+  };
+  const handleInspectionSort = (key: string) => {
+    if (inspectionSort === key) { setInspectionSortDir(inspectionSortDir === 'asc' ? 'desc' : inspectionSortDir === 'desc' ? null : 'asc'); if (inspectionSortDir === 'desc') setInspectionSort(null); }
+    else { setInspectionSort(key); setInspectionSortDir('asc'); }
+  };
+  const handleFamachaClick = (score: number) => { if (famachaFilter === score) setFamachaFilter(null); else { setFamachaFilter(score); setActiveTab('inspections'); } };
+  const handleAlertClick = (type: string) => { if (type === 'followups' || type === 'withdrawals') setActiveTab('overview'); else if (type === 'deworming') { setFamachaFilter(4); setActiveTab('inspections'); } };
+  const handleDeleteRecord = async (id: string) => { try { await supabase.from('health_records').delete().eq('id', id); queryClient.invalidateQueries({ queryKey: ['health-records'] }); queryClient.invalidateQueries({ queryKey: ['follow-ups-due'] }); setShowDeleteConfirm(null); } catch(e) { console.error(e); } };
+  const animalOptions = useMemo(() => { const o = [{ value: 'all', label: 'All Animals' }]; if (animals) animals.forEach((a: any) => o.push({ value: a.id, label: a.name })); return o; }, [animals]);
+  const filteredRecords = useMemo(() => {
+    let recs = healthRecords || [];
+    if (animalFilter !== 'all') recs = recs.filter((r: any) => r.animal_id === animalFilter);
+    if (searchQuery.trim()) { const q = searchQuery.toLowerCase(); recs = recs.filter((r: any) => (r.animals?.name||'').toLowerCase().includes(q)||(r.treatment||'').toLowerCase().includes(q)||(r.medication||'').toLowerCase().includes(q)||(r.notes||'').toLowerCase().includes(q)||(r.type||'').toLowerCase().includes(q)); }
+    if (recordSort && recordSortDir) { recs = [...recs].sort((a: any, b: any) => { let aV:any, bV:any; switch(recordSort) { case 'date': aV=a.date||''; bV=b.date||''; break; case 'animal': aV=a.animals?.name||''; bV=b.animals?.name||''; break; case 'type': aV=a.type||''; bV=b.type||''; break; case 'cost': aV=a.cost||0; bV=b.cost||0; break; default: return 0; } if (typeof aV==='number') return recordSortDir==='asc'?aV-bV:bV-aV; return recordSortDir==='asc'?String(aV).localeCompare(String(bV)):String(bV).localeCompare(String(aV)); }); }
+    return recs;
+  }, [healthRecords, animalFilter, searchQuery, recordSort, recordSortDir]);
+  const filteredInspections = useMemo(() => {
+    let ins = latestInspections || [];
+    if (famachaFilter !== null) { if (famachaFilter === 4) ins = ins.filter((i: any) => i.famacha && i.famacha >= 4); else ins = ins.filter((i: any) => i.famacha === famachaFilter); }
+    if (inspectionSort && inspectionSortDir) { ins = [...ins].sort((a: any, b: any) => { let aV:any, bV:any; switch(inspectionSort) { case 'date': aV=a.date||''; bV=b.date||''; break; case 'animal': aV=a.animals?.name||''; bV=b.animals?.name||''; break; case 'famacha': aV=a.famacha||0; bV=b.famacha||0; break; case 'bcs': aV=a.body_condition_score||0; bV=b.body_condition_score||0; break; case 'weight': aV=a.weight||0; bV=b.weight||0; break; case 'temp': aV=a.temperature||0; bV=b.temperature||0; break; default: return 0; } if (typeof aV==='number') return inspectionSortDir==='asc'?aV-bV:bV-aV; return inspectionSortDir==='asc'?String(aV).localeCompare(String(bV)):String(bV).localeCompare(String(aV)); }); }
+    return ins;
+  }, [latestInspections, famachaFilter, inspectionSort, inspectionSortDir]);
 
   // Upload photos helper
   const uploadPhotos = async (healthRecordId: string) => {
@@ -430,7 +501,7 @@ export default function HealthPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Follow-ups Due */}
           {(followUps?.length || 0) > 0 && (
-            <Card className="border-amber-200 bg-amber-50 p-4">
+            <Card className="border-amber-200 bg-amber-50 p-4 hover:bg-amber-100 cursor-pointer" onClick={() => handleAlertClick('followups')}>
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-amber-100 rounded-lg">
                   <Clock className="h-5 w-5 text-amber-600" />
@@ -438,7 +509,7 @@ export default function HealthPage() {
                 <div>
                   <h3 className="font-semibold text-amber-800">Follow-ups Due</h3>
                   <p className="text-2xl font-bold text-amber-900">{followUps?.length}</p>
-                  <p className="text-sm text-amber-700">Need attention today</p>
+                  <p className="text-sm text-amber-700">Click to review →</p>
                 </div>
               </div>
             </Card>
@@ -446,7 +517,7 @@ export default function HealthPage() {
 
           {/* Active Withdrawals */}
           {(withdrawals?.length || 0) > 0 && (
-            <Card className="border-red-200 bg-red-50 p-4">
+            <Card className="border-red-200 bg-red-50 p-4 hover:bg-red-100 cursor-pointer" onClick={() => handleAlertClick('withdrawals')}>
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-red-100 rounded-lg">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
@@ -454,7 +525,7 @@ export default function HealthPage() {
                 <div>
                   <h3 className="font-semibold text-red-800">Active Withdrawals</h3>
                   <p className="text-2xl font-bold text-red-900">{withdrawals?.length}</p>
-                  <p className="text-sm text-red-700">Do not use milk/meat</p>
+                  <p className="text-sm text-red-700">Click to review →</p>
                 </div>
               </div>
             </Card>
@@ -462,7 +533,7 @@ export default function HealthPage() {
 
           {/* Animals Needing Attention */}
           {animalsNeedingAttention.length > 0 && (
-            <Card className="border-orange-200 bg-orange-50 p-4">
+            <Card className="border-orange-200 bg-orange-50 p-4 hover:bg-orange-100 cursor-pointer" onClick={() => handleAlertClick('deworming')}>
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-orange-100 rounded-lg">
                   <Activity className="h-5 w-5 text-orange-600" />
@@ -470,7 +541,7 @@ export default function HealthPage() {
                 <div>
                   <h3 className="font-semibold text-orange-800">Need Deworming</h3>
                   <p className="text-2xl font-bold text-orange-900">{animalsNeedingAttention.length}</p>
-                  <p className="text-sm text-orange-700">FAMACHA score 4-5</p>
+                  <p className="text-sm text-orange-700">Click to filter inspections →</p>
                 </div>
               </div>
             </Card>
@@ -513,6 +584,7 @@ export default function HealthPage() {
                 <h2 className="font-semibold text-gray-900">FAMACHA Distribution</h2>
               </div>
               <p className="text-sm text-gray-500 mt-1">Based on latest inspections</p>
+              <p className="text-xs text-gray-400 mt-0.5">Click a score to filter inspections</p>
             </div>
             <div className="p-4 space-y-2">
               {[1, 2, 3, 4, 5].map((score) => (
@@ -520,7 +592,8 @@ export default function HealthPage() {
                   key={score}
                   score={score}
                   count={famachaDistribution[score] || 0}
-                  onClick={() => {}}
+                  onClick={() => handleFamachaClick(score)}
+                  isSelected={famachaFilter === score}
                 />
               ))}
             </div>
@@ -629,7 +702,7 @@ export default function HealthPage() {
                 <div className="p-8 flex justify-center">
                   <LoadingSpinner />
                 </div>
-              ) : !healthRecords?.length ? (
+              ) : !filteredRecords?.length ? (
                 <div className="p-8 text-center text-gray-500">
                   <p>No recent health records</p>
                 </div>
@@ -666,13 +739,19 @@ export default function HealthPage() {
         <div className="space-y-4">
           {/* Filters */}
           <Card padding="sm">
-            <div className="flex gap-3">
-              <Select
-                options={healthTypeOptions}
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-48"
-              />
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input type="text" placeholder="Search records..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+              </div>
+              <Select options={animalOptions} value={animalFilter} onChange={(e) => setAnimalFilter(e.target.value)} className="w-44" />
+              <Select options={healthTypeOptions} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-40" />
+              <Select options={dateRangeOptions} value={dateRange} onChange={(e) => setDateRange(e.target.value)} className="w-40" />
+              {(searchQuery || animalFilter !== 'all' || typeFilter !== 'all' || dateRange !== '90') && (
+                <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(''); setAnimalFilter('all'); setTypeFilter('all'); setDateRange('90'); }}>
+                  <X className="h-3 w-3 mr-1" /> Clear filters
+                </Button>
+              )}
             </div>
           </Card>
 
@@ -685,8 +764,8 @@ export default function HealthPage() {
             ) : !healthRecords?.length ? (
               <EmptyState
                 icon={<Heart className="h-12 w-12" />}
-                title="No health records"
-                description="Start tracking your herd's health"
+                title={searchQuery || animalFilter !== 'all' ? "No matching records" : "No health records"}
+                description={searchQuery || animalFilter !== 'all' ? "Try adjusting your filters" : "Start tracking your herd's health"}
                 action={<Button onClick={() => setShowAddRecordModal(true)}>Add Record</Button>}
               />
             ) : (
@@ -694,17 +773,18 @@ export default function HealthPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50 text-left text-sm text-gray-500">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Date</th>
-                      <th className="px-4 py-3 font-medium">Animal</th>
-                      <th className="px-4 py-3 font-medium">Type</th>
+                      <SortableHeader label="Date" sortKey="date" currentSort={recordSort} currentDirection={recordSortDir} onSort={handleRecordSort} />
+                      <SortableHeader label="Animal" sortKey="animal" currentSort={recordSort} currentDirection={recordSortDir} onSort={handleRecordSort} />
+                      <SortableHeader label="Type" sortKey="type" currentSort={recordSort} currentDirection={recordSortDir} onSort={handleRecordSort} />
                       <th className="px-4 py-3 font-medium">Treatment</th>
-                      <th className="px-4 py-3 font-medium">Cost</th>
+                      <SortableHeader label="Cost" sortKey="cost" currentSort={recordSort} currentDirection={recordSortDir} onSort={handleRecordSort} />
                       <th className="px-4 py-3 font-medium">Follow-up</th>
+                      <th className="px-4 py-3 font-medium w-10"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {healthRecords.map((record: any) => (
-                      <tr key={record.id} className="hover:bg-gray-50">
+                    {filteredRecords.map((record: any) => (
+                      <tr key={record.id} className="group hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm">{formatDate(record.date)}</td>
                         <td className="px-4 py-3">
                           {record.animals ? (
@@ -734,11 +814,16 @@ export default function HealthPage() {
                             record.follow_up_completed ? (
                               <Badge variant="success">Complete</Badge>
                             ) : (
-                              <Badge variant="warning">{formatDate(record.follow_up_date)}</Badge>
+                              <button onClick={() => setShowFollowUpResolve(record)}><Badge variant="warning" className="cursor-pointer hover:bg-amber-200">{formatDate(record.follow_up_date)}</Badge></button>
                             )
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}
+                        </td>
+                        <td className="px-4 py-1">
+                          <button onClick={() => setShowDeleteConfirm(record.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all" title="Delete record">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -752,8 +837,14 @@ export default function HealthPage() {
 
       {activeTab === 'inspections' && (
         <div className="space-y-4">
+          {famachaFilter !== null && (
+            <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-lg px-4 py-2">
+              <p className="text-sm text-primary-700"><Filter className="h-4 w-4 inline mr-1" />Showing FAMACHA score {famachaFilter === 4 ? '4-5' : famachaFilter} only</p>
+              <Button variant="ghost" size="sm" onClick={() => setFamachaFilter(null)}><X className="h-3 w-3 mr-1" /> Clear</Button>
+            </div>
+          )}
           <Card padding="none">
-            {!latestInspections?.length ? (
+            {!filteredInspections?.length ? (
               <EmptyState
                 icon={<ClipboardCheck className="h-12 w-12" />}
                 title="No inspections recorded"
@@ -765,17 +856,17 @@ export default function HealthPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50 text-left text-sm text-gray-500">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Date</th>
-                      <th className="px-4 py-3 font-medium">Animal</th>
-                      <th className="px-4 py-3 font-medium">FAMACHA</th>
-                      <th className="px-4 py-3 font-medium">BCS</th>
-                      <th className="px-4 py-3 font-medium">Weight</th>
-                      <th className="px-4 py-3 font-medium">Temp</th>
+                      <SortableHeader label="Date" sortKey="date" currentSort={inspectionSort} currentDirection={inspectionSortDir} onSort={handleInspectionSort} />
+                      <SortableHeader label="Animal" sortKey="animal" currentSort={inspectionSort} currentDirection={inspectionSortDir} onSort={handleInspectionSort} />
+                      <SortableHeader label="FAMACHA" sortKey="famacha" currentSort={inspectionSort} currentDirection={inspectionSortDir} onSort={handleInspectionSort} />
+                      <SortableHeader label="BCS" sortKey="bcs" currentSort={inspectionSort} currentDirection={inspectionSortDir} onSort={handleInspectionSort} />
+                      <SortableHeader label="Weight" sortKey="weight" currentSort={inspectionSort} currentDirection={inspectionSortDir} onSort={handleInspectionSort} />
+                      <SortableHeader label="Temp" sortKey="temp" currentSort={inspectionSort} currentDirection={inspectionSortDir} onSort={handleInspectionSort} />
                       <th className="px-4 py-3 font-medium">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {latestInspections.map((insp: any) => {
+                    {filteredInspections.map((insp: any) => {
                       const famachaStatus = insp.famacha ? getFamachaStatus(insp.famacha) : null;
                       return (
                         <tr key={insp.id} className="hover:bg-gray-50">
@@ -825,6 +916,31 @@ export default function HealthPage() {
           </Card>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Delete Health Record" size="sm"
+        footer={<><Button variant="ghost" onClick={() => setShowDeleteConfirm(null)}>Cancel</Button><Button variant="danger" onClick={() => showDeleteConfirm && handleDeleteRecord(showDeleteConfirm)}>Delete</Button></>}>
+        <p className="text-gray-600">Are you sure you want to delete this health record? This cannot be undone.</p>
+      </Modal>
+
+      {/* Follow-Up Resolve Modal */}
+      <Modal open={!!showFollowUpResolve} onClose={() => setShowFollowUpResolve(null)} title="Resolve Follow-Up" size="sm"
+        footer={<>
+          <Button variant="ghost" onClick={() => setShowFollowUpResolve(null)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => { if (showFollowUpResolve) { setShowFollowUpResolve(null); setNewRecord(prev => ({ ...prev, animal_id: showFollowUpResolve.animal_id })); setShowAddRecordModal(true); } }}>Add New Record</Button>
+          <Button onClick={() => { if (showFollowUpResolve) { markComplete.mutate(showFollowUpResolve.id); setShowFollowUpResolve(null); } }} loading={markComplete.isPending}>Mark Complete</Button>
+        </>}>
+        {showFollowUpResolve && (
+          <div className="space-y-3">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="font-medium text-amber-800">{showFollowUpResolve.animals?.name || 'Unknown'} — {showFollowUpResolve.type?.replace('_', ' ')}</p>
+              <p className="text-sm text-amber-700 mt-1">{showFollowUpResolve.treatment || showFollowUpResolve.medication || 'No details'}</p>
+              <p className="text-xs text-amber-600 mt-1">Original: {formatDate(showFollowUpResolve.date)} • Due: {formatDate(showFollowUpResolve.follow_up_date)}</p>
+            </div>
+            <p className="text-sm text-gray-600">Mark this follow-up as complete, or add a new health record for this animal.</p>
+          </div>
+        )}
+      </Modal>
 
       {/* Add Health Record Modal */}
       <Modal
