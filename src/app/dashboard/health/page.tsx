@@ -1092,9 +1092,9 @@ export default function HealthPage() {
                     const isExp = swExpandedCondition === cond.id;
                     const matchCount = cond.symptomTags.filter(t => swSelectedSymptoms.includes(t)).length;
                     return (
-                      <div key={cond.id} className={'border rounded-lg overflow-hidden ' + (cond.severity === 'emergency' ? 'border-red-300' : 'border-gray-200')}>
+                      <div key={cond.id} className={'border rounded-lg overflow-hidden ' + ((cond.severity as string) === 'emergency' ? 'border-red-300' : 'border-gray-200')}>
                         <button onClick={() => setSwExpandedCondition(isExp ? null : cond.id)}
-                          className={'w-full text-left p-3 flex items-center justify-between hover:bg-gray-50 ' + (cond.severity === 'emergency' ? 'bg-red-50' : '')}>
+                          className={'w-full text-left p-3 flex items-center justify-between hover:bg-gray-50 ' + ((cond.severity as string) === 'emergency' ? 'bg-red-50' : '')}>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-medium text-gray-900">{cond.name}</span>
