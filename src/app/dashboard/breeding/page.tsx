@@ -140,12 +140,12 @@ export default function BreedingPage() {
   });
 
   const does = useMemo(() => 
-    animals?.filter(a => (a as any).sex === 'doe' || ['milking_doe', 'dry_doe', 'doeling', 'bred_doe'].includes(a.category)) || [],
+    animals?.filter(a => (a as any).sex === 'doe' || ['milking_doe', 'dry_doe', 'doeling', 'bred_doe'].includes((a as any).category)) || [],
     [animals]
   );
   
   const bucks = useMemo(() => 
-    animals?.filter(a => (a as any).sex === 'buck' || ['buck', 'buckling'].includes(a.category)) || [],
+    animals?.filter(a => (a as any).sex === 'buck' || ['buck', 'buckling'].includes((a as any).category)) || [],
     [animals]
   );
 
