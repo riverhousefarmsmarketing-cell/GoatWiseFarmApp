@@ -297,7 +297,7 @@ const sizeClass = size === 'sm' ? 'max-w-sm' : size
         <div className="fixed inset-0 bg-black/50" onClick={onClose} />
         
         {/* Modal */}
-        <div className={`relative bg-white rounded-xl shadow-xl ${sizeClass} w-full max-h-[90vh] overflow-hidden`}>'max-w-2xl' : 'max-w-lg'}`}>
+       <div className={`relative bg-white rounded-xl shadow-xl w-full max-h-[90vh] overflow-hidden ${sizeClass}`}>
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b">
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
