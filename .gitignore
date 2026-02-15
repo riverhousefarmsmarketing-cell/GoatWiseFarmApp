@@ -52,3 +52,8 @@ next-env.d.ts
 *.pem
 
 .vercel
+
+# Development artifacts
+patch-*.js
+desktop.ini
+Thumbs.db
