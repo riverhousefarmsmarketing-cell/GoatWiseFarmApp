@@ -111,7 +111,7 @@ export function useCreateHealthRecord() {
   const supabase = getSupabaseClient();
 
   return useMutation({
-    mutationFn: async (record: Omit<HealthRecordInsert, 'user_id'>) => {
+    mutationFn: async (record: Omit<HealthRecordInsert, 'user_id'>): Promise<HealthRecord> => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -121,7 +121,7 @@ export function useCreateHealthRecord() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as HealthRecord;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: healthKeys.all });

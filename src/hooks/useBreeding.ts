@@ -45,7 +45,7 @@ export function useBreedingRecords(status?: string) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data;
+      return data as BreedingRecord;
     },
   });
 }
@@ -95,7 +95,7 @@ export function useBreedingByDoe(doeId: string) {
         .order('breeding_date', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as BreedingRecord;
     },
     enabled: !!doeId,
   });
@@ -134,7 +134,7 @@ export function useCreateBreedingRecord() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as BreedingRecord;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: breedingKeys.all });
@@ -166,7 +166,7 @@ export function useUpdateBreedingRecord() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as BreedingRecord;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: breedingKeys.all });
@@ -211,7 +211,7 @@ export function useRecordKidding() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as BreedingRecord;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: breedingKeys.all });
@@ -244,7 +244,7 @@ export function useConfirmPregnancy() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as BreedingRecord;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: breedingKeys.all });

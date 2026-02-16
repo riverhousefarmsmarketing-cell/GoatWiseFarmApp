@@ -235,116 +235,48 @@ export function useAssignAnimalToHerd() {
   });
 }
 
-/*
-// TODO: herd_transfers table needs to be created in Supabase.
-// Uncomment these hooks after running the migration.
 // ==========================================
 // HERD TRANSFERS
 // ==========================================
+// NOTE: These are stubs until herd_transfers table is created.
+// After running migration 002_add_herd_transfers.sql, replace
+// these stubs with real Supabase queries.
 
-export function useHerdTransfers(status?: string) {
-  const { user } = useAuth();
-  const supabase = getSupabaseClient();
-
+export function useHerdTransfers(filter?: string) {
   return useQuery({
-    queryKey: ['herd-transfers', status],
+    queryKey: ['herd_transfers', filter],
     queryFn: async () => {
-      let query = supabase.from('herd_transfers')
-        .select(`
-          *,
-          animal:animals(id, name),
-          from_herd:herds!herd_transfers_from_herd_id_fkey(id, name, color),
-          to_herd:herds!herd_transfers_to_herd_id_fkey(id, name, color)
-        `)
-        .order('requested_date', { ascending: false });
-
-      if (status && status !== 'all') {
-        query = query.eq('status', status);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
-}
-
-export function useCreateHerdTransfer() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const supabase = getSupabaseClient();
-
-  return useMutation({
-    mutationFn: async (transfer: {
-      animal_id: string;
-      from_herd_id: string | null;
-      to_herd_id: string;
-      reason?: string;
-    }) => {
-      const { data, error } = await supabase.from('herd_transfers')
-        .insert([{
-          ...transfer,
-          user_id: user?.id,
-          status: 'pending',
-          requested_date: new Date().toISOString(),
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['herd-transfers'] });
+      // Stub: return empty array until table exists
+      return [] as Array<{
+        id: string;
+        animal_id: string;
+        from_herd_id: string | null;
+        to_herd_id: string;
+        reason?: string;
+        status: string;
+        requested_date: string;
+        completed_date?: string;
+        animals?: { name: string };
+        from_herd?: { name: string };
+        to_herd?: { name: string };
+      }>;
     },
   });
 }
 
 export function useCompleteHerdTransfer() {
   const queryClient = useQueryClient();
-  const supabase = getSupabaseClient();
-
   return useMutation({
     mutationFn: async (transferId: string) => {
-      // Get the transfer details
-      const { data: transfer, error: fetchError } = await supabase.from('herd_transfers')
-        .select('*')
-        .eq('id', transferId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Update the animal's herd
-      const { error: updateError } = await supabase.from('animals')
-        .update({ herd_id: transfer.to_herd_id })
-        .eq('id', transfer.animal_id);
-
-      if (updateError) throw updateError;
-
-      // Mark transfer as completed
-      const { data, error } = await supabase.from('herd_transfers')
-        .update({
-          status: 'completed',
-          completed_date: new Date().toISOString(),
-        })
-        .eq('id', transferId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      // Stub: no-op until table exists
+      console.warn('herd_transfers table not yet created. Run migration 002.');
+      return null;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['herd-transfers'] });
-      queryClient.invalidateQueries({ queryKey: ['herds'] });
-      queryClient.invalidateQueries({ queryKey: ['herd-animals'] });
-      queryClient.invalidateQueries({ queryKey: ['animals'] });
+      queryClient.invalidateQueries({ queryKey: ['herd_transfers'] });
     },
   });
 }
-
-*/
 
 // ==========================================
 // FEED INVENTORY

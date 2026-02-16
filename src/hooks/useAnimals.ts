@@ -121,7 +121,7 @@ export function useCreateAnimal() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Animal;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: animalKeys.all });
@@ -142,7 +142,7 @@ export function useUpdateAnimal() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Animal;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: animalKeys.all });

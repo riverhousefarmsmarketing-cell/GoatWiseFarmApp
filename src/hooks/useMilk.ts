@@ -35,7 +35,7 @@ export function useTodaysMilk() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as MilkRecord;
     },
   });
 }
@@ -160,7 +160,7 @@ export function useCreateMilkRecord() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as MilkRecord;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: milkKeys.all });

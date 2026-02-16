@@ -37,7 +37,7 @@ export function useCreateGroup() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Group;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
@@ -58,7 +58,7 @@ export function useUpdateGroup() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Group;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
