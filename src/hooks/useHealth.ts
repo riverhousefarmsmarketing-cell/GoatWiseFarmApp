@@ -30,7 +30,7 @@ export function useHealthRecords(options: { animalId?: string; type?: string; da
     ? format(subDays(new Date(), options.days), 'yyyy-MM-dd')
     : undefined;
 
-  return useQuery({
+  return useQuery<HealthRecord[]>({
     queryKey: healthKeys.recordList(options),
     queryFn: async () => {
       let query = supabase.from('health_records')

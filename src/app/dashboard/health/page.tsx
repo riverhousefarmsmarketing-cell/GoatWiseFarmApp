@@ -15,6 +15,7 @@ import { useAnimals } from '@/hooks/useAnimals';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
+import type { HealthRecord } from '@/types/database';
 import {
   Card,
   Button,
@@ -69,6 +70,10 @@ import {
   ChevronUp,
   FileText,
 } from 'lucide-react';
+
+type HealthRecordWithAnimal = HealthRecord & {
+  animals: { name: string } | null;
+};
 
 // Photo categories for health records
 const HEALTH_PHOTO_CATEGORIES = [
@@ -786,7 +791,7 @@ export default function HealthPage() {
                   <p>No recent health records</p>
                 </div>
               ) : (
-                healthRecords.slice(0, 10).map((record: any) => (
+                (healthRecords ?? []).slice(0, 10).map((record: HealthRecordWithAnimal) => (
                   <div key={record.id} className="p-4 flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${getTypeColor(record.type)}`}>
                       {getTypeIcon(record.type)}
