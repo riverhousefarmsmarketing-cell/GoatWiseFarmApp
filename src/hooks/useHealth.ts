@@ -130,6 +130,26 @@ export function useCreateHealthRecord() {
   });
 }
 
+export function useUpdateHealthRecord() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<HealthRecord> & { id: string }) => {
+      const { data, error } = await mutationFrom('health_records')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: healthKeys.all });
+    },
+  });
+}
+
 export function useMarkFollowUpComplete() {
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();

@@ -8,6 +8,7 @@ import {
   useInspections,
   useLatestInspections,
   useCreateHealthRecord,
+  useUpdateHealthRecord,
   useCreateInspection,
   useMarkFollowUpComplete,
 } from '@/hooks/useHealth';
@@ -62,6 +63,7 @@ import {
   ArrowUp,
   ArrowDown,
   Trash2,
+  Edit,
   Filter,
   HelpCircle,
   BookOpen,
@@ -261,8 +263,11 @@ export default function HealthPage() {
   const [recordSortDir, setRecordSortDir] = useState<SortDirection>(null);
   const [inspectionSort, setInspectionSort] = useState<string | null>(null);
   const [inspectionSortDir, setInspectionSortDir] = useState<SortDirection>(null);
+  const [inspectionSearch, setInspectionSearch] = useState('');
+  const [inspectionAnimalFilter, setInspectionAnimalFilter] = useState('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showFollowUpResolve, setShowFollowUpResolve] = useState<any>(null);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
   const [showSomethingsWrong, setShowSomethingsWrong] = useState(false);
   const [swStep, setSwStep] = useState<'symptoms' | 'results'>('symptoms');
   const [swSelectedSymptoms, setSwSelectedSymptoms] = useState<SymptomTag[]>([]);
@@ -319,6 +324,7 @@ export default function HealthPage() {
 
   // Mutations
   const createRecord = useCreateHealthRecord();
+  const updateRecord = useUpdateHealthRecord();
   const createInspection = useCreateInspection();
   const markComplete = useMarkFollowUpComplete();
 
@@ -382,9 +388,11 @@ export default function HealthPage() {
   const filteredInspections = useMemo(() => {
     let ins = latestInspections || [];
     if (famachaFilter !== null) { if (famachaFilter === 4) ins = ins.filter((i: any) => i.famacha && i.famacha >= 4); else ins = ins.filter((i: any) => i.famacha === famachaFilter); }
+    if (inspectionAnimalFilter !== 'all') ins = ins.filter((i: any) => i.animal_id === inspectionAnimalFilter);
+    if (inspectionSearch.trim()) { const q = inspectionSearch.toLowerCase(); ins = ins.filter((i: any) => (i.animals?.name||'').toLowerCase().includes(q)||(i.notes||'').toLowerCase().includes(q)||(i.action_taken||'').toLowerCase().includes(q)); }
     if (inspectionSort && inspectionSortDir) { ins = [...ins].sort((a: any, b: any) => { let aV:any, bV:any; switch(inspectionSort) { case 'date': aV=a.date||''; bV=b.date||''; break; case 'animal': aV=a.animals?.name||''; bV=b.animals?.name||''; break; case 'famacha': aV=a.famacha||0; bV=b.famacha||0; break; case 'bcs': aV=a.body_condition_score||0; bV=b.body_condition_score||0; break; case 'weight': aV=a.weight||0; bV=b.weight||0; break; case 'temp': aV=a.temperature||0; bV=b.temperature||0; break; default: return 0; } if (typeof aV==='number') return inspectionSortDir==='asc'?aV-bV:bV-aV; return inspectionSortDir==='asc'?String(aV).localeCompare(String(bV)):String(bV).localeCompare(String(aV)); }); }
     return ins;
-  }, [latestInspections, famachaFilter, inspectionSort, inspectionSortDir]);
+  }, [latestInspections, famachaFilter, inspectionAnimalFilter, inspectionSearch, inspectionSort, inspectionSortDir]);
 
   // Upload photos helper
   const uploadPhotos = async (healthRecordId: string) => {
@@ -425,7 +433,7 @@ export default function HealthPage() {
 
     setIsSubmitting(true);
     try {
-      const result = await createRecord.mutateAsync({
+      const recordData = {
         animal_id: newRecord.animal_id,
         type: newRecord.type,
         date: newRecord.date,
@@ -438,17 +446,23 @@ export default function HealthPage() {
         cost: newRecord.cost ? parseFloat(newRecord.cost) : null,
         follow_up_date: newRecord.follow_up_date || null,
         notes: newRecord.notes || null,
-      });
+      };
 
-      // Upload photos if any
-      if (healthPhotos.length > 0 && result?.id) {
-        await uploadPhotos(result.id);
+      if (editingRecord) {
+        await updateRecord.mutateAsync({ id: editingRecord.id, ...recordData });
+      } else {
+        const result = await createRecord.mutateAsync(recordData);
+        // Upload photos if any
+        if (healthPhotos.length > 0 && result?.id) {
+          await uploadPhotos(result.id);
+        }
       }
 
       setShowAddRecordModal(false);
+      setEditingRecord(null);
       resetRecordForm();
     } catch (error) {
-      console.error('Error creating record:', error);
+      console.error('Error saving record:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -845,11 +859,11 @@ export default function HealthPage() {
               <div className="p-8 flex justify-center">
                 <LoadingSpinner />
               </div>
-            ) : !healthRecords?.length ? (
+            ) : !filteredRecords?.length ? (
               <EmptyState
                 icon={<Heart className="h-12 w-12" />}
-                title={searchQuery || animalFilter !== 'all' ? "No matching records" : "No health records"}
-                description={searchQuery || animalFilter !== 'all' ? "Try adjusting your filters" : "Start tracking your herd's health"}
+                title={searchQuery || animalFilter !== 'all' || typeFilter !== 'all' ? "No matching records" : "No health records"}
+                description={searchQuery || animalFilter !== 'all' || typeFilter !== 'all' ? "Try adjusting your filters" : "Start tracking your herd's health"}
                 action={<Button onClick={() => setShowAddRecordModal(true)}>Add Record</Button>}
               />
             ) : (
@@ -905,9 +919,31 @@ export default function HealthPage() {
                           )}
                         </td>
                         <td className="px-4 py-1">
-                          <button onClick={() => setShowDeleteConfirm(record.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all" title="Delete record">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex gap-1">
+                            <button onClick={() => {
+                              setEditingRecord(record);
+                              setNewRecord({
+                                animal_id: record.animal_id || '',
+                                type: record.type || 'vaccination',
+                                date: record.date || new Date().toISOString().split('T')[0],
+                                treatment: record.treatment || '',
+                                medication: record.medication || '',
+                                dosage: record.dosage ? String(record.dosage) : '',
+                                dosage_unit: record.dosage_unit || 'ml',
+                                route: record.route || '',
+                                withdrawal_days: record.withdrawal_days ? String(record.withdrawal_days) : '',
+                                cost: record.cost ? String(record.cost) : '',
+                                follow_up_date: record.follow_up_date || '',
+                                notes: record.notes || '',
+                              });
+                              setShowAddRecordModal(true);
+                            }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-600 transition-all" title="Edit record">
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => setShowDeleteConfirm(record.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all" title="Delete record">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -921,6 +957,22 @@ export default function HealthPage() {
 
       {activeTab === 'inspections' && (
         <div className="space-y-4">
+          {/* Inspection Filters */}
+          <Card padding="sm">
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input type="text" placeholder="Search inspections..." value={inspectionSearch} onChange={(e) => setInspectionSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+              </div>
+              <Select options={animalOptions} value={inspectionAnimalFilter} onChange={(e) => setInspectionAnimalFilter(e.target.value)} className="w-44" />
+              {(inspectionSearch || inspectionAnimalFilter !== 'all' || famachaFilter !== null) && (
+                <Button variant="ghost" size="sm" onClick={() => { setInspectionSearch(''); setInspectionAnimalFilter('all'); setFamachaFilter(null); }}>
+                  <X className="h-3 w-3 mr-1" /> Clear filters
+                </Button>
+              )}
+            </div>
+          </Card>
+
           {famachaFilter !== null && (
             <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-lg px-4 py-2">
               <p className="text-sm text-primary-700"><Filter className="h-4 w-4 inline mr-1" />Showing FAMACHA score {famachaFilter === 4 ? '4-5' : famachaFilter} only</p>
@@ -931,9 +983,9 @@ export default function HealthPage() {
             {!filteredInspections?.length ? (
               <EmptyState
                 icon={<ClipboardCheck className="h-12 w-12" />}
-                title="No inspections recorded"
-                description="Regular inspections help monitor your herd's health"
-                action={<Button onClick={() => setShowInspectionModal(true)}>New Inspection</Button>}
+                title={inspectionSearch || inspectionAnimalFilter !== 'all' || famachaFilter !== null ? "No matching inspections" : "No inspections recorded"}
+                description={inspectionSearch || inspectionAnimalFilter !== 'all' || famachaFilter !== null ? "Try adjusting your filters" : "Regular inspections help monitor your herd's health"}
+                action={inspectionSearch || inspectionAnimalFilter !== 'all' || famachaFilter !== null ? undefined : <Button onClick={() => setShowInspectionModal(true)}>New Inspection</Button>}
               />
             ) : (
               <div className="overflow-x-auto">
@@ -1154,18 +1206,18 @@ export default function HealthPage() {
         </div>
       </Modal>
 
-      {/* Add Health Record Modal */}
+      {/* Add/Edit Health Record Modal */}
       <Modal
         open={showAddRecordModal}
-        onClose={() => setShowAddRecordModal(false)}
-        title="Add Health Record"
+        onClose={() => { setShowAddRecordModal(false); setEditingRecord(null); }}
+        title={editingRecord ? "Edit Health Record" : "Add Health Record"}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowAddRecordModal(false)}>
+            <Button variant="ghost" onClick={() => { setShowAddRecordModal(false); setEditingRecord(null); }}>
               Cancel
             </Button>
-            <Button onClick={handleAddRecord} loading={isSubmitting || createRecord.isPending}>
-              Save Record
+            <Button onClick={handleAddRecord} loading={isSubmitting || createRecord.isPending || updateRecord.isPending}>
+              {editingRecord ? 'Update Record' : 'Save Record'}
             </Button>
           </>
         }
