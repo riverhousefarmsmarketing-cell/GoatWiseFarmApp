@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Create profile if signup successful
     if (!error && data.user) {
-      await (supabase.from('profiles') as any).insert({
+      await supabase.from('profiles').insert({
         id: data.user.id,
         email: data.user.email!,
         farm_name: farmName,

@@ -32,10 +32,9 @@ export function useAnimals(options: UseAnimalsOptions = {}) {
   const supabase = getSupabaseClient();
 
   return useQuery({
-    queryKey: animalKeys.list(options as any),
+    queryKey: animalKeys.list(options as Record<string, unknown>),
     queryFn: async () => {
-      let query = (supabase
-        .from('animals') as any)
+      let query = supabase.from('animals')
         .select('*')
         .order('name');
 
@@ -66,8 +65,7 @@ export function useAnimal(id: string) {
   return useQuery({
     queryKey: animalKeys.detail(id),
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('animals') as any)
+      const { data, error } = await supabase.from('animals')
         .select('*')
         .eq('id', id)
         .single();
@@ -85,8 +83,7 @@ export function useAnimalStats() {
   return useQuery({
     queryKey: animalKeys.stats(),
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('animals') as any)
+      const { data, error } = await supabase.from('animals')
         .select('status, category, sex');
 
       if (error) throw error;
@@ -118,8 +115,7 @@ export function useCreateAnimal() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await (supabase
-        .from('animals') as any)
+      const { data, error } = await supabase.from('animals')
         .insert({ ...animal, user_id: user.id })
         .select()
         .single();
@@ -139,8 +135,7 @@ export function useUpdateAnimal() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: AnimalUpdate & { id: string }) => {
-      const { data, error } = await (supabase
-        .from('animals') as any)
+      const { data, error } = await supabase.from('animals')
         .update(updates)
         .eq('id', id)
         .select()
@@ -163,17 +158,16 @@ export function useDeleteAnimal() {
   return useMutation({
     mutationFn: async (id: string) => {
       // Delete related records first to prevent orphans
-      await (supabase.from('milk_records') as any).delete().eq('animal_id', id);
-      await (supabase.from('health_records') as any).delete().eq('animal_id', id);
-      await (supabase.from('weight_records') as any).delete().eq('animal_id', id);
-      await (supabase.from('inspections') as any).delete().eq('animal_id', id);
+      await supabase.from('milk_records').delete().eq('animal_id', id);
+      await supabase.from('health_records').delete().eq('animal_id', id);
+      await supabase.from('weight_records').delete().eq('animal_id', id);
+      await supabase.from('inspections').delete().eq('animal_id', id);
       // Breeding records reference both doe and buck
-      await (supabase.from('breeding_records') as any).delete().eq('doe_id', id);
-      await (supabase.from('breeding_records') as any).delete().eq('buck_id', id);
+      await supabase.from('breeding_records').delete().eq('doe_id', id);
+      await supabase.from('breeding_records').delete().eq('buck_id', id);
 
       // Then delete the animal
-      const { error } = await (supabase
-        .from('animals') as any)
+      const { error } = await supabase.from('animals')
         .delete()
         .eq('id', id);
 

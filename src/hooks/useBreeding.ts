@@ -30,8 +30,7 @@ export function useBreedingRecords(status?: string) {
   return useQuery({
     queryKey: breedingKeys.list({ status }),
     queryFn: async () => {
-      let query = (supabase
-        .from('breeding_records') as any)
+      let query = supabase.from('breeding_records')
         .select(`
           *,
           doe:animals!breeding_records_doe_id_fkey(id, name),
@@ -59,8 +58,7 @@ export function useUpcomingKiddings(days: number = 30) {
   return useQuery({
     queryKey: breedingKeys.upcoming(),
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('breeding_records') as any)
+      const { data, error } = await supabase.from('breeding_records')
         .select(`
           *,
           doe:animals!breeding_records_doe_id_fkey(id, name)
@@ -74,7 +72,7 @@ export function useUpcomingKiddings(days: number = 30) {
       if (error) throw error;
 
       // Add days until due
-      return (data as any[]).map((record) => ({
+      return (data as BreedingRecord[]).map((record) => ({
         ...record,
         daysUntilDue: differenceInDays(new Date(record.due_date), new Date()),
       }));
@@ -88,8 +86,7 @@ export function useBreedingByDoe(doeId: string) {
   return useQuery({
     queryKey: breedingKeys.byDoe(doeId),
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('breeding_records') as any)
+      const { data, error } = await supabase.from('breeding_records')
         .select(`
           *,
           buck:animals!breeding_records_buck_id_fkey(id, name)
@@ -126,8 +123,7 @@ export function useCreateBreedingRecord() {
         'yyyy-MM-dd'
       );
 
-      const { data, error } = await (supabase
-        .from('breeding_records') as any)
+      const { data, error } = await supabase.from('breeding_records')
         .insert({
           ...record,
           user_id: user.id,
@@ -163,8 +159,7 @@ export function useUpdateBreedingRecord() {
       assistance_notes: string;
       notes: string;
     }>) => {
-      const { data, error } = await (supabase
-        .from('breeding_records') as any)
+      const { data, error } = await supabase.from('breeding_records')
         .update(updates)
         .eq('id', id)
         .select()
@@ -201,8 +196,7 @@ export function useRecordKidding() {
       assistanceRequired?: boolean;
       assistanceNotes?: string;
     }) => {
-      const { data, error } = await (supabase
-        .from('breeding_records') as any)
+      const { data, error } = await supabase.from('breeding_records')
         .update({
           status: 'kidded',
           kidding_date: kiddingDate,
@@ -239,8 +233,7 @@ export function useConfirmPregnancy() {
       confirmationDate?: string;
       confirmationMethod?: string;
     }) => {
-      const { data, error } = await (supabase
-        .from('breeding_records') as any)
+      const { data, error } = await supabase.from('breeding_records')
         .update({
           status: 'confirmed_pregnant',
           confirmation_date: confirmationDate || format(new Date(), 'yyyy-MM-dd'),

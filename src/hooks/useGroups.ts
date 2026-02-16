@@ -1,15 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from './useAuth';
+import type { Group } from '@/types/database';
 
-export interface Group {
-  id: string;
-  name: string;
-  description?: string;
-  color: string;
-  user_id: string;
-  created_at: string;
-}
+// Re-export for consumers
+export type { Group } from '@/types/database';
 
 export function useGroups() {
   const { user } = useAuth();
@@ -18,8 +13,7 @@ export function useGroups() {
   return useQuery({
     queryKey: ['groups'],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('groups') as any)
+      const { data, error } = await supabase.from('groups')
         .select('*')
         .order('name');
 
@@ -36,9 +30,8 @@ export function useCreateGroup() {
   const supabase = getSupabaseClient();
 
   return useMutation({
-    mutationFn: async (group: Omit<Group, 'id' | 'user_id' | 'created_at'>) => {
-      const { data, error } = await (supabase
-        .from('groups') as any)
+    mutationFn: async (group: { name: string; description?: string | null; color?: string; type?: string }) => {
+      const { data, error } = await supabase.from('groups')
         .insert([{ ...group, user_id: user?.id }])
         .select()
         .single();
@@ -58,8 +51,7 @@ export function useUpdateGroup() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Group> }) => {
-      const { data, error } = await (supabase
-        .from('groups') as any)
+      const { data, error } = await supabase.from('groups')
         .update(updates)
         .eq('id', id)
         .select()
@@ -80,7 +72,7 @@ export function useDeleteGroup() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from('groups') as any).delete().eq('id', id);
+      const { error } = await supabase.from('groups').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {

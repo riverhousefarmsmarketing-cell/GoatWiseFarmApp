@@ -33,8 +33,7 @@ export function useHealthRecords(options: { animalId?: string; type?: string; da
   return useQuery({
     queryKey: healthKeys.recordList(options),
     queryFn: async () => {
-      let query = (supabase
-        .from('health_records') as any)
+      let query = supabase.from('health_records')
         .select('*, animals(name)')
         .order('date', { ascending: false });
 
@@ -63,8 +62,7 @@ export function useFollowUpsDue() {
   return useQuery({
     queryKey: healthKeys.followUps(),
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('health_records') as any)
+      const { data, error } = await supabase.from('health_records')
         .select('*, animals(name)')
         .eq('follow_up_completed', false)
         .not('follow_up_date', 'is', null)
@@ -85,8 +83,7 @@ export function useActiveWithdrawals() {
     queryKey: healthKeys.withdrawals(),
     queryFn: async () => {
       // Get records with withdrawal periods
-      const { data, error } = await (supabase
-        .from('health_records') as any)
+      const { data, error } = await supabase.from('health_records')
         .select('*, animals(name)')
         .not('withdrawal_days', 'is', null)
         .gt('withdrawal_days', 0)
@@ -95,7 +92,7 @@ export function useActiveWithdrawals() {
       if (error) throw error;
 
       // Filter to active withdrawals
-      return (data as any[]).filter((record) => {
+      return (data as HealthRecord[]).filter((record) => {
         const endDate = addDays(new Date(record.date), record.withdrawal_days);
         return endDate >= new Date();
       }).map((record) => ({
@@ -118,8 +115,7 @@ export function useCreateHealthRecord() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await (supabase
-        .from('health_records') as any)
+      const { data, error } = await supabase.from('health_records')
         .insert({ ...record, user_id: user.id })
         .select()
         .single();
@@ -139,8 +135,7 @@ export function useMarkFollowUpComplete() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await (supabase
-        .from('health_records') as any)
+      const { data, error } = await supabase.from('health_records')
         .update({ follow_up_completed: true })
         .eq('id', id)
         .select()
@@ -167,8 +162,7 @@ export function useInspections(animalId?: string) {
       ? healthKeys.inspectionsByAnimal(animalId)
       : healthKeys.inspections(),
     queryFn: async () => {
-      let query = (supabase
-        .from('inspections') as any)
+      let query = supabase.from('inspections')
         .select('*, animals(name)')
         .order('date', { ascending: false });
 
@@ -191,15 +185,14 @@ export function useLatestInspections() {
     queryKey: ['health', 'latest-inspections'],
     queryFn: async () => {
       // Get the most recent inspection for each animal
-      const { data, error } = await (supabase
-        .from('inspections') as any)
+      const { data, error } = await supabase.from('inspections')
         .select('*, animals(name)')
         .order('date', { ascending: false });
 
       if (error) throw error;
 
       // Group by animal, keep latest
-      const byAnimal = (data as any[]).reduce((acc, inspection) => {
+      const byAnimal = (data as Inspection[]).reduce((acc: Record<string, Inspection>, inspection) => {
         if (!acc[inspection.animal_id]) {
           acc[inspection.animal_id] = inspection;
         }
@@ -220,8 +213,7 @@ export function useCreateInspection() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await (supabase
-        .from('inspections') as any)
+      const { data, error } = await supabase.from('inspections')
         .insert({ ...inspection, user_id: user.id })
         .select()
         .single();

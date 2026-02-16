@@ -1,19 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from './useAuth';
+import type { Herd, Animal, FeedSchedule as DBFeedSchedule } from '@/types/database';
 
-export interface Herd {
-  id: string;
-  name: string;
-  description?: string;
-  color: string;
-  location?: string;
-  pasture_name?: string;
-  notes?: string;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-}
+// Re-export Herd from database types for consumers that import from this file
+export type { Herd } from '@/types/database';
 
 export interface HerdWithStats extends Herd {
   animalCount: number;
@@ -21,47 +12,9 @@ export interface HerdWithStats extends Herd {
   buckCount: number;
 }
 
-export interface HerdTransfer {
-  id: string;
-  animal_id: string;
-  from_herd_id: string | null;
-  to_herd_id: string;
-  reason?: string;
-  status: 'pending' | 'completed' | 'cancelled';
-  requested_date: string;
-  completed_date?: string;
-  user_id: string;
-}
-
-export interface FeedInventory {
-  id: string;
-  feed_type: string;
-  brand?: string;
-  quantity_on_hand: number;
-  unit: string;
-  unit_cost?: number;
-  low_stock_threshold?: number;
-  reorder_quantity?: number;
-  supplier?: string;
-  storage_location?: string;
-  expiration_date?: string;
-  notes?: string;
-  user_id: string;
-}
-
-export interface FeedSchedule {
-  id: string;
-  herd_id: string;
-  feed_type: string;
-  quantity_per_feeding: number;
-  unit: string;
-  feeding_times: string[];
-  start_date: string;
-  end_date?: string;
-  status: 'active' | 'paused' | 'completed';
-  notes?: string;
-  user_id: string;
-}
+// NOTE: herd_transfers table does not exist in the schema.
+// Transfer hooks are commented out below until the table is created.
+// See: supabase/migrations/ for adding a herd_transfers migration.
 
 // ==========================================
 // HERDS
@@ -74,8 +27,7 @@ export function useHerds() {
   return useQuery({
     queryKey: ['herds'],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('herds') as any)
+      const { data, error } = await supabase.from('herds')
         .select('*')
         .order('name');
 
@@ -94,34 +46,32 @@ export function useHerdsWithStats() {
     queryKey: ['herds', 'with-stats'],
     queryFn: async () => {
       // Get herds
-      const { data: herds, error: herdsError } = await (supabase
-        .from('herds') as any)
+      const { data: herds, error: herdsError } = await supabase.from('herds')
         .select('*')
         .order('name');
 
       if (herdsError) throw herdsError;
 
       // Get animal counts per herd
-      const { data: animals, error: animalsError } = await (supabase
-        .from('animals') as any)
+      const { data: animals, error: animalsError } = await supabase.from('animals')
         .select('id, herd_id, category, status')
         .eq('status', 'active');
 
       if (animalsError) throw animalsError;
 
       // Calculate stats for each herd
-      const herdsWithStats: HerdWithStats[] = (herds || []).map((herd: any) => {
-        const herdAnimals = animals?.filter((a: any) => a.herd_id === herd.id) || [];
+      const herdsWithStats: HerdWithStats[] = (herds || []).map((herd: Herd) => {
+        const herdAnimals = (animals || []).filter((a) => a.herd_id === herd.id);
         return {
           ...herd,
           animalCount: herdAnimals.length,
-          milkingCount: herdAnimals.filter((a: any) => a.category === 'milking_doe').length,
-          buckCount: herdAnimals.filter((a: any) => a.category === 'buck').length,
+          milkingCount: herdAnimals.filter((a) => a.category === 'milking_doe').length,
+          buckCount: herdAnimals.filter((a) => a.category === 'buck').length,
         };
       });
 
       // Add "unassigned" pseudo-herd
-      const unassignedAnimals = animals?.filter((a: any) => !a.herd_id) || [];
+      const unassignedAnimals = (animals || []).filter((a) => !a.herd_id);
       if (unassignedAnimals.length > 0) {
         herdsWithStats.push({
           id: 'unassigned',
@@ -132,8 +82,8 @@ export function useHerdsWithStats() {
           created_at: '',
           updated_at: '',
           animalCount: unassignedAnimals.length,
-          milkingCount: unassignedAnimals.filter((a: any) => a.category === 'milking_doe').length,
-          buckCount: unassignedAnimals.filter((a: any) => a.category === 'buck').length,
+          milkingCount: unassignedAnimals.filter((a) => a.category === 'milking_doe').length,
+          buckCount: unassignedAnimals.filter((a) => a.category === 'buck').length,
         });
       }
 
@@ -159,8 +109,7 @@ export function useHerd(id: string) {
         } as Herd;
       }
 
-      const { data, error } = await (supabase
-        .from('herds') as any)
+      const { data, error } = await supabase.from('herds')
         .select('*')
         .eq('id', id)
         .single();
@@ -179,8 +128,7 @@ export function useHerdAnimals(herdId: string) {
   return useQuery({
     queryKey: ['herd-animals', herdId],
     queryFn: async () => {
-      let query = (supabase
-        .from('animals') as any)
+      let query = supabase.from('animals')
         .select('*')
         .eq('status', 'active')
         .order('name');
@@ -205,9 +153,8 @@ export function useCreateHerd() {
   const supabase = getSupabaseClient();
 
   return useMutation({
-    mutationFn: async (herd: Omit<Herd, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await (supabase
-        .from('herds') as any)
+    mutationFn: async (herd: { name: string; description?: string | null; color?: string; location?: string | null }) => {
+      const { data, error } = await supabase.from('herds')
         .insert([{ ...herd, user_id: user?.id }])
         .select()
         .single();
@@ -227,8 +174,7 @@ export function useUpdateHerd() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Herd> }) => {
-      const { data, error } = await (supabase
-        .from('herds') as any)
+      const { data, error } = await supabase.from('herds')
         .update(updates)
         .eq('id', id)
         .select()
@@ -251,13 +197,12 @@ export function useDeleteHerd() {
   return useMutation({
     mutationFn: async (id: string) => {
       // First, unassign all animals from this herd
-      await (supabase
-        .from('animals') as any)
+      await supabase.from('animals')
         .update({ herd_id: null })
         .eq('herd_id', id);
 
       // Then delete the herd
-      const { error } = await (supabase.from('herds') as any).delete().eq('id', id);
+      const { error } = await supabase.from('herds').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -273,8 +218,7 @@ export function useAssignAnimalToHerd() {
 
   return useMutation({
     mutationFn: async ({ animalId, herdId }: { animalId: string; herdId: string | null }) => {
-      const { data, error } = await (supabase
-        .from('animals') as any)
+      const { data, error } = await supabase.from('animals')
         .update({ herd_id: herdId })
         .eq('id', animalId)
         .select()
@@ -291,6 +235,9 @@ export function useAssignAnimalToHerd() {
   });
 }
 
+/*
+// TODO: herd_transfers table needs to be created in Supabase.
+// Uncomment these hooks after running the migration.
 // ==========================================
 // HERD TRANSFERS
 // ==========================================
@@ -302,8 +249,7 @@ export function useHerdTransfers(status?: string) {
   return useQuery({
     queryKey: ['herd-transfers', status],
     queryFn: async () => {
-      let query = (supabase
-        .from('herd_transfers') as any)
+      let query = supabase.from('herd_transfers')
         .select(`
           *,
           animal:animals(id, name),
@@ -336,8 +282,7 @@ export function useCreateHerdTransfer() {
       to_herd_id: string;
       reason?: string;
     }) => {
-      const { data, error } = await (supabase
-        .from('herd_transfers') as any)
+      const { data, error } = await supabase.from('herd_transfers')
         .insert([{
           ...transfer,
           user_id: user?.id,
@@ -363,8 +308,7 @@ export function useCompleteHerdTransfer() {
   return useMutation({
     mutationFn: async (transferId: string) => {
       // Get the transfer details
-      const { data: transfer, error: fetchError } = await (supabase
-        .from('herd_transfers') as any)
+      const { data: transfer, error: fetchError } = await supabase.from('herd_transfers')
         .select('*')
         .eq('id', transferId)
         .single();
@@ -372,16 +316,14 @@ export function useCompleteHerdTransfer() {
       if (fetchError) throw fetchError;
 
       // Update the animal's herd
-      const { error: updateError } = await (supabase
-        .from('animals') as any)
+      const { error: updateError } = await supabase.from('animals')
         .update({ herd_id: transfer.to_herd_id })
         .eq('id', transfer.animal_id);
 
       if (updateError) throw updateError;
 
       // Mark transfer as completed
-      const { data, error } = await (supabase
-        .from('herd_transfers') as any)
+      const { data, error } = await supabase.from('herd_transfers')
         .update({
           status: 'completed',
           completed_date: new Date().toISOString(),
@@ -402,6 +344,8 @@ export function useCompleteHerdTransfer() {
   });
 }
 
+*/
+
 // ==========================================
 // FEED INVENTORY
 // ==========================================
@@ -413,8 +357,7 @@ export function useFeedInventory() {
   return useQuery({
     queryKey: ['feed-inventory'],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('feed_inventory') as any)
+      const { data, error } = await supabase.from('feed_inventory')
         .select('*')
         .order('feed_type');
 
@@ -432,8 +375,7 @@ export function useCreateFeedInventory() {
 
   return useMutation({
     mutationFn: async (item: Omit<FeedInventory, 'id' | 'user_id'>) => {
-      const { data, error } = await (supabase
-        .from('feed_inventory') as any)
+      const { data, error } = await supabase.from('feed_inventory')
         .insert([{ ...item, user_id: user?.id }])
         .select()
         .single();
@@ -453,8 +395,7 @@ export function useUpdateFeedInventory() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<FeedInventory> }) => {
-      const { data, error } = await (supabase
-        .from('feed_inventory') as any)
+      const { data, error } = await supabase.from('feed_inventory')
         .update(updates)
         .eq('id', id)
         .select()
@@ -475,7 +416,7 @@ export function useDeleteFeedInventory() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from('feed_inventory') as any).delete().eq('id', id);
+      const { error } = await supabase.from('feed_inventory').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -495,8 +436,7 @@ export function useFeedSchedules(herdId?: string) {
   return useQuery({
     queryKey: ['feed-schedules', herdId],
     queryFn: async () => {
-      let query = (supabase
-        .from('feed_schedules') as any)
+      let query = supabase.from('feed_schedules')
         .select(`
           *,
           herd:herds(id, name, color)
@@ -522,8 +462,7 @@ export function useCreateFeedSchedule() {
 
   return useMutation({
     mutationFn: async (schedule: Omit<FeedSchedule, 'id' | 'user_id'>) => {
-      const { data, error } = await (supabase
-        .from('feed_schedules') as any)
+      const { data, error } = await supabase.from('feed_schedules')
         .insert([{ ...schedule, user_id: user?.id }])
         .select()
         .single();
@@ -543,8 +482,7 @@ export function useUpdateFeedSchedule() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<FeedSchedule> }) => {
-      const { data, error } = await (supabase
-        .from('feed_schedules') as any)
+      const { data, error } = await supabase.from('feed_schedules')
         .update(updates)
         .eq('id', id)
         .select()
@@ -565,7 +503,7 @@ export function useDeleteFeedSchedule() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from('feed_schedules') as any).delete().eq('id', id);
+      const { error } = await supabase.from('feed_schedules').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {

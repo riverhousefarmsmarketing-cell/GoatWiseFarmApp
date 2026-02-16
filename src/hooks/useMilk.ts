@@ -29,8 +29,7 @@ export function useTodaysMilk() {
   return useQuery({
     queryKey: milkKeys.today(),
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('milk_records') as any)
+      const { data, error } = await supabase.from('milk_records')
         .select('*, animals(name)')
         .eq('date', today)
         .order('created_at', { ascending: false });
@@ -48,8 +47,7 @@ export function useMilkStats(days: number = 7) {
   return useQuery({
     queryKey: milkKeys.stats(days),
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('milk_records') as any)
+      const { data, error } = await supabase.from('milk_records')
         .select('date, amount, amount_unit, discarded')
         .gte('date', startDate)
         .order('date');
@@ -74,11 +72,11 @@ export function useMilkStats(days: number = 7) {
       // Calculate totals
       const totalAmount = records
         .filter((r) => !r.discarded)
-        .reduce((sum: any, r: any) => sum + r.amount, 0);
+        .reduce((sum, r) => sum + Number(r.amount), 0);
 
       const discardedAmount = records
         .filter((r) => r.discarded)
-        .reduce((sum: any, r: any) => sum + r.amount, 0);
+        .reduce((sum, r) => sum + Number(r.amount), 0);
 
       const dailyAverage = totalAmount / days;
 
@@ -100,8 +98,7 @@ export function useMilkByAnimal(animalId: string, days: number = 30) {
   return useQuery({
     queryKey: [...milkKeys.byAnimal(animalId), days],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('milk_records') as any)
+      const { data, error } = await supabase.from('milk_records')
         .select('*')
         .eq('animal_id', animalId)
         .gte('date', startDate)
@@ -121,8 +118,7 @@ export function useTopProducers(days: number = 7) {
   return useQuery({
     queryKey: ['milk', 'top-producers', days],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('milk_records') as any)
+      const { data, error } = await supabase.from('milk_records')
         .select('animal_id, amount, animals(name)')
         .gte('date', startDate)
         .eq('discarded', false);
@@ -130,7 +126,7 @@ export function useTopProducers(days: number = 7) {
       if (error) throw error;
 
       // Group by animal
-      const byAnimal = (data as any[]).reduce((acc, record) => {
+      const byAnimal = (data as (MilkRecord & { animals: { name: string } | null })[]).reduce((acc: Record<string, { animalId: string; name: string; total: number }>, record) => {
         if (!acc[record.animal_id]) {
           acc[record.animal_id] = {
             animalId: record.animal_id,
@@ -143,7 +139,7 @@ export function useTopProducers(days: number = 7) {
       }, {} as Record<string, { animalId: string; name: string; total: number }>);
 
       return Object.values(byAnimal)
-        .sort((a: any, b: any) => b.total - a.total)
+        .sort((a, b) => b.total - a.total)
         .slice(0, 5);
     },
   });
@@ -158,8 +154,7 @@ export function useCreateMilkRecord() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await (supabase
-        .from('milk_records') as any)
+      const { data, error } = await supabase.from('milk_records')
         .insert({ ...record, user_id: user.id })
         .select()
         .single();
@@ -179,8 +174,7 @@ export function useDeleteMilkRecord() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase
-        .from('milk_records') as any)
+      const { error } = await supabase.from('milk_records')
         .delete()
         .eq('id', id);
 
