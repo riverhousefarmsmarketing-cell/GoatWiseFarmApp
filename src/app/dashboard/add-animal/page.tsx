@@ -216,7 +216,7 @@ export default function AddAnimalPage() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['animals'] });
-      router.push(`/dashboard/animals/${data.id}`);
+      router.push(`/dashboard/herd/${data.id}`);
     },
   });
 

@@ -281,7 +281,7 @@ export default function HerdDetailPage() {
                 className="p-4 flex items-center justify-between hover:bg-gray-50"
               >
                 <Link 
-                  href={`/dashboard/animals/${animal.id}`}
+                  href={`/dashboard/herd/${animal.id}`}
                   className="flex items-center gap-4 flex-1"
                 >
                   <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold">

@@ -14,6 +14,7 @@ import {
   Badge,
   EmptyState,
   LoadingSpinner,
+  AnimalLink,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import {
@@ -483,9 +484,9 @@ export default function BreedingPlannerPage() {
             }).slice(0, 5).map((plan: any) => (
               <div key={plan.id} className="p-4 flex justify-between items-center">
                 <div>
-                  <p className="font-medium">{plan.doe?.name || plan.doe_name}</p>
+                  <p className="font-medium">{plan.doe_id ? <AnimalLink animalId={plan.doe_id} name={plan.doe?.name || plan.doe_name} variant="subtle" /> : (plan.doe?.name || plan.doe_name)}</p>
                   <p className="text-sm text-gray-500">
-                    with {plan.buck?.name || plan.buck_name || 'TBD'}
+                    with {plan.buck_id ? <AnimalLink animalId={plan.buck_id} name={plan.buck?.name || plan.buck_name || 'TBD'} variant="subtle" /> : (plan.buck?.name || plan.buck_name || 'TBD')}
                   </p>
                 </div>
                 <Badge variant="info">{formatDate(plan.planned_breeding_date)}</Badge>
@@ -514,7 +515,7 @@ export default function BreedingPlannerPage() {
               return (
                 <div key={plan.id} className="p-4 flex justify-between items-center">
                   <div>
-                    <p className="font-medium">{plan.doe?.name || plan.doe_name}</p>
+                    <p className="font-medium">{plan.doe_id ? <AnimalLink animalId={plan.doe_id} name={plan.doe?.name || plan.doe_name} variant="subtle" /> : (plan.doe?.name || plan.doe_name)}</p>
                     <p className="text-sm text-gray-500">
                       {plan.gestation_days} day gestation
                     </p>
