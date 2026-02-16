@@ -208,8 +208,6 @@ export default function BreedingPage() {
     const kidsToCreate = kids.filter(k => k.status === 'alive');
     let createdCount = 0;
     
-    console.log('Creating kid animals:', kidsToCreate);
-    
     for (let i = 0; i < kidsToCreate.length; i++) {
       const kid = kidsToCreate[i];
       // Generate name if not provided
@@ -240,7 +238,6 @@ export default function BreedingPage() {
         if (error) {
           console.error('Error creating kid animal:', error);
         } else {
-          console.log('Created kid animal:', data);
           createdCount++;
           
           // If birth weight provided, create a weight record
@@ -376,14 +373,9 @@ export default function BreedingPage() {
   const handleRecordKidding = async () => {
     if (!selectedRecord) return;
 
-    console.log('Recording kidding for:', selectedRecord.doe?.name);
-    console.log('Kids form data:', kiddingForm.kids);
-
     // Count kids
     const aliveKids = kiddingForm.kids.filter(k => k.status === 'alive').length;
     const totalKids = kiddingForm.kids.length;
-
-    console.log(`Total kids: ${totalKids}, Alive: ${aliveKids}`);
 
     // Create animal records for live kids
     const createdCount = await createKidAnimals(
@@ -393,8 +385,6 @@ export default function BreedingPage() {
       kiddingForm.kidding_date,
       selectedRecord.doe?.breed
     );
-
-    console.log(`Created ${createdCount} animal records`);
 
     // Build comprehensive kidding notes
     const laborNotes = [

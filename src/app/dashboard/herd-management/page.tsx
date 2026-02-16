@@ -249,11 +249,8 @@ export default function HerdManagementPage() {
       return;
     }
     
-    console.log('Creating herd with data:', newHerd);
-    
     try {
       const result = await createHerd.mutateAsync(newHerd);
-      console.log('Herd created successfully:', result);
       setShowAddHerdModal(false);
       setNewHerd({ name: '', description: '', color: '#16a34a', location: '', pasture_name: '' });
     } catch (error: any) {
