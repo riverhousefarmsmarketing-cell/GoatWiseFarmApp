@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useHerds } from '@/hooks/useHerds';
 import {
   Card,
   Button,
@@ -29,6 +30,8 @@ import {
   ShoppingCart,
   History,
   BarChart3,
+  Layers,
+  Clipboard,
 } from 'lucide-react';
 
 interface FeedType {
@@ -69,8 +72,12 @@ export default function FeedInventoryPage() {
   const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
 
+  const { data: herds } = useHerds();
+
   const [showAddTypeModal, setShowAddTypeModal] = useState(false);
   const [showAddInventoryModal, setShowAddInventoryModal] = useState(false);
+  const [showLogUsageModal, setShowLogUsageModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'inventory' | 'usage'>('inventory');
   const [editingType, setEditingType] = useState<FeedType | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedFeedType, setSelectedFeedType] = useState<string | null>(null);
@@ -93,6 +100,15 @@ export default function FeedInventoryPage() {
     purchase_date: new Date().toISOString().split('T')[0],
     expiration_date: '',
     lot_number: '',
+    notes: '',
+  });
+
+  // Form state for feed usage
+  const [usageFormData, setUsageFormData] = useState({
+    feed_type_id: '',
+    herd_id: '',
+    quantity: '',
+    date: new Date().toISOString().split('T')[0],
     notes: '',
   });
 
@@ -216,6 +232,51 @@ export default function FeedInventoryPage() {
     },
   });
 
+  // Fetch feed usage records
+  const { data: feedUsage } = useQuery({
+    queryKey: ['feed_usage'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('feed_usage')
+        .select('*, feed_types(name, unit, cost_per_unit, category), herds(name)')
+        .eq('user_id', user!.id)
+        .order('date', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Add feed usage mutation
+  const addUsageMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await (supabase as any)
+        .from('feed_usage')
+        .insert(data);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed_usage'] });
+      setShowLogUsageModal(false);
+      resetUsageForm();
+    },
+  });
+
+  // Delete feed usage mutation
+  const deleteUsageMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('feed_usage')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed_usage'] });
+    },
+  });
+
   const resetTypeForm = () => {
     setTypeFormData({
       name: '',
@@ -238,6 +299,49 @@ export default function FeedInventoryPage() {
       notes: '',
     });
   };
+
+  const resetUsageForm = () => {
+    setUsageFormData({
+      feed_type_id: '',
+      herd_id: '',
+      quantity: '',
+      date: new Date().toISOString().split('T')[0],
+      notes: '',
+    });
+  };
+
+  const handleUsageSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    addUsageMutation.mutate({
+      user_id: user!.id,
+      feed_type_id: usageFormData.feed_type_id,
+      herd_id: usageFormData.herd_id,
+      quantity: parseFloat(usageFormData.quantity),
+      date: usageFormData.date,
+      notes: usageFormData.notes || null,
+    });
+  };
+
+  // Cost per herd calculation
+  const costByHerd = useMemo(() => {
+    if (!feedUsage || !herds) return [];
+    const herdCosts: Record<string, { name: string; totalCost: number; totalFeedings: number; feedBreakdown: Record<string, { name: string; quantity: number; unit: string; cost: number }> }> = {};
+    for (const usage of feedUsage as any[]) {
+      const herdId = usage.herd_id;
+      const herdName = usage.herds?.name || 'Unknown';
+      const feedName = usage.feed_types?.name || 'Unknown';
+      const unit = usage.feed_types?.unit || '';
+      const costPerUnit = usage.feed_types?.cost_per_unit || 0;
+      const cost = usage.quantity * costPerUnit;
+      if (!herdCosts[herdId]) herdCosts[herdId] = { name: herdName, totalCost: 0, totalFeedings: 0, feedBreakdown: {} };
+      herdCosts[herdId].totalCost += cost;
+      herdCosts[herdId].totalFeedings += 1;
+      if (!herdCosts[herdId].feedBreakdown[usage.feed_type_id]) herdCosts[herdId].feedBreakdown[usage.feed_type_id] = { name: feedName, quantity: 0, unit, cost: 0 };
+      herdCosts[herdId].feedBreakdown[usage.feed_type_id].quantity += usage.quantity;
+      herdCosts[herdId].feedBreakdown[usage.feed_type_id].cost += cost;
+    }
+    return Object.entries(herdCosts).map(([id, data]) => ({ id, ...data })).sort((a, b) => b.totalCost - a.totalCost);
+  }, [feedUsage, herds]);
 
   // Calculate inventory stats per feed type
   const inventoryStats = useMemo(() => {
@@ -357,6 +461,13 @@ export default function FeedInventoryPage() {
         </div>
         <div className="flex gap-2">
           <Button
+            variant="ghost"
+            onClick={() => { resetUsageForm(); setShowLogUsageModal(true); }}
+            leftIcon={<Clipboard className="h-4 w-4" />}
+          >
+            Log Feed Usage
+          </Button>
+          <Button
             variant="outline"
             onClick={() => {
               resetTypeForm();
@@ -376,6 +487,30 @@ export default function FeedInventoryPage() {
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200">
+        <nav className="flex gap-4">
+          {[
+            { id: 'inventory', label: 'Inventory', icon: Package },
+            { id: 'usage', label: 'Feed Usage by Herd', icon: Layers },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {activeTab === 'inventory' && (<>
       {/* Summary Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card padding="sm" className="text-center">
@@ -630,6 +765,84 @@ export default function FeedInventoryPage() {
           })}
         </div>
       )}
+      </>)}
+
+      {activeTab === 'usage' && (
+        <div className="space-y-6">
+          {/* Cost by Herd Summary */}
+          {costByHerd.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {costByHerd.map((herd) => (
+                <Card key={herd.id}>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">{herd.name}</h3>
+                      <span className="text-lg font-bold text-green-600">${herd.totalCost.toFixed(2)}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-3">{herd.totalFeedings} feeding{herd.totalFeedings !== 1 ? 's' : ''} logged</p>
+                    <div className="space-y-1.5">
+                      {Object.values(herd.feedBreakdown).map((feed, i) => (
+                        <div key={i} className="flex justify-between text-sm">
+                          <span className="text-gray-600">{feed.name}</span>
+                          <span className="text-gray-500">{feed.quantity} {feed.unit} · ${feed.cost.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Usage Log Table */}
+          <Card padding="none">
+            {!feedUsage?.length ? (
+              <div className="p-8 text-center">
+                <Clipboard className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-gray-500 mb-4">No feed usage logged yet</p>
+                <p className="text-sm text-gray-400 mb-4">Log what you feed each herd to track costs</p>
+                <Button onClick={() => { resetUsageForm(); setShowLogUsageModal(true); }} leftIcon={<Plus className="h-4 w-4" />}>Log Feed Usage</Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 text-left text-sm text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Date</th>
+                      <th className="px-4 py-3 font-medium">Herd</th>
+                      <th className="px-4 py-3 font-medium">Feed</th>
+                      <th className="px-4 py-3 font-medium">Amount</th>
+                      <th className="px-4 py-3 font-medium">Cost</th>
+                      <th className="px-4 py-3 font-medium">Notes</th>
+                      <th className="px-4 py-3 font-medium w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {(feedUsage as any[]).map((usage: any) => {
+                      const cost = usage.quantity * (usage.feed_types?.cost_per_unit || 0);
+                      return (
+                        <tr key={usage.id} className="group hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm">{formatDate(usage.date)}</td>
+                          <td className="px-4 py-3 text-sm font-medium">{usage.herds?.name || '—'}</td>
+                          <td className="px-4 py-3 text-sm">{usage.feed_types?.name || '—'}</td>
+                          <td className="px-4 py-3 text-sm">{usage.quantity} {usage.feed_types?.unit || ''}</td>
+                          <td className="px-4 py-3 text-sm">{cost > 0 ? `$${cost.toFixed(2)}` : '—'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500">{usage.notes || '—'}</td>
+                          <td className="px-4 py-1">
+                            <button onClick={() => { if (confirm('Delete this usage record?')) deleteUsageMutation.mutate(usage.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all" title="Delete">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
 
       {/* Add/Edit Feed Type Modal */}
       <Modal
@@ -664,10 +877,17 @@ export default function FeedInventoryPage() {
               options={[
                 { value: 'lbs', label: 'Pounds (lbs)' },
                 { value: 'kg', label: 'Kilograms (kg)' },
-                { value: 'tons', label: 'Tons' },
-                { value: 'bales', label: 'Bales' },
-                { value: 'bags', label: 'Bags' },
                 { value: 'oz', label: 'Ounces (oz)' },
+                { value: 'tons', label: 'Tons' },
+                { value: '50lb_bag', label: '50lb Bags' },
+                { value: '25lb_bag', label: '25lb Bags' },
+                { value: 'bag', label: 'Bags (other)' },
+                { value: 'square_bale', label: 'Square Bales' },
+                { value: 'round_bale', label: 'Round Bales' },
+                { value: 'flake', label: 'Flakes' },
+                { value: 'scoop', label: 'Scoops' },
+                { value: 'cup', label: 'Cups' },
+                { value: 'tbsp', label: 'Tablespoons' },
               ]}
               value={typeFormData.unit}
               onChange={(e) => setTypeFormData((prev) => ({ ...prev, unit: e.target.value }))}
@@ -810,6 +1030,73 @@ export default function FeedInventoryPage() {
             <Button type="submit" disabled={addInventoryMutation.isPending}>
               Add Stock
             </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Log Feed Usage Modal */}
+      <Modal
+        open={showLogUsageModal}
+        onClose={() => setShowLogUsageModal(false)}
+        title="Log Feed Usage"
+      >
+        <form onSubmit={handleUsageSubmit} className="space-y-4">
+          <Select
+            label="Feed Type"
+            required
+            options={[
+              { value: '', label: 'Select feed type...' },
+              ...(feedTypes || []).map((type) => ({
+                value: type.id,
+                label: `${type.name} (${type.unit})`,
+              })),
+            ]}
+            value={usageFormData.feed_type_id}
+            onChange={(e) => setUsageFormData((prev) => ({ ...prev, feed_type_id: e.target.value }))}
+          />
+
+          <Select
+            label="Herd"
+            required
+            options={[
+              { value: '', label: 'Select herd...' },
+              ...(herds || []).map((herd: any) => ({
+                value: herd.id,
+                label: herd.name,
+              })),
+            ]}
+            value={usageFormData.herd_id}
+            onChange={(e) => setUsageFormData((prev) => ({ ...prev, herd_id: e.target.value }))}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Quantity"
+              type="number"
+              step="0.1"
+              required
+              value={usageFormData.quantity}
+              onChange={(e) => setUsageFormData((prev) => ({ ...prev, quantity: e.target.value }))}
+              placeholder="e.g., 2"
+            />
+            <Input
+              label="Date"
+              type="date"
+              value={usageFormData.date}
+              onChange={(e) => setUsageFormData((prev) => ({ ...prev, date: e.target.value }))}
+            />
+          </div>
+
+          <Input
+            label="Notes"
+            value={usageFormData.notes}
+            onChange={(e) => setUsageFormData((prev) => ({ ...prev, notes: e.target.value }))}
+            placeholder="Optional notes..."
+          />
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowLogUsageModal(false)}>Cancel</Button>
+            <Button type="submit" disabled={addUsageMutation.isPending}>Log Usage</Button>
           </div>
         </form>
       </Modal>

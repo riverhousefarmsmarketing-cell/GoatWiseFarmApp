@@ -122,6 +122,11 @@ export interface Database {
         Insert: { id?: string; user_id: string; feed_type_id: string; quantity?: number; purchase_date?: string | null; expiration_date?: string | null; lot_number?: string | null; notes?: string | null; created_at?: string; };
         Update: { feed_type_id?: string; quantity?: number; purchase_date?: string | null; expiration_date?: string | null; lot_number?: string | null; notes?: string | null; };
       };
+      feed_usage: {
+        Row: { id: string; user_id: string; feed_type_id: string; herd_id: string; quantity: number; date: string; notes: string | null; created_at: string; };
+        Insert: { id?: string; user_id: string; feed_type_id: string; herd_id: string; quantity: number; date?: string; notes?: string | null; created_at?: string; };
+        Update: { feed_type_id?: string; herd_id?: string; quantity?: number; date?: string; notes?: string | null; };
+      };
       feed_schedules: {
         Row: { id: string; user_id: string; herd_id: string; feed_type: string; quantity_per_feeding: number; unit: string; feeding_times: Json; start_date: string; end_date: string | null; status: string; notes: string | null; created_at: string; updated_at: string; };
         Insert: { id?: string; user_id: string; herd_id: string; feed_type: string; quantity_per_feeding: number; unit: string; feeding_times?: Json; start_date: string; end_date?: string | null; status?: string; notes?: string | null; created_at?: string; updated_at?: string; };
