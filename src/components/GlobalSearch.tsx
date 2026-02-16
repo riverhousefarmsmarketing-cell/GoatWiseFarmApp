@@ -189,7 +189,7 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
           type: 'animal',
           title: animal.name,
           subtitle: `${animal.breed || 'Unknown breed'} • ${animal.category?.replace('_', ' ')}`,
-          href: `/dashboard/animals/${animal.id}`,
+          href: `/dashboard/herd/${animal.id}`,
           icon: TYPE_CONFIG.animal.icon,
           iconColor: TYPE_CONFIG.animal.color,
         });

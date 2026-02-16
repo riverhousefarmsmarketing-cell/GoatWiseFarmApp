@@ -136,7 +136,7 @@ export function Sidebar() {
 
   const isResourcesActive = pathname.includes('/resources') || pathname.includes('/care-guide');
   const isUtilitiesActive = utilitiesNavigation.some(item => pathname.startsWith(item.href));
-  const isAnimalDetailPage = pathname.startsWith('/dashboard/animals/');
+  const isAnimalDetailPage = pathname.startsWith('/dashboard/herd/') && pathname !== '/dashboard/herd';
 
   // Check if a primary nav item or its subitems are active
   const isPrimaryItemActive = (item: typeof primaryNavigation[0]) => {
