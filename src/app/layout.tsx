@@ -6,6 +6,7 @@ import { Providers } from '@/components/Providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://goatwise.app'),
   title: 'GoatWise — Farm Management Built by a Goat Farmer',
   description: 'Track your herd\'s health, breeding, milk production, and finances. FAMACHA scoring, kidding calendars, Schedule F tax export, and 14 breed profiles — built by a goat farmer, for goat farmers.',
   icons: {
