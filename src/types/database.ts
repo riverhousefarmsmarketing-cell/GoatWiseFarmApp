@@ -153,9 +153,9 @@ export interface Database {
         Update: { date?: string; predator_type?: string | null; outcome?: string; location?: string | null; description?: string | null; animals_lost?: number; animals_injured?: number; guardian_id?: string | null; notes?: string | null; };
       };
       photos: {
-        Row: { id: string; user_id: string; animal_id: string | null; health_record_id: string | null; inspection_id: string | null; category: string; filename: string; url: string; caption: string | null; date_taken: string; created_at: string; };
-        Insert: { id?: string; user_id: string; animal_id?: string | null; health_record_id?: string | null; inspection_id?: string | null; category?: string; filename: string; url: string; caption?: string | null; date_taken?: string; created_at?: string; };
-        Update: { animal_id?: string | null; health_record_id?: string | null; inspection_id?: string | null; category?: string; filename?: string; url?: string; caption?: string | null; date_taken?: string; };
+        Row: { id: string; user_id: string; animal_id: string | null; guardian_id: string | null; health_record_id: string | null; inspection_id: string | null; category: string; filename: string; url: string; caption: string | null; date_taken: string; created_at: string; };
+        Insert: { id?: string; user_id: string; animal_id?: string | null; guardian_id?: string | null; health_record_id?: string | null; inspection_id?: string | null; category?: string; filename: string; url: string; caption?: string | null; date_taken?: string; created_at?: string; };
+        Update: { animal_id?: string | null; guardian_id?: string | null; health_record_id?: string | null; inspection_id?: string | null; category?: string; filename?: string; url?: string; caption?: string | null; date_taken?: string; };
       };
     };
     Views: { [_ in never]: never; };

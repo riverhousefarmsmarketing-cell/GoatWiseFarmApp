@@ -59,16 +59,16 @@ const primaryNavigation = [
       { name: 'All Animals', href: '/dashboard/herd' },
       { name: 'Herd Management', href: '/dashboard/herd-management' },
       { name: 'Groups', href: '/dashboard/groups' },
+      { name: 'Guardians', href: '/dashboard/guardians' },
     ]
   },
   { 
     name: 'Health', 
     href: '/dashboard/health', 
     icon: Heart,
-    description: 'Health records & guardians',
+    description: 'Health records & treatments',
     subItems: [
       { name: 'Health Center', href: '/dashboard/health' },
-      { name: 'Guardians', href: '/dashboard/guardians' },
     ]
   },
   { 

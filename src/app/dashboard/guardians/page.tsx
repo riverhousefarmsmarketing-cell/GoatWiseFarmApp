@@ -111,6 +111,9 @@ export default function GuardiansPage() {
 
   const [predationPhotos, setPredationPhotos] = useState<File[]>([]);
   const [predationPhotoCategory, setPredationPhotoCategory] = useState('injury');
+  const [guardianPhotos, setGuardianPhotos] = useState<File[]>([]);
+  const [guardianPhotoCaption, setGuardianPhotoCaption] = useState('');
+  const [isUploadingGuardianPhoto, setIsUploadingGuardianPhoto] = useState(false);
 
   const [newGuardian, setNewGuardian] = useState({
     name: '', type: 'lgd', breed: '', sex: 'male', birth_date: '',
@@ -214,6 +217,69 @@ export default function GuardiansPage() {
   });
 
   const activeGuardians = guardians?.filter((g: any) => g.status === 'active').length || 0;
+
+  // Fetch photos for selected guardian
+  const { data: selectedGuardianPhotos } = useQuery<any[]>({
+    queryKey: ['guardian_photos', selectedGuardian?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('photos')
+        .select('*')
+        .eq('guardian_id', selectedGuardian?.id)
+        .order('date_taken', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !!selectedGuardian?.id,
+  });
+
+  const handleGuardianPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setGuardianPhotos(prev => [...prev, ...files].slice(0, 5));
+  };
+
+  const handleGuardianPhotoUpload = async () => {
+    if (guardianPhotos.length === 0 || !user || !selectedGuardian) return;
+    setIsUploadingGuardianPhoto(true);
+    try {
+      for (const file of guardianPhotos) {
+        const ext = file.name.split('.').pop();
+        const filename = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('photos')
+          .upload(filename, file, { cacheControl: '3600', upsert: false });
+        if (uploadError) { console.error('Upload error:', uploadError); continue; }
+        const { data: urlData } = supabase.storage.from('photos').getPublicUrl(filename);
+        await (supabase as any).from('photos').insert({
+          user_id: user.id,
+          guardian_id: selectedGuardian.id,
+          category: 'guardian_profile',
+          caption: guardianPhotoCaption || null,
+          filename,
+          url: urlData.publicUrl,
+          date_taken: new Date().toISOString().split('T')[0],
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['guardian_photos', selectedGuardian.id] });
+      setGuardianPhotos([]);
+      setGuardianPhotoCaption('');
+    } catch (error) {
+      console.error('Upload error:', error);
+    } finally {
+      setIsUploadingGuardianPhoto(false);
+    }
+  };
+
+  const handleDeleteGuardianPhoto = async (photoId: string, filename: string) => {
+    try {
+      await supabase.storage.from('photos').remove([filename]);
+      await supabase.from('photos').delete().eq('id', photoId);
+      queryClient.invalidateQueries({ queryKey: ['guardian_photos', selectedGuardian?.id] });
+    } catch (error) {
+      console.error('Delete photo error:', error);
+    }
+  };
+
   const vaccinesDueSoon = vaccinations?.filter((v: any) => {
     if (!v.next_due_date) return false;
     const due = new Date(v.next_due_date);
@@ -571,11 +637,15 @@ export default function GuardiansPage() {
       </Modal>
 
       {/* Guardian Detail Modal */}
-      <Modal open={showDetailModal} onClose={() => { setShowDetailModal(false); setSelectedGuardian(null); }} title={selectedGuardian?.name || 'Details'}>
+      <Modal open={showDetailModal} onClose={() => { setShowDetailModal(false); setSelectedGuardian(null); setGuardianPhotos([]); setGuardianPhotoCaption(''); }} title={selectedGuardian?.name || 'Details'} size="lg">
         {selectedGuardian && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl ${getColor(selectedGuardian.type)}`}>{getIcon(selectedGuardian.type)}</div>
+              {selectedGuardianPhotos?.length ? (
+                <img src={selectedGuardianPhotos[0].url} alt={selectedGuardian.name} className="w-20 h-20 rounded-full object-cover" />
+              ) : (
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl ${getColor(selectedGuardian.type)}`}>{getIcon(selectedGuardian.type)}</div>
+              )}
               <div>
                 <h2 className="text-xl font-bold">{selectedGuardian.name}</h2>
                 <p className="text-gray-500">{selectedGuardian.breed}</p>
@@ -587,6 +657,55 @@ export default function GuardiansPage() {
               <div className="text-center p-3 bg-gray-50 rounded-lg"><p className="text-sm text-gray-500">Weight</p><p className="font-semibold">{selectedGuardian.weight || '—'} lbs</p></div>
               <div className="text-center p-3 bg-gray-50 rounded-lg"><p className="text-sm text-gray-500">Rating</p><RatingStars rating={selectedGuardian.effectiveness_rating || 0} /></div>
             </div>
+
+            {/* Photos Section */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Camera className="h-4 w-4" /> Photos</h3>
+                <span className="text-xs text-gray-500">{selectedGuardianPhotos?.length || 0} photo{(selectedGuardianPhotos?.length || 0) !== 1 ? 's' : ''}</span>
+              </div>
+              {selectedGuardianPhotos?.length ? (
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {selectedGuardianPhotos.map((photo: any) => (
+                    <div key={photo.id} className="relative group aspect-square">
+                      <img src={photo.url} alt={photo.caption || selectedGuardian.name} className="w-full h-full object-cover rounded-lg" />
+                      <button
+                        onClick={() => handleDeleteGuardianPhoto(photo.id, photo.filename)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      {photo.caption && <p className="text-xs text-gray-500 mt-1 truncate">{photo.caption}</p>}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {/* Upload area */}
+              {guardianPhotos.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {guardianPhotos.map((file, i) => (
+                      <div key={i} className="relative">
+                        <img src={URL.createObjectURL(file)} alt="" className="w-16 h-16 rounded object-cover" />
+                        <button onClick={() => setGuardianPhotos(prev => prev.filter((_, idx) => idx !== i))} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X className="h-3 w-3" /></button>
+                      </div>
+                    ))}
+                  </div>
+                  <Input placeholder="Caption (optional)" value={guardianPhotoCaption} onChange={(e) => setGuardianPhotoCaption(e.target.value)} />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleGuardianPhotoUpload} loading={isUploadingGuardianPhoto}>Upload</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setGuardianPhotos([]); setGuardianPhotoCaption(''); }}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <label className="block w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primary-400 transition-colors">
+                  <Camera className="h-5 w-5 mx-auto mb-1 text-gray-400" />
+                  <span className="text-sm text-gray-500">Add photos</span>
+                  <input type="file" multiple accept="image/*" onChange={handleGuardianPhotoSelect} className="hidden" />
+                </label>
+              )}
+            </div>
+
             <div className="flex gap-2 pt-4 border-t">
               <Button variant="secondary" className="flex-1" onClick={() => { setNewHealthRecord({...newHealthRecord, guardian_id: selectedGuardian.id}); setShowDetailModal(false); setShowHealthModal(true); }}><Plus className="h-4 w-4 mr-2" />Add Health Record</Button>
               <Button variant="secondary" className="flex-1" onClick={() => { setNewVaccine({...newVaccine, guardian_id: selectedGuardian.id}); setShowDetailModal(false); setShowVaccineModal(true); }}><Syringe className="h-4 w-4 mr-2" />Add Vaccine</Button>
