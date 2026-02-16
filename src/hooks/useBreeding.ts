@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { addDays, format, differenceInDays } from 'date-fns';
 import type { BreedingRecord, BreedingRecordInsert } from '@/types/database';
 
@@ -45,7 +45,7 @@ export function useBreedingRecords(status?: string) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as BreedingRecord;
+      return data as BreedingRecord[];
     },
   });
 }
@@ -74,7 +74,7 @@ export function useUpcomingKiddings(days: number = 30) {
       // Add days until due
       return (data as BreedingRecord[]).map((record) => ({
         ...record,
-        daysUntilDue: differenceInDays(new Date(record.due_date), new Date()),
+        daysUntilDue: record.due_date ? differenceInDays(new Date(record.due_date), new Date()) : 0,
       }));
     },
   });
@@ -95,7 +95,7 @@ export function useBreedingByDoe(doeId: string) {
         .order('breeding_date', { ascending: false });
 
       if (error) throw error;
-      return data as BreedingRecord;
+      return data as BreedingRecord[];
     },
     enabled: !!doeId,
   });
@@ -123,7 +123,7 @@ export function useCreateBreedingRecord() {
         'yyyy-MM-dd'
       );
 
-      const { data, error } = await supabase.from('breeding_records')
+      const { data, error } = await mutationFrom('breeding_records')
         .insert({
           ...record,
           user_id: user.id,
@@ -159,7 +159,7 @@ export function useUpdateBreedingRecord() {
       assistance_notes: string;
       notes: string;
     }>) => {
-      const { data, error } = await supabase.from('breeding_records')
+      const { data, error } = await mutationFrom('breeding_records')
         .update(updates)
         .eq('id', id)
         .select()
@@ -176,7 +176,6 @@ export function useUpdateBreedingRecord() {
 
 export function useRecordKidding() {
   const queryClient = useQueryClient();
-  const supabase = getSupabaseClient();
 
   return useMutation({
     mutationFn: async ({
@@ -196,7 +195,7 @@ export function useRecordKidding() {
       assistanceRequired?: boolean;
       assistanceNotes?: string;
     }) => {
-      const { data, error } = await supabase.from('breeding_records')
+      const { data, error } = await mutationFrom('breeding_records')
         .update({
           status: 'kidded',
           kidding_date: kiddingDate,
@@ -233,7 +232,7 @@ export function useConfirmPregnancy() {
       confirmationDate?: string;
       confirmationMethod?: string;
     }) => {
-      const { data, error } = await supabase.from('breeding_records')
+      const { data, error } = await mutationFrom('breeding_records')
         .update({
           status: 'confirmed_pregnant',
           confirmation_date: confirmationDate || format(new Date(), 'yyyy-MM-dd'),

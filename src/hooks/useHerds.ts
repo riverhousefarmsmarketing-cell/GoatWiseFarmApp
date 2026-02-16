@@ -1,7 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { useAuth } from './useAuth';
-import type { Herd, Animal, FeedSchedule as DBFeedSchedule } from '@/types/database';
+import type { Herd, Animal, FeedSchedule as DBFeedSchedule, FeedInventoryRecord, FeedType } from '@/types/database';
+
+// Type aliases for convenience
+type FeedInventory = FeedInventoryRecord;
+type FeedSchedule = DBFeedSchedule;
 
 // Re-export Herd from database types for consumers that import from this file
 export type { Herd } from '@/types/database';
@@ -53,15 +57,17 @@ export function useHerdsWithStats() {
       if (herdsError) throw herdsError;
 
       // Get animal counts per herd
-      const { data: animals, error: animalsError } = await supabase.from('animals')
+      const { data: rawAnimals, error: animalsError } = await supabase.from('animals')
         .select('id, herd_id, category, status')
         .eq('status', 'active');
 
       if (animalsError) throw animalsError;
 
+      const animals = rawAnimals as { id: string; herd_id: string | null; category: string; status: string }[];
+
       // Calculate stats for each herd
       const herdsWithStats: HerdWithStats[] = (herds || []).map((herd: Herd) => {
-        const herdAnimals = (animals || []).filter((a) => a.herd_id === herd.id);
+        const herdAnimals = animals.filter((a) => a.herd_id === herd.id);
         return {
           ...herd,
           animalCount: herdAnimals.length,
@@ -71,13 +77,15 @@ export function useHerdsWithStats() {
       });
 
       // Add "unassigned" pseudo-herd
-      const unassignedAnimals = (animals || []).filter((a) => !a.herd_id);
+      const unassignedAnimals = animals.filter((a) => !a.herd_id);
       if (unassignedAnimals.length > 0) {
         herdsWithStats.push({
           id: 'unassigned',
           name: 'Unassigned',
           description: 'Animals not assigned to any herd',
           color: '#9ca3af',
+          location: null,
+          pasture_name: null,
           user_id: user?.id || '',
           created_at: '',
           updated_at: '',
@@ -106,6 +114,11 @@ export function useHerd(id: string) {
           name: 'Unassigned',
           description: 'Animals not assigned to any herd',
           color: '#9ca3af',
+          location: null,
+          pasture_name: null,
+          user_id: '',
+          created_at: '',
+          updated_at: '',
         } as Herd;
       }
 
@@ -154,7 +167,7 @@ export function useCreateHerd() {
 
   return useMutation({
     mutationFn: async (herd: { name: string; description?: string | null; color?: string; location?: string | null }) => {
-      const { data, error } = await supabase.from('herds')
+      const { data, error } = await mutationFrom('herds')
         .insert([{ ...herd, user_id: user?.id }])
         .select()
         .single();
@@ -174,7 +187,7 @@ export function useUpdateHerd() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Herd> }) => {
-      const { data, error } = await supabase.from('herds')
+      const { data, error } = await mutationFrom('herds')
         .update(updates)
         .eq('id', id)
         .select()
@@ -197,7 +210,7 @@ export function useDeleteHerd() {
   return useMutation({
     mutationFn: async (id: string) => {
       // First, unassign all animals from this herd
-      await supabase.from('animals')
+      await mutationFrom('animals')
         .update({ herd_id: null })
         .eq('herd_id', id);
 
@@ -218,7 +231,7 @@ export function useAssignAnimalToHerd() {
 
   return useMutation({
     mutationFn: async ({ animalId, herdId }: { animalId: string; herdId: string | null }) => {
-      const { data, error } = await supabase.from('animals')
+      const { data, error } = await mutationFrom('animals')
         .update({ herd_id: herdId })
         .eq('id', animalId)
         .select()
@@ -279,6 +292,63 @@ export function useCompleteHerdTransfer() {
 }
 
 // ==========================================
+// FEED TYPES
+// ==========================================
+
+export function useFeedTypes() {
+  const { user } = useAuth();
+  const supabase = getSupabaseClient();
+
+  return useQuery({
+    queryKey: ['feed-types'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('feed_types')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      return data as FeedType[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useCreateFeedType() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (item: Omit<FeedType, 'id' | 'user_id' | 'created_at'>) => {
+      const { data, error } = await mutationFrom('feed_types')
+        .insert([{ ...item, user_id: user?.id }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-types'] });
+      queryClient.invalidateQueries({ queryKey: ['feed-inventory'] });
+    },
+  });
+}
+
+export function useDeleteFeedType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await mutationFrom('feed_types').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-types'] });
+    },
+  });
+}
+
+// ==========================================
 // FEED INVENTORY
 // ==========================================
 
@@ -291,7 +361,7 @@ export function useFeedInventory() {
     queryFn: async () => {
       const { data, error } = await supabase.from('feed_inventory')
         .select('*')
-        .order('feed_type');
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as FeedInventory[];
@@ -307,7 +377,7 @@ export function useCreateFeedInventory() {
 
   return useMutation({
     mutationFn: async (item: Omit<FeedInventory, 'id' | 'user_id'>) => {
-      const { data, error } = await supabase.from('feed_inventory')
+      const { data, error } = await mutationFrom('feed_inventory')
         .insert([{ ...item, user_id: user?.id }])
         .select()
         .single();
@@ -327,7 +397,7 @@ export function useUpdateFeedInventory() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<FeedInventory> }) => {
-      const { data, error } = await supabase.from('feed_inventory')
+      const { data, error } = await mutationFrom('feed_inventory')
         .update(updates)
         .eq('id', id)
         .select()
@@ -394,7 +464,7 @@ export function useCreateFeedSchedule() {
 
   return useMutation({
     mutationFn: async (schedule: Omit<FeedSchedule, 'id' | 'user_id'>) => {
-      const { data, error } = await supabase.from('feed_schedules')
+      const { data, error } = await mutationFrom('feed_schedules')
         .insert([{ ...schedule, user_id: user?.id }])
         .select()
         .single();
@@ -414,7 +484,7 @@ export function useUpdateFeedSchedule() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<FeedSchedule> }) => {
-      const { data, error } = await supabase.from('feed_schedules')
+      const { data, error } = await mutationFrom('feed_schedules')
         .update(updates)
         .eq('id', id)
         .select()

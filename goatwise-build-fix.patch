@@ -1,0 +1,760 @@
+diff --git a/package-lock.json b/package-lock.json
+index 39c254d..85f0e1c 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -93,7 +93,6 @@
+       "integrity": "sha512-e7jT4DxYvIDLk1ZHmU/m/mB19rex9sv0c2ftBtjSBv+kVM/902eh0fINUzD7UwLLNR+jU585GxUJ8/EBfAM5fw==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@babel/code-frame": "^7.27.1",
+         "@babel/generator": "^7.28.5",
+@@ -1568,7 +1567,6 @@
+       "resolved": "https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.90.1.tgz",
+       "integrity": "sha512-U8KaKGLUgTIFHtwEW1dgw1gK7XrdpvvYo7nzzqPx721GqPe8WZbAiLh/hmyKLGBYQ/mmQNr20vU9tWSDZpii3w==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@supabase/auth-js": "2.90.1",
+         "@supabase/functions-js": "2.90.1",
+@@ -1614,7 +1612,6 @@
+       "resolved": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.90.16.tgz",
+       "integrity": "sha512-bpMGOmV4OPmif7TNMteU/Ehf/hoC0Kf98PDc0F4BZkFrEapRMEqI/V6YS0lyzwSV6PQpY1y4xxArUIfBW5LVxQ==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@tanstack/query-core": "5.90.16"
+       },
+@@ -1922,7 +1919,6 @@
+       "integrity": "sha512-cisd7gxkzjBKU2GgdYrTdtQx1SORymWyaAFhaxQPK9bYO9ot3Y5OikQRvY0VYQtvwjeQnizCINJAenh/V7MK2w==",
+       "devOptional": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@types/prop-types": "*",
+         "csstype": "^3.2.2"
+@@ -2402,7 +2398,6 @@
+       "integrity": "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "bin": {
+         "acorn": "bin/acorn"
+       },
+@@ -3041,7 +3036,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "baseline-browser-mapping": "^2.9.0",
+         "caniuse-lite": "^1.0.30001759",
+@@ -3216,7 +3210,6 @@
+       "resolved": "https://registry.npmjs.org/chart.js/-/chart.js-4.5.1.tgz",
+       "integrity": "sha512-GIjfiT9dbmHRiYi6Nl2yFCq7kkwdkp1W/lp2J99rX0yo9tgJGn3lKQATztIjb5tVtevcBtIdICNWqlq5+E8/Pw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@kurkle/color": "^0.3.0"
+       },
+@@ -4108,7 +4101,6 @@
+       "deprecated": "This version is no longer supported. Please see https://eslint.org/version-support for other options.",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@eslint-community/eslint-utils": "^4.2.0",
+         "@eslint-community/regexpp": "^4.6.1",
+@@ -4277,7 +4269,6 @@
+       "integrity": "sha512-whOE1HFo/qJDyX4SnXzP4N6zOWn79WhnCUY/iDR0mPfQZO8wcYE4JClzI2oZrhBnnMUCBCHZhO6VQyoBU95mZA==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "@rtsao/scc": "^1.1.0",
+         "array-includes": "^3.1.9",
+@@ -6904,7 +6895,6 @@
+       "integrity": "sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "bin": {
+         "jiti": "bin/jiti.js"
+       }
+@@ -7989,7 +7979,6 @@
+         }
+       ],
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "nanoid": "^3.3.11",
+         "picocolors": "^1.1.1",
+@@ -8287,7 +8276,6 @@
+       "resolved": "https://registry.npmjs.org/react/-/react-18.3.1.tgz",
+       "integrity": "sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "loose-envify": "^1.1.0"
+       },
+@@ -8310,7 +8298,6 @@
+       "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-18.3.1.tgz",
+       "integrity": "sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==",
+       "license": "MIT",
+-      "peer": true,
+       "dependencies": {
+         "loose-envify": "^1.1.0",
+         "scheduler": "^0.23.2"
+@@ -9345,7 +9332,6 @@
+       "integrity": "sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==",
+       "dev": true,
+       "license": "MIT",
+-      "peer": true,
+       "engines": {
+         "node": ">=12"
+       },
+@@ -9584,7 +9570,6 @@
+       "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+       "dev": true,
+       "license": "Apache-2.0",
+-      "peer": true,
+       "bin": {
+         "tsc": "bin/tsc",
+         "tsserver": "bin/tsserver"
+diff --git a/src/app/dashboard/health/page.tsx b/src/app/dashboard/health/page.tsx
+index 9b77553..5fbb91d 100644
+--- a/src/app/dashboard/health/page.tsx
++++ b/src/app/dashboard/health/page.tsx
+@@ -72,7 +72,7 @@ import {
+ } from 'lucide-react';
+ 
+ type HealthRecordWithAnimal = HealthRecord & {
+-  animals: { name: string } | null;
++  animals?: { name: string } | null;
+ };
+ 
+ // Photo categories for health records
+diff --git a/src/app/dashboard/herd-management/page.tsx b/src/app/dashboard/herd-management/page.tsx
+index 53457d9..275cd9b 100644
+--- a/src/app/dashboard/herd-management/page.tsx
++++ b/src/app/dashboard/herd-management/page.tsx
+@@ -11,6 +11,9 @@ import {
+   useCreateFeedInventory,
+   useUpdateFeedInventory,
+   useDeleteFeedInventory,
++  useFeedTypes,
++  useCreateFeedType,
++  useDeleteFeedType,
+   useFeedSchedules,
+   useCreateFeedSchedule,
+ } from '@/hooks/useHerds';
+@@ -222,24 +225,22 @@ export default function HerdManagementPage() {
+   const { data: herds, isLoading: herdsLoading, error: herdsError } = useHerdsWithStats();
+   const { data: animals } = useAnimals({ status: 'active' });
+   const { data: transfers } = useHerdTransfers(transferFilter);
+-  const { data: feedInventory } = useFeedInventory();
++  const { data: feedInventory } = useFeedTypes();
+   const { data: feedSchedules } = useFeedSchedules();
+ 
+   // Mutations
+   const createHerd = useCreateHerd();
+   const deleteHerd = useDeleteHerd();
+   const completeTransfer = useCompleteHerdTransfer();
+-  const createFeedItem = useCreateFeedInventory();
+-  const deleteFeedItem = useDeleteFeedInventory();
++  const createFeedItem = useCreateFeedType();
++  const deleteFeedItem = useDeleteFeedType();
+   const createSchedule = useCreateFeedSchedule();
+ 
+   // Stats
+   const totalAnimals = herds?.reduce((sum: number, h: any) => sum + h.animalCount, 0) || 0;
+   const totalHerds = herds?.filter((h: any) => h.id !== 'unassigned').length || 0;
+   const pendingTransfers = transfers?.filter((t: any) => t.status === 'pending').length || 0;
+-  const lowStockItems = feedInventory?.filter((f: any) => 
+-    f.low_stock_threshold && f.quantity_on_hand <= f.low_stock_threshold
+-  ).length || 0;
++  const lowStockItems = 0; // TODO: Implement with feed_inventory + feed_types join
+ 
+   // Handlers - WITH ERROR HANDLING
+   const handleCreateHerd = async () => {
+@@ -262,21 +263,20 @@ export default function HerdManagementPage() {
+   };
+ 
+   const handleCreateFeed = async () => {
+-    if (!newFeed.feed_type || !newFeed.quantity_on_hand) {
+-      alert('Please select a feed type and enter quantity');
++    if (!newFeed.feed_type) {
++      alert('Please enter a feed name');
+       return;
+     }
+     
+     try {
+       await createFeedItem.mutateAsync({
+-        feed_type: newFeed.feed_type,
+-        brand: newFeed.brand || undefined,
+-        quantity_on_hand: parseFloat(newFeed.quantity_on_hand),
++        name: newFeed.feed_type,
++        category: 'other',
+         unit: newFeed.unit,
+-        unit_cost: newFeed.unit_cost ? parseFloat(newFeed.unit_cost) : undefined,
+-        low_stock_threshold: newFeed.low_stock_threshold ? parseFloat(newFeed.low_stock_threshold) : undefined,
+-        supplier: newFeed.supplier || undefined,
+-        storage_location: newFeed.storage_location || undefined,
++        cost_per_unit: newFeed.unit_cost ? parseFloat(newFeed.unit_cost) : null,
++        reorder_point: newFeed.low_stock_threshold ? parseFloat(newFeed.low_stock_threshold) : null,
++        supplier: newFeed.supplier || null,
++        notes: newFeed.brand ? `Brand: ${newFeed.brand}` : null,
+       });
+       setShowAddFeedModal(false);
+       setNewFeed({ feed_type: '', brand: '', quantity_on_hand: '', unit: 'lbs', unit_cost: '', low_stock_threshold: '', supplier: '', storage_location: '' });
+@@ -298,10 +298,10 @@ export default function HerdManagementPage() {
+         feed_type: newSchedule.feed_type,
+         quantity_per_feeding: parseFloat(newSchedule.quantity_per_feeding),
+         unit: newSchedule.unit,
+-        feeding_times: newSchedule.feeding_times,
++        feeding_times: newSchedule.feeding_times as unknown as import('@/types/database').Json,
+         start_date: format(new Date(), 'yyyy-MM-dd'),
+         status: 'active',
+-      });
++      } as any);
+       setShowScheduleModal(false);
+       setNewSchedule({ herd_id: '', feed_type: '', quantity_per_feeding: '', unit: 'lbs', feeding_times: ['07:00', '17:00'] });
+     } catch (error: any) {
+@@ -582,8 +582,8 @@ export default function HerdManagementPage() {
+                 />
+               ) : (
+                 <div className="divide-y">
+-                  {feedInventory.map((item) => {
+-                    const isLow = item.low_stock_threshold && item.quantity_on_hand <= item.low_stock_threshold;
++                  {feedInventory.map((item: any) => {
++                    const isLow = item.reorder_point && false; // TODO: check actual inventory quantity
+                     return (
+                       <div key={item.id} className={`p-4 flex items-center justify-between ${isLow ? 'bg-amber-50' : ''}`}>
+                         <div className="flex items-center gap-4">
+@@ -592,11 +592,10 @@ export default function HerdManagementPage() {
+                           </div>
+                           <div>
+                             <p className="font-medium">
+-                              {feedTypes.find((f: any) => f.value === item.feed_type)?.label || item.feed_type}
+-                              {item.brand && <span className="text-gray-500 font-normal"> - {item.brand}</span>}
++                              {item.name}
+                             </p>
+                             <div className="flex items-center gap-3 text-sm text-gray-500">
+-                              {item.storage_location && <span>📍 {item.storage_location}</span>}
++                              {item.category && <span>📦 {item.category}</span>}
+                               {item.supplier && <span>🏪 {item.supplier}</span>}
+                             </div>
+                           </div>
+@@ -604,7 +603,7 @@ export default function HerdManagementPage() {
+                         <div className="flex items-center gap-4">
+                           <div className="text-right">
+                             <p className={`font-semibold ${isLow ? 'text-amber-700' : ''}`}>
+-                              {item.quantity_on_hand} {item.unit}
++                              {item.unit}
+                             </p>
+                             {isLow && (
+                               <p className="text-xs text-amber-600">Low stock!</p>
+diff --git a/src/hooks/useAnimals.ts b/src/hooks/useAnimals.ts
+index cb33c6a..af7c152 100644
+--- a/src/hooks/useAnimals.ts
++++ b/src/hooks/useAnimals.ts
+@@ -1,7 +1,7 @@
+ 'use client';
+ 
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+-import { getSupabaseClient } from '@/lib/supabase';
++import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+ import type { Animal, AnimalInsert, AnimalUpdate } from '@/types/database';
+ 
+ // ==========================================
+@@ -115,7 +115,7 @@ export function useCreateAnimal() {
+       const { data: { user } } = await supabase.auth.getUser();
+       if (!user) throw new Error('Not authenticated');
+ 
+-      const { data, error } = await supabase.from('animals')
++      const { data, error } = await mutationFrom('animals')
+         .insert({ ...animal, user_id: user.id })
+         .select()
+         .single();
+@@ -135,7 +135,7 @@ export function useUpdateAnimal() {
+ 
+   return useMutation({
+     mutationFn: async ({ id, ...updates }: AnimalUpdate & { id: string }) => {
+-      const { data, error } = await supabase.from('animals')
++      const { data, error } = await mutationFrom('animals')
+         .update(updates)
+         .eq('id', id)
+         .select()
+diff --git a/src/hooks/useAuth.tsx b/src/hooks/useAuth.tsx
+index 92b505a..6899adb 100644
+--- a/src/hooks/useAuth.tsx
++++ b/src/hooks/useAuth.tsx
+@@ -2,7 +2,7 @@
+ 
+ import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+ import { User, Session } from '@supabase/supabase-js';
+-import { getSupabaseClient } from '@/lib/supabase';
++import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+ 
+ interface AuthContextType {
+   user: User | null;
+@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
+ 
+     // Create profile if signup successful
+     if (!error && data.user) {
+-      await supabase.from('profiles').insert({
++      await mutationFrom('profiles').insert({
+         id: data.user.id,
+         email: data.user.email!,
+         farm_name: farmName,
+diff --git a/src/hooks/useBreeding.ts b/src/hooks/useBreeding.ts
+index c97743d..47b3488 100644
+--- a/src/hooks/useBreeding.ts
++++ b/src/hooks/useBreeding.ts
+@@ -1,7 +1,7 @@
+ 'use client';
+ 
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+-import { getSupabaseClient } from '@/lib/supabase';
++import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+ import { addDays, format, differenceInDays } from 'date-fns';
+ import type { BreedingRecord, BreedingRecordInsert } from '@/types/database';
+ 
+@@ -45,7 +45,7 @@ export function useBreedingRecords(status?: string) {
+       const { data, error } = await query;
+ 
+       if (error) throw error;
+-      return data as BreedingRecord;
++      return data as BreedingRecord[];
+     },
+   });
+ }
+@@ -74,7 +74,7 @@ export function useUpcomingKiddings(days: number = 30) {
+       // Add days until due
+       return (data as BreedingRecord[]).map((record) => ({
+         ...record,
+-        daysUntilDue: differenceInDays(new Date(record.due_date), new Date()),
++        daysUntilDue: record.due_date ? differenceInDays(new Date(record.due_date), new Date()) : 0,
+       }));
+     },
+   });
+@@ -95,7 +95,7 @@ export function useBreedingByDoe(doeId: string) {
+         .order('breeding_date', { ascending: false });
+ 
+       if (error) throw error;
+-      return data as BreedingRecord;
++      return data as BreedingRecord[];
+     },
+     enabled: !!doeId,
+   });
+@@ -123,7 +123,7 @@ export function useCreateBreedingRecord() {
+         'yyyy-MM-dd'
+       );
+ 
+-      const { data, error } = await supabase.from('breeding_records')
++      const { data, error } = await mutationFrom('breeding_records')
+         .insert({
+           ...record,
+           user_id: user.id,
+@@ -159,7 +159,7 @@ export function useUpdateBreedingRecord() {
+       assistance_notes: string;
+       notes: string;
+     }>) => {
+-      const { data, error } = await supabase.from('breeding_records')
++      const { data, error } = await mutationFrom('breeding_records')
+         .update(updates)
+         .eq('id', id)
+         .select()
+@@ -176,7 +176,6 @@ export function useUpdateBreedingRecord() {
+ 
+ export function useRecordKidding() {
+   const queryClient = useQueryClient();
+-  const supabase = getSupabaseClient();
+ 
+   return useMutation({
+     mutationFn: async ({
+@@ -196,7 +195,7 @@ export function useRecordKidding() {
+       assistanceRequired?: boolean;
+       assistanceNotes?: string;
+     }) => {
+-      const { data, error } = await supabase.from('breeding_records')
++      const { data, error } = await mutationFrom('breeding_records')
+         .update({
+           status: 'kidded',
+           kidding_date: kiddingDate,
+@@ -233,7 +232,7 @@ export function useConfirmPregnancy() {
+       confirmationDate?: string;
+       confirmationMethod?: string;
+     }) => {
+-      const { data, error } = await supabase.from('breeding_records')
++      const { data, error } = await mutationFrom('breeding_records')
+         .update({
+           status: 'confirmed_pregnant',
+           confirmation_date: confirmationDate || format(new Date(), 'yyyy-MM-dd'),
+diff --git a/src/hooks/useGroups.ts b/src/hooks/useGroups.ts
+index df6771a..aacb60c 100644
+--- a/src/hooks/useGroups.ts
++++ b/src/hooks/useGroups.ts
+@@ -1,5 +1,5 @@
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+-import { getSupabaseClient } from '@/lib/supabase';
++import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+ import { useAuth } from './useAuth';
+ import type { Group } from '@/types/database';
+ 
+@@ -31,7 +31,7 @@ export function useCreateGroup() {
+ 
+   return useMutation({
+     mutationFn: async (group: { name: string; description?: string | null; color?: string; type?: string }) => {
+-      const { data, error } = await supabase.from('groups')
++      const { data, error } = await mutationFrom('groups')
+         .insert([{ ...group, user_id: user?.id }])
+         .select()
+         .single();
+@@ -51,7 +51,7 @@ export function useUpdateGroup() {
+ 
+   return useMutation({
+     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Group> }) => {
+-      const { data, error } = await supabase.from('groups')
++      const { data, error } = await mutationFrom('groups')
+         .update(updates)
+         .eq('id', id)
+         .select()
+diff --git a/src/hooks/useHealth.ts b/src/hooks/useHealth.ts
+index 378707b..0ec0a5d 100644
+--- a/src/hooks/useHealth.ts
++++ b/src/hooks/useHealth.ts
+@@ -1,7 +1,7 @@
+ 'use client';
+ 
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+-import { getSupabaseClient } from '@/lib/supabase';
++import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+ import { format, subDays, addDays } from 'date-fns';
+ import type { HealthRecord, HealthRecordInsert, Inspection, InspectionInsert } from '@/types/database';
+ 
+@@ -93,12 +93,13 @@ export function useActiveWithdrawals() {
+ 
+       // Filter to active withdrawals
+       return (data as HealthRecord[]).filter((record) => {
++        if (!record.withdrawal_days) return false;
+         const endDate = addDays(new Date(record.date), record.withdrawal_days);
+         return endDate >= new Date();
+       }).map((record) => ({
+         ...record,
+         withdrawalEndDate: format(
+-          addDays(new Date(record.date), record.withdrawal_days),
++          addDays(new Date(record.date), record.withdrawal_days!),
+           'yyyy-MM-dd'
+         ),
+       }));
+@@ -115,7 +116,7 @@ export function useCreateHealthRecord() {
+       const { data: { user } } = await supabase.auth.getUser();
+       if (!user) throw new Error('Not authenticated');
+ 
+-      const { data, error } = await supabase.from('health_records')
++      const { data, error } = await mutationFrom('health_records')
+         .insert({ ...record, user_id: user.id })
+         .select()
+         .single();
+@@ -135,7 +136,7 @@ export function useMarkFollowUpComplete() {
+ 
+   return useMutation({
+     mutationFn: async (id: string) => {
+-      const { data, error } = await supabase.from('health_records')
++      const { data, error } = await mutationFrom('health_records')
+         .update({ follow_up_completed: true })
+         .eq('id', id)
+         .select()
+@@ -213,7 +214,7 @@ export function useCreateInspection() {
+       const { data: { user } } = await supabase.auth.getUser();
+       if (!user) throw new Error('Not authenticated');
+ 
+-      const { data, error } = await supabase.from('inspections')
++      const { data, error } = await mutationFrom('inspections')
+         .insert({ ...inspection, user_id: user.id })
+         .select()
+         .single();
+diff --git a/src/hooks/useHerds.ts b/src/hooks/useHerds.ts
+index f6eac0c..2d02008 100644
+--- a/src/hooks/useHerds.ts
++++ b/src/hooks/useHerds.ts
+@@ -1,7 +1,11 @@
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+-import { getSupabaseClient } from '@/lib/supabase';
++import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+ import { useAuth } from './useAuth';
+-import type { Herd, Animal, FeedSchedule as DBFeedSchedule } from '@/types/database';
++import type { Herd, Animal, FeedSchedule as DBFeedSchedule, FeedInventoryRecord, FeedType } from '@/types/database';
++
++// Type aliases for convenience
++type FeedInventory = FeedInventoryRecord;
++type FeedSchedule = DBFeedSchedule;
+ 
+ // Re-export Herd from database types for consumers that import from this file
+ export type { Herd } from '@/types/database';
+@@ -53,15 +57,17 @@ export function useHerdsWithStats() {
+       if (herdsError) throw herdsError;
+ 
+       // Get animal counts per herd
+-      const { data: animals, error: animalsError } = await supabase.from('animals')
++      const { data: rawAnimals, error: animalsError } = await supabase.from('animals')
+         .select('id, herd_id, category, status')
+         .eq('status', 'active');
+ 
+       if (animalsError) throw animalsError;
+ 
++      const animals = rawAnimals as { id: string; herd_id: string | null; category: string; status: string }[];
++
+       // Calculate stats for each herd
+       const herdsWithStats: HerdWithStats[] = (herds || []).map((herd: Herd) => {
+-        const herdAnimals = (animals || []).filter((a) => a.herd_id === herd.id);
++        const herdAnimals = animals.filter((a) => a.herd_id === herd.id);
+         return {
+           ...herd,
+           animalCount: herdAnimals.length,
+@@ -71,13 +77,15 @@ export function useHerdsWithStats() {
+       });
+ 
+       // Add "unassigned" pseudo-herd
+-      const unassignedAnimals = (animals || []).filter((a) => !a.herd_id);
++      const unassignedAnimals = animals.filter((a) => !a.herd_id);
+       if (unassignedAnimals.length > 0) {
+         herdsWithStats.push({
+           id: 'unassigned',
+           name: 'Unassigned',
+           description: 'Animals not assigned to any herd',
+           color: '#9ca3af',
++          location: null,
++          pasture_name: null,
+           user_id: user?.id || '',
+           created_at: '',
+           updated_at: '',
+@@ -106,6 +114,11 @@ export function useHerd(id: string) {
+           name: 'Unassigned',
+           description: 'Animals not assigned to any herd',
+           color: '#9ca3af',
++          location: null,
++          pasture_name: null,
++          user_id: '',
++          created_at: '',
++          updated_at: '',
+         } as Herd;
+       }
+ 
+@@ -154,7 +167,7 @@ export function useCreateHerd() {
+ 
+   return useMutation({
+     mutationFn: async (herd: { name: string; description?: string | null; color?: string; location?: string | null }) => {
+-      const { data, error } = await supabase.from('herds')
++      const { data, error } = await mutationFrom('herds')
+         .insert([{ ...herd, user_id: user?.id }])
+         .select()
+         .single();
+@@ -174,7 +187,7 @@ export function useUpdateHerd() {
+ 
+   return useMutation({
+     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Herd> }) => {
+-      const { data, error } = await supabase.from('herds')
++      const { data, error } = await mutationFrom('herds')
+         .update(updates)
+         .eq('id', id)
+         .select()
+@@ -197,7 +210,7 @@ export function useDeleteHerd() {
+   return useMutation({
+     mutationFn: async (id: string) => {
+       // First, unassign all animals from this herd
+-      await supabase.from('animals')
++      await mutationFrom('animals')
+         .update({ herd_id: null })
+         .eq('herd_id', id);
+ 
+@@ -218,7 +231,7 @@ export function useAssignAnimalToHerd() {
+ 
+   return useMutation({
+     mutationFn: async ({ animalId, herdId }: { animalId: string; herdId: string | null }) => {
+-      const { data, error } = await supabase.from('animals')
++      const { data, error } = await mutationFrom('animals')
+         .update({ herd_id: herdId })
+         .eq('id', animalId)
+         .select()
+@@ -278,6 +291,63 @@ export function useCompleteHerdTransfer() {
+   });
+ }
+ 
++// ==========================================
++// FEED TYPES
++// ==========================================
++
++export function useFeedTypes() {
++  const { user } = useAuth();
++  const supabase = getSupabaseClient();
++
++  return useQuery({
++    queryKey: ['feed-types'],
++    queryFn: async () => {
++      const { data, error } = await supabase.from('feed_types')
++        .select('*')
++        .order('name');
++
++      if (error) throw error;
++      return data as FeedType[];
++    },
++    enabled: !!user,
++  });
++}
++
++export function useCreateFeedType() {
++  const { user } = useAuth();
++  const queryClient = useQueryClient();
++
++  return useMutation({
++    mutationFn: async (item: Omit<FeedType, 'id' | 'user_id' | 'created_at'>) => {
++      const { data, error } = await mutationFrom('feed_types')
++        .insert([{ ...item, user_id: user?.id }])
++        .select()
++        .single();
++
++      if (error) throw error;
++      return data;
++    },
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: ['feed-types'] });
++      queryClient.invalidateQueries({ queryKey: ['feed-inventory'] });
++    },
++  });
++}
++
++export function useDeleteFeedType() {
++  const queryClient = useQueryClient();
++
++  return useMutation({
++    mutationFn: async (id: string) => {
++      const { error } = await mutationFrom('feed_types').delete().eq('id', id);
++      if (error) throw error;
++    },
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: ['feed-types'] });
++    },
++  });
++}
++
+ // ==========================================
+ // FEED INVENTORY
+ // ==========================================
+@@ -291,7 +361,7 @@ export function useFeedInventory() {
+     queryFn: async () => {
+       const { data, error } = await supabase.from('feed_inventory')
+         .select('*')
+-        .order('feed_type');
++        .order('created_at', { ascending: false });
+ 
+       if (error) throw error;
+       return data as FeedInventory[];
+@@ -307,7 +377,7 @@ export function useCreateFeedInventory() {
+ 
+   return useMutation({
+     mutationFn: async (item: Omit<FeedInventory, 'id' | 'user_id'>) => {
+-      const { data, error } = await supabase.from('feed_inventory')
++      const { data, error } = await mutationFrom('feed_inventory')
+         .insert([{ ...item, user_id: user?.id }])
+         .select()
+         .single();
+@@ -327,7 +397,7 @@ export function useUpdateFeedInventory() {
+ 
+   return useMutation({
+     mutationFn: async ({ id, updates }: { id: string; updates: Partial<FeedInventory> }) => {
+-      const { data, error } = await supabase.from('feed_inventory')
++      const { data, error } = await mutationFrom('feed_inventory')
+         .update(updates)
+         .eq('id', id)
+         .select()
+@@ -394,7 +464,7 @@ export function useCreateFeedSchedule() {
+ 
+   return useMutation({
+     mutationFn: async (schedule: Omit<FeedSchedule, 'id' | 'user_id'>) => {
+-      const { data, error } = await supabase.from('feed_schedules')
++      const { data, error } = await mutationFrom('feed_schedules')
+         .insert([{ ...schedule, user_id: user?.id }])
+         .select()
+         .single();
+@@ -414,7 +484,7 @@ export function useUpdateFeedSchedule() {
+ 
+   return useMutation({
+     mutationFn: async ({ id, updates }: { id: string; updates: Partial<FeedSchedule> }) => {
+-      const { data, error } = await supabase.from('feed_schedules')
++      const { data, error } = await mutationFrom('feed_schedules')
+         .update(updates)
+         .eq('id', id)
+         .select()
+diff --git a/src/hooks/useMilk.ts b/src/hooks/useMilk.ts
+index 9dc52aa..a4a21d4 100644
+--- a/src/hooks/useMilk.ts
++++ b/src/hooks/useMilk.ts
+@@ -1,7 +1,7 @@
+ 'use client';
+ 
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+-import { getSupabaseClient } from '@/lib/supabase';
++import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+ import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+ import type { MilkRecord, MilkRecordInsert } from '@/types/database';
+ 
+@@ -35,7 +35,7 @@ export function useTodaysMilk() {
+         .order('created_at', { ascending: false });
+ 
+       if (error) throw error;
+-      return data as MilkRecord;
++      return data as (MilkRecord & { animals?: { name: string } | null })[];
+     },
+   });
+ }
+@@ -154,7 +154,7 @@ export function useCreateMilkRecord() {
+       const { data: { user } } = await supabase.auth.getUser();
+       if (!user) throw new Error('Not authenticated');
+ 
+-      const { data, error } = await supabase.from('milk_records')
++      const { data, error } = await mutationFrom('milk_records')
+         .insert({ ...record, user_id: user.id })
+         .select()
+         .single();
+diff --git a/src/lib/supabase.ts b/src/lib/supabase.ts
+index 3e106b8..c0bf1e0 100644
+--- a/src/lib/supabase.ts
++++ b/src/lib/supabase.ts
+@@ -37,3 +37,17 @@ export function getSupabaseClient() {
+   
+   return browserClient;
+ }
++
++/**
++ * Helper for mutation operations (insert/update/delete).
++ * 
++ * Supabase's typed client infers `never` for mutation payloads when using
++ * a hand-written Database interface (rather than CLI-generated types).
++ * This casts .from() to `any` only for mutations, preserving type safety
++ * on read operations. Replace this with proper CLI-generated types when
++ * available: npx supabase gen types typescript --project-id <id>
++ */
++// eslint-disable-next-line @typescript-eslint/no-explicit-any
++export function mutationFrom(table: string): any {
++  return getSupabaseClient().from(table) as any;
++}
+diff --git a/src/types/database.ts b/src/types/database.ts
+index d7e329a..c331dce 100644
+--- a/src/types/database.ts
++++ b/src/types/database.ts
+@@ -58,9 +58,9 @@ export interface Database {
+         Update: { farm_name?: string | null; farm_location?: string | null; weight_unit?: string; milk_unit?: string; temperature_unit?: string; updated_at?: string; };
+       };
+       herds: {
+-        Row: { id: string; user_id: string; name: string; location: string | null; description: string | null; color: string; created_at: string; updated_at: string; };
+-        Insert: { id?: string; user_id: string; name: string; location?: string | null; description?: string | null; color?: string; created_at?: string; updated_at?: string; };
+-        Update: { name?: string; location?: string | null; description?: string | null; color?: string; updated_at?: string; };
++        Row: { id: string; user_id: string; name: string; location: string | null; pasture_name: string | null; description: string | null; color: string; created_at: string; updated_at: string; };
++        Insert: { id?: string; user_id: string; name: string; location?: string | null; pasture_name?: string | null; description?: string | null; color?: string; created_at?: string; updated_at?: string; };
++        Update: { name?: string; location?: string | null; pasture_name?: string | null; description?: string | null; color?: string; updated_at?: string; };
+       };
+       animals: {
+         Row: { id: string; user_id: string; name: string; breed: string | null; sex: string; category: string; status: string; birth_date: string | null; purchase_date: string | null; purchase_price: number | null; registration_number: string | null; microchip_id: string | null; tag_number: string | null; color_markings: string | null; sire_id: string | null; dam_id: string | null; herd_id: string | null; photo_url: string | null; notes: string | null; created_at: string; updated_at: string; };

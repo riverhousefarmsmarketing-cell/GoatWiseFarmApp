@@ -37,3 +37,17 @@ export function getSupabaseClient() {
   
   return browserClient;
 }
+
+/**
+ * Helper for mutation operations (insert/update/delete).
+ * 
+ * Supabase's typed client infers `never` for mutation payloads when using
+ * a hand-written Database interface (rather than CLI-generated types).
+ * This casts .from() to `any` only for mutations, preserving type safety
+ * on read operations. Replace this with proper CLI-generated types when
+ * available: npx supabase gen types typescript --project-id <id>
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mutationFrom(table: string): any {
+  return getSupabaseClient().from(table) as any;
+}

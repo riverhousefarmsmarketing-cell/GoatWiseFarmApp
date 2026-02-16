@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 import type { Group } from '@/types/database';
 
@@ -31,7 +31,7 @@ export function useCreateGroup() {
 
   return useMutation({
     mutationFn: async (group: { name: string; description?: string | null; color?: string; type?: string }) => {
-      const { data, error } = await supabase.from('groups')
+      const { data, error } = await mutationFrom('groups')
         .insert([{ ...group, user_id: user?.id }])
         .select()
         .single();
@@ -51,7 +51,7 @@ export function useUpdateGroup() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Group> }) => {
-      const { data, error } = await supabase.from('groups')
+      const { data, error } = await mutationFrom('groups')
         .update(updates)
         .eq('id', id)
         .select()

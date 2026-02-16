@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { format, subDays, addDays } from 'date-fns';
 import type { HealthRecord, HealthRecordInsert, Inspection, InspectionInsert } from '@/types/database';
 
@@ -93,12 +93,13 @@ export function useActiveWithdrawals() {
 
       // Filter to active withdrawals
       return (data as HealthRecord[]).filter((record) => {
+        if (!record.withdrawal_days) return false;
         const endDate = addDays(new Date(record.date), record.withdrawal_days);
         return endDate >= new Date();
       }).map((record) => ({
         ...record,
         withdrawalEndDate: format(
-          addDays(new Date(record.date), record.withdrawal_days),
+          addDays(new Date(record.date), record.withdrawal_days!),
           'yyyy-MM-dd'
         ),
       }));
@@ -115,7 +116,7 @@ export function useCreateHealthRecord() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.from('health_records')
+      const { data, error } = await mutationFrom('health_records')
         .insert({ ...record, user_id: user.id })
         .select()
         .single();
@@ -135,7 +136,7 @@ export function useMarkFollowUpComplete() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase.from('health_records')
+      const { data, error } = await mutationFrom('health_records')
         .update({ follow_up_completed: true })
         .eq('id', id)
         .select()
@@ -213,7 +214,7 @@ export function useCreateInspection() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.from('inspections')
+      const { data, error } = await mutationFrom('inspections')
         .insert({ ...inspection, user_id: user.id })
         .select()
         .single();

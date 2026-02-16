@@ -72,7 +72,7 @@ import {
 } from 'lucide-react';
 
 type HealthRecordWithAnimal = HealthRecord & {
-  animals: { name: string } | null;
+  animals?: { name: string } | null;
 };
 
 // Photo categories for health records

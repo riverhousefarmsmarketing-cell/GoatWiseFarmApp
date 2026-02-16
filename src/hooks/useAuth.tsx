@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { getSupabaseClient } from '@/lib/supabase';
+import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Create profile if signup successful
     if (!error && data.user) {
-      await supabase.from('profiles').insert({
+      await mutationFrom('profiles').insert({
         id: data.user.id,
         email: data.user.email!,
         farm_name: farmName,
