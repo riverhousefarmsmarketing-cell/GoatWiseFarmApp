@@ -1,9 +1,18 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { DM_Sans, DM_Serif_Display } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/Providers';
 
-const inter = Inter({ subsets: ['latin'] });
+const dmSans = DM_Sans({ 
+  subsets: ['latin'],
+  variable: '--font-sans',
+});
+
+const dmSerif = DM_Serif_Display({ 
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-display',
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://goatwise.app'),
@@ -28,7 +37,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${dmSans.variable} ${dmSerif.variable} font-sans`}>
         <Providers>{children}</Providers>
       </body>
     </html>

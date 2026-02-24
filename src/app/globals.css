@@ -4,11 +4,18 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --border: 214.3 31.8% 91.4%;
-    --ring: 142.1 76.2% 36.3%;
+    /* RiverHouse Farms Brand Guide v5 — CSS Custom Properties */
+    --background: 60 9% 98%;        /* #FAFAF9 surface */
+    --foreground: 150 20% 8%;       /* #081810 heading */
+    --border: 30 8% 83%;            /* #DDD8D4 border */
+    --ring: 161 66% 19%;            /* #105040 forest mid */
     --radius: 0.5rem;
+
+    /* Card surfaces */
+    --card: 0 0% 100%;              /* #FFFFFF */
+    --card-foreground: 150 20% 8%;  /* #081810 heading */
+    --muted: 150 10% 45%;           /* #6A7E70 muted */
+    --muted-foreground: 150 10% 45%;
   }
 }
 
@@ -17,7 +24,8 @@
     border-color: hsl(var(--border));
   }
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-rhf-surface text-[#384E42];
+    font-feature-settings: "kern" 1;
   }
 }
 
@@ -27,30 +35,30 @@
   }
   
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 px-4 py-2;
+    @apply btn bg-rhf-forest-mid text-white hover:bg-rhf-forest px-4 py-2;
   }
   
   .btn-secondary {
-    @apply btn bg-gray-100 text-gray-900 hover:bg-gray-200 px-4 py-2;
+    @apply btn bg-rhf-burgundy text-white hover:bg-rhf-burgundy-light px-4 py-2;
   }
   
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 px-4 py-2;
+    @apply btn bg-[#9B1C1C] text-white hover:bg-red-800 px-4 py-2;
   }
   
   .btn-ghost {
-    @apply btn hover:bg-gray-100 px-4 py-2;
+    @apply btn hover:bg-rhf-forest-pale/30 text-[#384E42] px-4 py-2;
   }
   
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200;
+    @apply bg-white rounded-xl shadow-sm border border-[#DDD8D4];
   }
   
   .input {
-    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full rounded-lg border border-[#DDD8D4] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rhf-forest-mid focus:border-transparent;
   }
   
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium text-[#384E42] mb-1;
   }
 }

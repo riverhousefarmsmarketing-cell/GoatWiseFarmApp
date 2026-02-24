@@ -176,19 +176,19 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200',
+          'fixed lg:static inset-y-0 left-0 z-40 w-64 bg-[#031812] transform transition-transform duration-200',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center gap-3 px-6 py-5 border-b">
-            <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
+          <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
+            <div className="w-10 h-10 bg-[#105040] rounded-xl flex items-center justify-center">
               <span className="text-white text-xl">🐐</span>
             </div>
             <div>
-              <h1 className="font-bold text-gray-900">GoatWise</h1>
-              <p className="text-xs text-gray-500">Farm Management</p>
+              <h1 className="font-bold text-white font-display">GoatWise</h1>
+              <p className="text-xs text-[#E8E0D8]/60">by RiverHouse Farms</p>
             </div>
           </div>
 
@@ -214,8 +214,8 @@ export function Sidebar() {
                       className={cn(
                         'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                         isActive
-                          ? 'bg-primary-50 text-primary-700'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-[#105040] text-white'
+                          : 'text-[#E8E0D8] hover:bg-white/10'
                       )}
                     >
                       <div className="flex items-center gap-3">
@@ -236,8 +236,8 @@ export function Sidebar() {
                       className={cn(
                         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                         isActive
-                          ? 'bg-primary-50 text-primary-700'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-[#105040] text-white'
+                          : 'text-[#E8E0D8] hover:bg-white/10'
                       )}
                     >
                       <item.icon className="h-5 w-5" />
@@ -247,7 +247,7 @@ export function Sidebar() {
 
                   {/* Submenu items */}
                   {hasSubItems && isExpanded && (
-                    <div className="mt-1 ml-4 pl-4 border-l border-gray-200 space-y-1">
+                    <div className="mt-1 ml-4 pl-4 border-l border-white/15 space-y-1">
                       {item.subItems!.map((subItem) => {
                         const isSubActive = pathname === subItem.href || pathname.startsWith(subItem.href + '/');
                         return (
@@ -258,8 +258,8 @@ export function Sidebar() {
                             className={cn(
                               'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                               isSubActive
-                                ? 'bg-primary-50 text-primary-700 font-medium'
-                                : 'text-gray-600 hover:bg-gray-100'
+                                ? 'bg-[#105040] text-white font-medium'
+                                : 'text-[#E8E0D8]/80 hover:bg-white/10 hover:text-[#E8E0D8]'
                             )}
                           >
                             {subItem.name}
@@ -272,7 +272,7 @@ export function Sidebar() {
               );
             })}
 
-            <div className="my-3 border-t border-gray-200" />
+            <div className="my-3 border-t border-white/10" />
 
             {/* UTILITIES DRAWER */}
             <div>
@@ -281,8 +281,8 @@ export function Sidebar() {
                 className={cn(
                   'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                   isUtilitiesActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-[#105040] text-white'
+                    : 'text-[#E8E0D8] hover:bg-white/10'
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -297,7 +297,7 @@ export function Sidebar() {
               </button>
 
               {utilitiesOpen && (
-                <div className="mt-1 ml-4 pl-4 border-l border-gray-200 space-y-1">
+                <div className="mt-1 ml-4 pl-4 border-l border-white/15 space-y-1">
                   {utilitiesNavigation.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                     return (
@@ -308,8 +308,8 @@ export function Sidebar() {
                         className={cn(
                           'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                           isActive
-                            ? 'bg-primary-50 text-primary-700 font-medium'
-                            : 'text-gray-600 hover:bg-gray-100'
+                            ? 'bg-[#105040] text-white font-medium'
+                            : 'text-[#E8E0D8]/80 hover:bg-white/10 hover:text-[#E8E0D8]'
                         )}
                       >
                         <item.icon className="h-4 w-4" />
@@ -328,8 +328,8 @@ export function Sidebar() {
                 className={cn(
                   'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                   isResourcesActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-[#105040] text-white'
+                    : 'text-[#E8E0D8] hover:bg-white/10'
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -344,7 +344,7 @@ export function Sidebar() {
               </button>
 
               {resourcesOpen && (
-                <div className="mt-1 ml-4 pl-4 border-l border-gray-200 space-y-1">
+                <div className="mt-1 ml-4 pl-4 border-l border-white/15 space-y-1">
                   {resourcesNavigation.map((item) => {
                     const isActive = pathname === item.href;
                     return (
@@ -355,8 +355,8 @@ export function Sidebar() {
                         className={cn(
                           'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                           isActive
-                            ? 'bg-primary-50 text-primary-700 font-medium'
-                            : 'text-gray-600 hover:bg-gray-100'
+                            ? 'bg-[#105040] text-white font-medium'
+                            : 'text-[#E8E0D8]/80 hover:bg-white/10 hover:text-[#E8E0D8]'
                         )}
                       >
                         <item.icon className="h-4 w-4" />
@@ -370,15 +370,15 @@ export function Sidebar() {
           </nav>
 
           {/* User section */}
-          <div className="border-t px-3 py-4">
+          <div className="border-t border-white/10 px-3 py-4">
             <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-600">
+              <div className="w-8 h-8 bg-[#105040] rounded-full flex items-center justify-center">
+                <span className="text-sm font-medium text-white">
                   {user?.email?.[0].toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-white truncate">
                   {user?.email}
                 </p>
               </div>
@@ -387,14 +387,14 @@ export function Sidebar() {
             <div className="mt-2 space-y-1">
               <Link
                 href="/dashboard/settings"
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[#E8E0D8] hover:bg-white/10"
               >
                 <Settings className="h-5 w-5" />
                 Settings
               </Link>
               <button
                 onClick={() => signOut()}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[#E8E0D8] hover:bg-white/10"
               >
                 <LogOut className="h-5 w-5" />
                 Sign Out
@@ -409,7 +409,7 @@ export function Sidebar() {
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-[#FAFAF9]">
       <Sidebar />
       <main className="flex-1 lg:pl-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-8 pt-16 lg:pt-8">
