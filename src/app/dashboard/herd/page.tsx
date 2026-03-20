@@ -6,17 +6,9 @@ import { Card, Button, Input, Select, Badge, Modal, EmptyState, LoadingSpinner }
 import { formatDate, calculateAge, getStatusColor, getCategoryDisplay } from '@/lib/utils';
 import { Plus, Search, Filter, Users, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
 
-const categoryOptions = [
-  { value: 'all', label: 'All Categories' },
-  { value: 'milking_doe', label: 'Milking Doe' },
-  { value: 'dry_doe', label: 'Dry Doe' },
-  { value: 'bred_doe', label: 'Bred Doe' },
-  { value: 'doeling', label: 'Doeling' },
-  { value: 'buck', label: 'Buck' },
-  { value: 'buckling', label: 'Buckling' },
-  { value: 'wether', label: 'Wether' },
-];
+// Category and sex options are derived dynamically from speciesConfig inside the component
 
 const statusOptions = [
   { value: 'all', label: 'All Status' },
@@ -26,16 +18,15 @@ const statusOptions = [
   { value: 'culled', label: 'Culled' },
 ];
 
-const sexOptions = [
-  { value: 'doe', label: 'Doe' },
-  { value: 'buck', label: 'Buck' },
-  { value: 'wether', label: 'Wether' },
+const speciesFilterOptions = [
+  { value: 'all', label: 'All Animals' },
+  { value: 'goat', label: 'Goats (Herd)' },
+  { value: 'sheep', label: 'Sheep (Flock)' },
 ];
-
-const newCategoryOptions = categoryOptions.filter(c => c.value !== 'all');
 
 export default function HerdPage() {
   const [search, setSearch] = useState('');
+  const [speciesFilter, setSpeciesFilter] = useState<'all' | Species>('all');
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState('active');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -46,6 +37,39 @@ export default function HerdPage() {
     category: 'milking_doe' as const,
     birth_date: '',
   });
+
+  // Derive species config for the active filter
+  // When 'all' is selected, default to goat terminology for the modal
+  const activeSpecies: Species = speciesFilter === 'all' ? 'goat' : speciesFilter;
+  const speciesConfig = getSpeciesConfig(activeSpecies);
+
+  // Page title: "Herd" for goats, "Flock" for sheep, "Herd & Flock" for all
+  const pageTitle = speciesFilter === 'all'
+    ? 'Herd & Flock'
+    : speciesFilter === 'goat'
+    ? 'Herd'
+    : 'Flock';
+
+  // Dynamic category options based on active species
+  const categoryOptions = [
+    { value: 'all', label: 'All Categories' },
+    { value: 'milking_female', label: speciesConfig.categories.milkingFemale },
+    { value: 'dry_female', label: speciesConfig.categories.dryFemale },
+    { value: 'bred_female', label: speciesConfig.categories.bredFemale },
+    { value: 'young_female', label: speciesConfig.categories.youngFemale },
+    { value: 'male', label: speciesConfig.categories.male },
+    { value: 'young_male', label: speciesConfig.categories.youngMale },
+    { value: 'wether', label: speciesConfig.categories.castrated },
+    { value: 'young', label: speciesConfig.categories.young },
+  ];
+
+  const sexOptions = [
+    { value: 'female', label: speciesConfig.female },
+    { value: 'male', label: speciesConfig.male },
+    { value: 'wether', label: speciesConfig.castrated },
+  ];
+
+  const newCategoryOptions = categoryOptions.filter(c => c.value !== 'all');
 
   const { data: animals, isLoading } = useAnimals({ search, category, status });
   const { data: stats } = useAnimalStats();
@@ -78,11 +102,11 @@ export default function HerdPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Herd</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
           <p className="text-gray-500">{stats?.active || 0} active animals</p>
         </div>
         <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
-          Add Animal
+          Add {speciesConfig.label}
         </Button>
       </div>
 
@@ -97,11 +121,11 @@ export default function HerdPage() {
           <p className="text-2xl font-semibold">{stats?.milkingDoes || 0}</p>
         </Card>
         <Card padding="sm">
-          <p className="text-sm text-gray-500">Bucks</p>
+          <p className="text-sm text-gray-500">{speciesConfig.plural === 'Goats' ? 'Bucks' : 'Rams'}</p>
           <p className="text-2xl font-semibold">{stats?.bucks || 0}</p>
         </Card>
         <Card padding="sm">
-          <p className="text-sm text-gray-500">Kids</p>
+          <p className="text-sm text-gray-500">{speciesConfig.offspring}</p>
           <p className="text-2xl font-semibold">{(stats?.doelings || 0) + (stats?.bucklings || 0) + (stats?.kids || 0)}</p>
         </Card>
       </div>
@@ -122,10 +146,19 @@ export default function HerdPage() {
             </div>
           </div>
           <Select
+            options={speciesFilterOptions}
+            value={speciesFilter}
+            onChange={(e) => {
+              setSpeciesFilter(e.target.value as 'all' | Species);
+              setCategory('all'); // reset category when species changes
+            }}
+            className="w-full sm:w-40"
+          />
+          <Select
             options={categoryOptions}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full sm:w-40"
+            className="w-full sm:w-44"
           />
           <Select
             options={statusOptions}
@@ -146,9 +179,9 @@ export default function HerdPage() {
           <EmptyState
             icon={<Users className="h-12 w-12" />}
             title="No animals found"
-            description="Add your first animal to get started"
+            description={`Add your first ${speciesConfig.label.toLowerCase()} to get started`}
             action={
-              <Button onClick={() => setShowAddModal(true)}>Add Animal</Button>
+              <Button onClick={() => setShowAddModal(true)}>Add {speciesConfig.label}</Button>
             }
           />
         ) : (
@@ -202,14 +235,14 @@ export default function HerdPage() {
       <Modal
         open={showAddModal}
         onClose={() => setShowAddModal(false)}
-        title="Add Animal"
+        title={`Add ${speciesConfig.label}`}
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowAddModal(false)}>
               Cancel
             </Button>
             <Button onClick={handleAddAnimal} loading={createAnimal.isPending}>
-              Add Animal
+              Add {speciesConfig.label}
             </Button>
           </>
         }

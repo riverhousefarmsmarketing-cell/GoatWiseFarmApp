@@ -51,6 +51,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
+
+const herdSpeciesOptions = [
+  { value: 'goat', label: 'Goat — Herd' },
+  { value: 'sheep', label: 'Sheep — Flock' },
+];
 
 const herdColors = [
   { value: '#16a34a', label: 'Green' },
@@ -189,6 +195,7 @@ export default function HerdManagementPage() {
     color: '#16a34a',
     location: '',
     pasture_name: '',
+    species: 'goat' as Species,
   });
 
   // Transfer state
@@ -252,7 +259,7 @@ export default function HerdManagementPage() {
     try {
       const result = await createHerd.mutateAsync(newHerd);
       setShowAddHerdModal(false);
-      setNewHerd({ name: '', description: '', color: '#16a34a', location: '', pasture_name: '' });
+      setNewHerd({ name: '', description: '', color: '#16a34a', location: '', pasture_name: '', species: 'goat' });
     } catch (error: any) {
       console.error('Failed to create herd:', error);
       alert(`Failed to create herd: ${error?.message || JSON.stringify(error)}`);
@@ -325,12 +332,12 @@ export default function HerdManagementPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Herd Management</h1>
-          <p className="text-gray-500">Organize, track, and manage your herds</p>
+          <h1 className="text-2xl font-bold text-gray-900">Herd & Flock Management</h1>
+          <p className="text-gray-500">Organize, track, and manage your herds and flocks</p>
         </div>
         {activeTab === 'herds' && (
           <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddHerdModal(true)}>
-            New Herd
+            New Herd / Flock
           </Button>
         )}
         {activeTab === 'feed' && (
@@ -348,7 +355,7 @@ export default function HerdManagementPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard
-          title="Total Herds"
+          title="Herds & Flocks"
           value={totalHerds}
           icon={<Users className="h-5 w-5" />}
         />
@@ -419,12 +426,17 @@ export default function HerdManagementPage() {
                 icon={<Users className="h-12 w-12" />}
                 title="No herds yet"
                 description="Create your first herd to organize your animals"
-                action={<Button onClick={() => setShowAddHerdModal(true)}>Create Herd</Button>}
+                action={<Button onClick={() => setShowAddHerdModal(true)}>Create Herd or Flock</Button>}
               />
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {herds.map((herd) => (
+              {herds.map((herd) => {
+                const herdSpecies: Species = (herd as any).species || 'goat';
+                const herdSpeciesConfig = getSpeciesConfig(herdSpecies);
+                const herdLabel = herdSpecies === 'sheep' ? 'Flock' : 'Herd';
+                const herdEmoji = herdSpecies === 'sheep' ? '🐑' : '🐐';
+                return (
                 <Link key={herd.id} href={`/dashboard/herd-detail/${herd.id}`}>
                   <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer h-full">
                     <div className="flex items-start justify-between mb-3">
@@ -433,10 +445,11 @@ export default function HerdManagementPage() {
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
                           style={{ backgroundColor: herd.color }}
                         >
-                          🐐
+                          {herdEmoji}
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900">{herd.name}</h3>
+                          <p className="text-xs text-gray-400 uppercase tracking-wide">{herdLabel}</p>
                           {herd.location && (
                             <p className="text-sm text-gray-500 flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
@@ -477,13 +490,14 @@ export default function HerdManagementPage() {
                       )}
                       {herd.buckCount > 0 && (
                         <div className="text-gray-500">
-                          {herd.buckCount} buck{herd.buckCount > 1 ? 's' : ''}
+                          {herd.buckCount} {herdSpeciesConfig.male.toLowerCase()}{herd.buckCount > 1 ? 's' : ''}
                         </div>
                       )}
                     </div>
                   </Card>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -645,7 +659,7 @@ export default function HerdManagementPage() {
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
                           style={{ backgroundColor: schedule.herd?.color || '#9ca3af' }}
                         >
-                          🐐
+                          {(schedule.herd as any)?.species === 'sheep' ? '🐑' : '🐐'}
                         </div>
                         <div>
                           <p className="font-medium">{schedule.herd?.name}</p>
@@ -706,8 +720,8 @@ export default function HerdManagementPage() {
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Animal Categories</h3>
                 <div className="space-y-2">
                   {[
-                    { label: 'Milking Does', count: herds?.reduce((s, h) => s + h.milkingCount, 0) || 0, color: '#16a34a' },
-                    { label: 'Bucks', count: herds?.reduce((s, h) => s + h.buckCount, 0) || 0, color: '#2563eb' },
+                    { label: 'Milking Does / Ewes', count: herds?.reduce((s, h) => s + h.milkingCount, 0) || 0, color: '#16a34a' },
+                    { label: 'Bucks / Rams', count: herds?.reduce((s, h) => s + h.buckCount, 0) || 0, color: '#2563eb' },
                     { label: 'Other', count: totalAnimals - (herds?.reduce((s, h) => s + h.milkingCount + h.buckCount, 0) || 0), color: '#9ca3af' },
                   ].map((cat) => (
                     <div key={cat.label} className="flex items-center justify-between p-2 rounded-lg bg-gray-50">
@@ -757,7 +771,7 @@ export default function HerdManagementPage() {
       <Modal
         open={showAddHerdModal}
         onClose={() => setShowAddHerdModal(false)}
-        title="Create New Herd"
+        title={`Create New ${newHerd.species === 'sheep' ? 'Flock' : 'Herd'}`}
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowAddHerdModal(false)}>Cancel</Button>
@@ -766,12 +780,18 @@ export default function HerdManagementPage() {
               loading={createHerd.isPending}
               disabled={!newHerd.name.trim()}
             >
-              Create Herd
+              Create {newHerd.species === 'sheep' ? 'Flock' : 'Herd'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
+          <Select
+            label="Species"
+            options={herdSpeciesOptions}
+            value={newHerd.species}
+            onChange={(e) => setNewHerd({ ...newHerd, species: e.target.value as Species })}
+          />
           <Input
             label="Herd Name"
             value={newHerd.name}
@@ -907,9 +927,9 @@ export default function HerdManagementPage() {
       >
         <div className="space-y-4">
           <Select
-            label="Herd"
+            label="Herd / Flock"
             options={[
-              { value: '', label: 'Select herd...' },
+              { value: '', label: 'Select herd or flock...' },
               ...(herds?.filter((h: any) => h.id !== 'unassigned').map((h: any) => ({ value: h.id, label: h.name })) || []),
             ]}
             value={newSchedule.herd_id}
@@ -998,7 +1018,7 @@ export default function HerdManagementPage() {
           <Select
             label="Transfer To"
             options={[
-              { value: '', label: 'Select destination herd...' },
+              { value: '', label: 'Select destination herd or flock...' },
               ...(herds?.filter((h: any) => h.id !== 'unassigned').map((h: any) => ({ value: h.id, label: h.name })) || []),
             ]}
             value={newTransfer.to_herd_id}

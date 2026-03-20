@@ -1,13 +1,14 @@
 /**
- * GoatWise Database Types
+ * HerdSteward Database Types
  *
  * Generated from supabase/migrations/001_initial_schema.sql
- * All 22 tables with Row, Insert, and Update types.
+ * Updated through migration 005_species_module.
+ * All tables with Row, Insert, and Update types.
  *
  * To regenerate from live DB:
  *   npx supabase gen types typescript --project-id <id> > src/types/database.ts
  *
- * Last manual sync: 2026-02-15
+ * Last manual sync: 2026-03-08 (migration 005 — species support)
  */
 
 export type Json =
@@ -53,9 +54,9 @@ export interface Database {
         };
       };
       user_settings: {
-        Row: { id: string; user_id: string; farm_name: string | null; farm_location: string | null; weight_unit: string; milk_unit: string; temperature_unit: string; created_at: string; updated_at: string; };
-        Insert: { id?: string; user_id: string; farm_name?: string | null; farm_location?: string | null; weight_unit?: string; milk_unit?: string; temperature_unit?: string; created_at?: string; updated_at?: string; };
-        Update: { farm_name?: string | null; farm_location?: string | null; weight_unit?: string; milk_unit?: string; temperature_unit?: string; updated_at?: string; };
+        Row: { id: string; user_id: string; farm_name: string | null; farm_location: string | null; weight_unit: string; milk_unit: string; temperature_unit: string; enabled_species: string[]; created_at: string; updated_at: string; };
+        Insert: { id?: string; user_id: string; farm_name?: string | null; farm_location?: string | null; weight_unit?: string; milk_unit?: string; temperature_unit?: string; enabled_species?: string[]; created_at?: string; updated_at?: string; };
+        Update: { farm_name?: string | null; farm_location?: string | null; weight_unit?: string; milk_unit?: string; temperature_unit?: string; enabled_species?: string[]; updated_at?: string; };
       };
       herds: {
         Row: { id: string; user_id: string; name: string; location: string | null; pasture_name: string | null; description: string | null; color: string; created_at: string; updated_at: string; };
@@ -63,9 +64,9 @@ export interface Database {
         Update: { name?: string; location?: string | null; pasture_name?: string | null; description?: string | null; color?: string; updated_at?: string; };
       };
       animals: {
-        Row: { id: string; user_id: string; name: string; breed: string | null; sex: string; category: string; status: string; birth_date: string | null; purchase_date: string | null; purchase_price: number | null; registration_number: string | null; microchip_id: string | null; tag_number: string | null; color_markings: string | null; sire_id: string | null; dam_id: string | null; herd_id: string | null; photo_url: string | null; notes: string | null; created_at: string; updated_at: string; };
-        Insert: { id?: string; user_id: string; name: string; breed?: string | null; sex: string; category: string; status?: string; birth_date?: string | null; purchase_date?: string | null; purchase_price?: number | null; registration_number?: string | null; microchip_id?: string | null; tag_number?: string | null; color_markings?: string | null; sire_id?: string | null; dam_id?: string | null; herd_id?: string | null; photo_url?: string | null; notes?: string | null; created_at?: string; updated_at?: string; };
-        Update: { name?: string; breed?: string | null; sex?: string; category?: string; status?: string; birth_date?: string | null; purchase_date?: string | null; purchase_price?: number | null; registration_number?: string | null; microchip_id?: string | null; tag_number?: string | null; color_markings?: string | null; sire_id?: string | null; dam_id?: string | null; herd_id?: string | null; photo_url?: string | null; notes?: string | null; updated_at?: string; };
+        Row: { id: string; user_id: string; name: string; breed: string | null; sex: string; category: string; status: string; species: 'goat' | 'sheep'; birth_date: string | null; purchase_date: string | null; purchase_price: number | null; registration_number: string | null; microchip_id: string | null; tag_number: string | null; color_markings: string | null; sire_id: string | null; dam_id: string | null; herd_id: string | null; photo_url: string | null; notes: string | null; created_at: string; updated_at: string; };
+        Insert: { id?: string; user_id: string; name: string; breed?: string | null; sex: string; category: string; status?: string; species?: 'goat' | 'sheep'; birth_date?: string | null; purchase_date?: string | null; purchase_price?: number | null; registration_number?: string | null; microchip_id?: string | null; tag_number?: string | null; color_markings?: string | null; sire_id?: string | null; dam_id?: string | null; herd_id?: string | null; photo_url?: string | null; notes?: string | null; created_at?: string; updated_at?: string; };
+        Update: { name?: string; breed?: string | null; sex?: string; category?: string; status?: string; species?: 'goat' | 'sheep'; birth_date?: string | null; purchase_date?: string | null; purchase_price?: number | null; registration_number?: string | null; microchip_id?: string | null; tag_number?: string | null; color_markings?: string | null; sire_id?: string | null; dam_id?: string | null; herd_id?: string | null; photo_url?: string | null; notes?: string | null; updated_at?: string; };
       };
       groups: {
         Row: { id: string; user_id: string; name: string; type: string; description: string | null; color: string; created_at: string; updated_at: string; };
