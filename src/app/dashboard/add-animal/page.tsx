@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -21,27 +21,12 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
+import { BREEDS } from '@/lib/breedData';
 
 // ==========================================
-// OPTIONS
+// STATIC OPTIONS (species-independent)
 // ==========================================
-
-const categoryOptions = [
-  { value: 'milking_doe', label: 'Milking Doe' },
-  { value: 'dry_doe', label: 'Dry Doe' },
-  { value: 'bred_doe', label: 'Bred Doe' },
-  { value: 'doeling', label: 'Doeling' },
-  { value: 'buck', label: 'Buck' },
-  { value: 'buckling', label: 'Buckling' },
-  { value: 'wether', label: 'Wether' },
-  { value: 'kid', label: 'Kid' },
-];
-
-const sexOptions = [
-  { value: 'doe', label: 'Doe (Female)' },
-  { value: 'buck', label: 'Buck (Intact Male)' },
-  { value: 'wether', label: 'Wether (Castrated Male)' },
-];
 
 const statusOptions = [
   { value: 'active', label: 'Active' },
@@ -77,25 +62,6 @@ const maternalAbilityOptions = [
   { value: 'good', label: 'Good' },
   { value: 'average', label: 'Average' },
   { value: 'poor', label: 'Poor' },
-];
-
-const commonBreeds = [
-  'Nigerian Dwarf',
-  'Nubian',
-  'Alpine',
-  'LaMancha',
-  'Saanen',
-  'Toggenburg',
-  'Oberhasli',
-  'Boer',
-  'Kiko',
-  'Spanish',
-  'Pygmy',
-  'Fainting (Myotonic)',
-  'Angora',
-  'Cashmere',
-  'Mixed/Grade',
-  'Other',
 ];
 
 // ==========================================
@@ -147,8 +113,36 @@ export default function AddAnimalPage() {
   const { data: allAnimals } = useAnimals({ status: 'active' });
 
   // Does and bucks for pedigree selection
-  const does = allAnimals?.filter(a => a.sex === 'doe') || [];
-  const bucks = allAnimals?.filter(a => a.sex === 'buck' || a.category === 'buck') || [];
+  const does = allAnimals?.filter(a => a.sex === 'doe' || a.sex === 'female') || [];
+  const bucks = allAnimals?.filter(a => a.sex === 'buck' || a.sex === 'male' || a.category === 'buck') || [];
+
+  // Species state — drives all terminology, categories, and breed list
+  const [species, setSpecies] = useState<Species>('goat');
+  const speciesConfig = useMemo(() => getSpeciesConfig(species), [species]);
+
+  const breedOptions = useMemo(() => [
+    { value: '', label: 'Select breed...' },
+    ...BREEDS[species].map(b => ({ value: b.name, label: b.name })),
+    { value: 'Mixed/Grade', label: 'Mixed/Grade' },
+    { value: 'Other', label: 'Other' },
+  ], [species]);
+
+  const categoryOptions = useMemo(() => [
+    { value: 'milking_female', label: speciesConfig.categories.milkingFemale },
+    { value: 'dry_female', label: speciesConfig.categories.dryFemale },
+    { value: 'bred_female', label: speciesConfig.categories.bredFemale },
+    { value: 'young_female', label: speciesConfig.categories.youngFemale },
+    { value: 'male', label: speciesConfig.categories.male },
+    { value: 'young_male', label: speciesConfig.categories.youngMale },
+    { value: 'castrated', label: speciesConfig.categories.castrated },
+    { value: 'young', label: speciesConfig.categories.young },
+  ], [speciesConfig]);
+
+  const sexOptions = useMemo(() => [
+    { value: 'female', label: `${speciesConfig.female} (Female)` },
+    { value: 'male', label: `${speciesConfig.male} (Intact Male)` },
+    { value: 'castrated', label: `${speciesConfig.castrated} (Castrated Male)` },
+  ], [speciesConfig]);
 
   // Form state - organized by section
   const [form, setForm] = useState({
@@ -158,8 +152,8 @@ export default function AddAnimalPage() {
     tattoo: '',
     breed: '',
     secondary_breed: '',
-    sex: 'doe',
-    category: 'milking_doe',
+    sex: 'female',
+    category: 'milking_female',
     date_of_birth: '',
     color: '',
     markings: '',
@@ -227,6 +221,7 @@ export default function AddAnimalPage() {
     const animalData = {
       // Basic
       name: form.name,
+      species,
       tag_number: form.tag_number || null,
       tattoo: form.tattoo || null,
       breed: form.breed || null,
@@ -302,7 +297,7 @@ export default function AddAnimalPage() {
           Back
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Add New Animal</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{speciesConfig.addAnimalLabel}</h1>
           <p className="text-gray-500">Complete profile with all details</p>
         </div>
       </div>
@@ -310,6 +305,23 @@ export default function AddAnimalPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Basic Information - Always Open */}
         <Section title="Basic Information" defaultOpen={true}>
+          {/* Species selector — must come first, drives all other options */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Species *"
+              options={[
+                { value: 'goat', label: '🐐 Goat' },
+                { value: 'sheep', label: '🐑 Sheep' },
+              ]}
+              value={species}
+              onChange={(e) => {
+                setSpecies(e.target.value as Species);
+                updateForm('sex', 'female');
+                updateForm('category', 'milking_female');
+                updateForm('breed', '');
+              }}
+            />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Name *"
@@ -328,10 +340,7 @@ export default function AddAnimalPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Breed"
-              options={[
-                { value: '', label: 'Select breed...' },
-                ...commonBreeds.map(b => ({ value: b, label: b })),
-              ]}
+              options={breedOptions}
               value={form.breed}
               onChange={(e) => updateForm('breed', e.target.value)}
             />
@@ -472,7 +481,7 @@ export default function AddAnimalPage() {
                 onChange={(e) => updateForm('disbudded_date', e.target.value)}
               />
             )}
-            {(form.sex === 'wether' || form.category === 'wether') && (
+            {(form.sex === 'castrated' || form.category === 'castrated') && (
               <Input
                 label="Castration Date"
                 type="date"

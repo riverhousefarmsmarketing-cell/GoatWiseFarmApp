@@ -28,6 +28,7 @@ import {
   Leaf,
   FlaskConical,
   Warehouse,
+MapPin,
   Calendar,
   BarChart3,
   Download,
@@ -58,7 +59,8 @@ const primaryNavigation = [
     subItems: [
       { name: 'All Animals', href: '/dashboard/herd' },
       { name: 'Herd Management', href: '/dashboard/herd-management' },
-      { name: 'Groups', href: '/dashboard/groups' },
+ { name: 'Groups', href: '/dashboard/groups' },
+      { name: 'Grazing', href: '/dashboard/grazing' },
       { name: 'Guardians', href: '/dashboard/guardians' },
     ]
   },
