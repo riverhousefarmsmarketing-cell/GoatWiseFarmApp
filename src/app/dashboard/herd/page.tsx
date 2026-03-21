@@ -89,7 +89,7 @@ export default function HerdPage() {
       breed: newAnimal.breed || null,
       sex: newAnimal.sex,
       category: newAnimal.category,
-      birth_date: newAnimal.birth_date || null,
+      date_of_birth: newAnimal.birth_date || null,
       status: 'active',
       species: speciesFilter === 'all' ? 'goat' : speciesFilter,
     });
