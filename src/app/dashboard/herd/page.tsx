@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAnimals, useAnimalStats, useCreateAnimal, useDeleteAnimal } from '@/hooks/useAnimals';
 import { Card, Button, Input, Select, Badge, Modal, EmptyState, LoadingSpinner } from '@/components/ui';
 import { formatDate, calculateAge, getStatusColor, getCategoryDisplay } from '@/lib/utils';
 import { Plus, Search, Filter, Users, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
+import { BREEDS } from '@/lib/breedData';
 
 const statusOptions = [
   { value: 'all', label: 'All Status' },
@@ -57,6 +58,13 @@ export default function HerdPage() {
     { value: 'castrated', label: speciesConfig.castrated },
   ];
 
+  const breedOptions = useMemo(() => [
+    { value: '', label: 'Select breed...' },
+    ...BREEDS[activeSpecies].map((b: any) => ({ value: b.name, label: b.name })),
+    { value: 'Mixed/Grade', label: 'Mixed/Grade' },
+    { value: 'Other', label: 'Other' },
+  ], [activeSpecies]);
+
   const newCategoryOptions = categoryOptions.filter(c => c.value !== 'all');
 
   const { data: animals, isLoading } = useAnimals({ search, category, status });
@@ -81,7 +89,7 @@ export default function HerdPage() {
       breed: newAnimal.breed || null,
       sex: newAnimal.sex,
       category: newAnimal.category,
-      date_of_birth: newAnimal.birth_date || null,
+      birth_date: newAnimal.birth_date || null,
       status: 'active',
       species: speciesFilter === 'all' ? 'goat' : speciesFilter,
     });
@@ -212,7 +220,7 @@ export default function HerdPage() {
                   </div>
                   <p className="text-sm text-gray-500">
                     {animal.breed || 'Unknown breed'} • {getCategoryDisplay(animal.category)}
-                    {(animal as any).date_of_birth && ` • ${calculateAge((animal as any).date_of_birth)}`}
+                    {animal.birth_date && ` • ${calculateAge(animal.birth_date)}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -256,11 +264,11 @@ export default function HerdPage() {
             placeholder="e.g., Daisy"
             required
           />
-          <Input
+          <Select
             label="Breed"
+            options={breedOptions}
             value={newAnimal.breed}
             onChange={(e) => setNewAnimal({ ...newAnimal, breed: e.target.value })}
-            placeholder={speciesFilter === 'sheep' ? 'e.g., Merino' : 'e.g., Nubian'}
           />
           <Select
             label="Sex"
