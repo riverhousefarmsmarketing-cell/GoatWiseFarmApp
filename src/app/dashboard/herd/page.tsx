@@ -8,6 +8,7 @@ import { Plus, Search, Filter, Users, MoreVertical, Edit, Trash2 } from 'lucide-
 import Link from 'next/link';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
 import { BREEDS } from '@/lib/breedData';
+import { useRouter } from 'next/navigation';
 
 const statusOptions = [
   { value: 'all', label: 'All Status' },
@@ -18,6 +19,7 @@ const statusOptions = [
 ];
 
 export default function HerdPage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState<'all' | Species>('all');
   const [category, setCategory] = useState('all');
@@ -105,9 +107,9 @@ export default function HerdPage() {
           <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
           <p className="text-gray-500">{stats?.active || 0} active animals</p>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
-          Add {speciesFilter === 'all' ? 'Animal' : speciesConfig.label}
-        </Button>
+        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => router.push('/dashboard/add-animal')}>
+  Add {speciesFilter === 'all' ? 'Animal' : speciesConfig.label}
+</Button>
       </div>
 
       {/* Species Toggle — prominent, above everything else */}
