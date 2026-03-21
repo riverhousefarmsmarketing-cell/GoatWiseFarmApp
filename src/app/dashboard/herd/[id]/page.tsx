@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
+import { BREEDS } from '@/lib/breedData';
 import {
   Card,
   Button,
@@ -293,6 +295,16 @@ export default function AnimalDetailPage() {
     });
     setShowEditModal(true);
   };
+
+  // Species-aware breed options for edit modal
+  const animalSpecies: Species = ((animal as any)?.species as Species) || 'goat';
+  const animalSpeciesConfig = useMemo(() => getSpeciesConfig(animalSpecies), [animalSpecies]);
+  const editBreedOptions = useMemo(() => [
+    { value: '', label: 'Select breed...' },
+    ...BREEDS[animalSpecies].map((b: any) => ({ value: b.name, label: b.name })),
+    { value: 'Mixed/Grade', label: 'Mixed/Grade' },
+    { value: 'Other', label: 'Other' },
+  ], [animalSpecies]);
 
   const handleSaveEdit = async () => {
     await updateAnimal.mutateAsync(editData);
@@ -1053,8 +1065,9 @@ export default function AnimalDetailPage() {
               onChange={(e) => setEditData({ ...editData, name: e.target.value })}
               required
             />
-            <Input
+            <Select
               label="Breed"
+              options={editBreedOptions}
               value={editData.breed}
               onChange={(e) => setEditData({ ...editData, breed: e.target.value })}
             />
