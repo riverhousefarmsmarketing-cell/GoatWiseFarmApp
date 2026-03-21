@@ -33,6 +33,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
+    
         Insert: {
           id: string;
           email: string;
@@ -63,11 +64,132 @@ export interface Database {
         Insert: { id?: string; user_id: string; name: string; location?: string | null; pasture_name?: string | null; description?: string | null; color?: string; created_at?: string; updated_at?: string; };
         Update: { name?: string; location?: string | null; pasture_name?: string | null; description?: string | null; color?: string; updated_at?: string; };
       };
-      animals: {
-        Row: { id: string; user_id: string; name: string; breed: string | null; sex: string; category: string; status: string; species: 'goat' | 'sheep'; birth_date: string | null; purchase_date: string | null; purchase_price: number | null; registration_number: string | null; microchip_id: string | null; tag_number: string | null; color_markings: string | null; sire_id: string | null; dam_id: string | null; herd_id: string | null; photo_url: string | null; notes: string | null; created_at: string; updated_at: string; };
-        Insert: { id?: string; user_id: string; name: string; breed?: string | null; sex: string; category: string; status?: string; species?: 'goat' | 'sheep'; birth_date?: string | null; purchase_date?: string | null; purchase_price?: number | null; registration_number?: string | null; microchip_id?: string | null; tag_number?: string | null; color_markings?: string | null; sire_id?: string | null; dam_id?: string | null; herd_id?: string | null; photo_url?: string | null; notes?: string | null; created_at?: string; updated_at?: string; };
-        Update: { name?: string; breed?: string | null; sex?: string; category?: string; status?: string; species?: 'goat' | 'sheep'; birth_date?: string | null; purchase_date?: string | null; purchase_price?: number | null; registration_number?: string | null; microchip_id?: string | null; tag_number?: string | null; color_markings?: string | null; sire_id?: string | null; dam_id?: string | null; herd_id?: string | null; photo_url?: string | null; notes?: string | null; updated_at?: string; };
+            animals: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          breed: string | null;
+          secondary_breed: string | null;
+          sex: string;
+          category: string;
+          status: string;
+          species: 'goat' | 'sheep';
+          date_of_birth: string | null;
+          purchase_date: string | null;
+          purchase_cost: number | null;
+          purchase_source: string | null;
+          registration_number: string | null;
+          microchip_id: string | null;
+          tag_number: string | null;
+          tattoo: string | null;
+          color_markings: string | null;
+          color: string | null;
+          markings: string | null;
+          sire_id: string | null;
+          dam_id: string | null;
+          herd_id: string | null;
+          group_ids: string[] | null;
+          photo_url: string | null;
+          notes: string | null;
+          health_status: string | null;
+          weight: number | null;
+          born_on_farm: boolean | null;
+          pedigreed: boolean | null;
+          pedigree_generations: number | null;
+          registry_name: string | null;
+          registry_number: string | null;
+          polled: boolean | null;
+          disbudded: boolean | null;
+          disbudded_date: string | null;
+          castration_date: string | null;
+          genetic_traits: Record<string, unknown> | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          breed?: string | null;
+          secondary_breed?: string | null;
+          sex: string;
+          category: string;
+          status?: string;
+          species?: 'goat' | 'sheep';
+          date_of_birth?: string | null;
+          purchase_date?: string | null;
+          purchase_cost?: number | null;
+          purchase_source?: string | null;
+          registration_number?: string | null;
+          microchip_id?: string | null;
+          tag_number?: string | null;
+          tattoo?: string | null;
+          color_markings?: string | null;
+          color?: string | null;
+          markings?: string | null;
+          sire_id?: string | null;
+          dam_id?: string | null;
+          herd_id?: string | null;
+          group_ids?: string[] | null;
+          photo_url?: string | null;
+          notes?: string | null;
+          health_status?: string | null;
+          weight?: number | null;
+          born_on_farm?: boolean | null;
+          pedigreed?: boolean | null;
+          pedigree_generations?: number | null;
+          registry_name?: string | null;
+          registry_number?: string | null;
+          polled?: boolean | null;
+          disbudded?: boolean | null;
+          disbudded_date?: string | null;
+          castration_date?: string | null;
+          genetic_traits?: Record<string, unknown> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          breed?: string | null;
+          secondary_breed?: string | null;
+          sex?: string;
+          category?: string;
+          status?: string;
+          species?: 'goat' | 'sheep';
+          date_of_birth?: string | null;
+          purchase_date?: string | null;
+          purchase_cost?: number | null;
+          purchase_source?: string | null;
+          registration_number?: string | null;
+          microchip_id?: string | null;
+          tag_number?: string | null;
+          tattoo?: string | null;
+          color_markings?: string | null;
+          color?: string | null;
+          markings?: string | null;
+          sire_id?: string | null;
+          dam_id?: string | null;
+          herd_id?: string | null;
+          group_ids?: string[] | null;
+          photo_url?: string | null;
+          notes?: string | null;
+          health_status?: string | null;
+          weight?: number | null;
+          born_on_farm?: boolean | null;
+          pedigreed?: boolean | null;
+          pedigree_generations?: number | null;
+          registry_name?: string | null;
+          registry_number?: string | null;
+          polled?: boolean | null;
+          disbudded?: boolean | null;
+          disbudded_date?: string | null;
+          castration_date?: string | null;
+          genetic_traits?: Record<string, unknown> | null;
+          updated_at?: string;
       };
+    };
+
       groups: {
         Row: { id: string; user_id: string; name: string; type: string; description: string | null; color: string; created_at: string; updated_at: string; };
         Insert: { id?: string; user_id: string; name: string; type?: string; description?: string | null; color?: string; created_at?: string; updated_at?: string; };
@@ -164,11 +286,11 @@ export interface Database {
         Update: { animal_id?: string | null; guardian_id?: string | null; health_record_id?: string | null; inspection_id?: string | null; category?: string; filename?: string; url?: string; caption?: string | null; date_taken?: string; };
       };
     };
+  };
     Views: { [_ in never]: never; };
     Functions: { [_ in never]: never; };
     Enums: { [_ in never]: never; };
   };
-}
 
 // Convenience type aliases
 export type Profile = Database['public']['Tables']['profiles']['Row'];

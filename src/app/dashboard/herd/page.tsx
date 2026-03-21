@@ -81,7 +81,7 @@ export default function HerdPage() {
       breed: newAnimal.breed || null,
       sex: newAnimal.sex,
       category: newAnimal.category,
-      birth_date: newAnimal.birth_date || null,
+      date_of_birth: newAnimal.birth_date || null,
       status: 'active',
       species: speciesFilter === 'all' ? 'goat' : speciesFilter,
     });
@@ -212,7 +212,7 @@ export default function HerdPage() {
                   </div>
                   <p className="text-sm text-gray-500">
                     {animal.breed || 'Unknown breed'} • {getCategoryDisplay(animal.category)}
-                    {animal.birth_date && ` • ${calculateAge(animal.birth_date)}`}
+                    {(animal as any).date_of_birth && ` • ${calculateAge((animal as any).date_of_birth)}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
