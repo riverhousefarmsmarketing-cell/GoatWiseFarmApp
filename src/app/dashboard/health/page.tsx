@@ -10,6 +10,8 @@ import {
   useCreateHealthRecord,
   useUpdateHealthRecord,
   useCreateInspection,
+  useUpdateInspection,
+  useDeleteInspection,
   useMarkFollowUpComplete,
 } from '@/hooks/useHealth';
 import { useAnimals } from '@/hooks/useAnimals';
@@ -64,6 +66,7 @@ import {
   ArrowDown,
   Trash2,
   Edit,
+  Pencil,
   Filter,
   HelpCircle,
   BookOpen,
@@ -269,6 +272,7 @@ export default function HealthPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showFollowUpResolve, setShowFollowUpResolve] = useState<any>(null);
   const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [editingInspectionId, setEditingInspectionId] = useState<string | null>(null);
   const [showSomethingsWrong, setShowSomethingsWrong] = useState(false);
   const [swStep, setSwStep] = useState<'symptoms' | 'results'>('symptoms');
   const [swSelectedSymptoms, setSwSelectedSymptoms] = useState<SymptomTag[]>([]);
@@ -327,6 +331,8 @@ export default function HealthPage() {
   const createRecord = useCreateHealthRecord();
   const updateRecord = useUpdateHealthRecord();
   const createInspection = useCreateInspection();
+  const updateInspection = useUpdateInspection();
+  const deleteInspection = useDeleteInspection();
   const markComplete = useMarkFollowUpComplete();
 
   // Calculate FAMACHA distribution from latest inspections
@@ -472,24 +478,30 @@ export default function HealthPage() {
   const handleAddInspection = async () => {
     if (!newInspection.animal_id) return;
 
+    const inspectionData = {
+      animal_id: newInspection.animal_id,
+      date: newInspection.date,
+      famacha: newInspection.famacha ? parseInt(newInspection.famacha) : null,
+      body_condition_score: newInspection.body_condition_score ? parseFloat(newInspection.body_condition_score) : null,
+      weight: newInspection.weight ? parseFloat(newInspection.weight) : null,
+      weight_unit: 'lbs',
+      temperature: newInspection.temperature ? parseFloat(newInspection.temperature) : null,
+      temperature_unit: 'F',
+      respiration: newInspection.respiration ? parseInt(newInspection.respiration) : null,
+      heart_rate: newInspection.heart_rate ? parseInt(newInspection.heart_rate) : null,
+      appetite: newInspection.appetite || null,
+      attitude: newInspection.attitude || null,
+      action_required: newInspection.action_required,
+      action_taken: newInspection.action_taken || null,
+      notes: newInspection.notes || null,
+    };
+
     try {
-      await createInspection.mutateAsync({
-        animal_id: newInspection.animal_id,
-        date: newInspection.date,
-        famacha: newInspection.famacha ? parseInt(newInspection.famacha) : null,
-        body_condition_score: newInspection.body_condition_score ? parseFloat(newInspection.body_condition_score) : null,
-        weight: newInspection.weight ? parseFloat(newInspection.weight) : null,
-        weight_unit: 'lbs',
-        temperature: newInspection.temperature ? parseFloat(newInspection.temperature) : null,
-        temperature_unit: 'F',
-        respiration: newInspection.respiration ? parseInt(newInspection.respiration) : null,
-        heart_rate: newInspection.heart_rate ? parseInt(newInspection.heart_rate) : null,
-        appetite: newInspection.appetite || null,
-        attitude: newInspection.attitude || null,
-        action_required: newInspection.action_required,
-        action_taken: newInspection.action_taken || null,
-        notes: newInspection.notes || null,
-      });
+      if (editingInspectionId) {
+        await updateInspection.mutateAsync({ id: editingInspectionId, ...inspectionData });
+      } else {
+        await createInspection.mutateAsync(inspectionData);
+      }
     } catch (error) {
       console.error('Error saving inspection:', error);
       alert('Could not save the inspection. Please try again.');
@@ -498,6 +510,33 @@ export default function HealthPage() {
 
     setShowInspectionModal(false);
     resetInspectionForm();
+    setEditingInspectionId(null);
+  };
+
+  const openCreateInspection = () => {
+    setEditingInspectionId(null);
+    resetInspectionForm();
+    setShowInspectionModal(true);
+  };
+
+  const openEditInspection = (insp: any) => {
+    setEditingInspectionId(insp.id);
+    setNewInspection({
+      animal_id: insp.animal_id || '',
+      date: insp.date || new Date().toISOString().split('T')[0],
+      famacha: insp.famacha != null ? String(insp.famacha) : '',
+      body_condition_score: insp.body_condition_score != null ? String(insp.body_condition_score) : '',
+      weight: insp.weight != null ? String(insp.weight) : '',
+      temperature: insp.temperature != null ? String(insp.temperature) : '',
+      respiration: insp.respiration != null ? String(insp.respiration) : '',
+      heart_rate: insp.heart_rate != null ? String(insp.heart_rate) : '',
+      appetite: insp.appetite || '',
+      attitude: insp.attitude || '',
+      action_required: insp.action_required ?? false,
+      action_taken: insp.action_taken || '',
+      notes: insp.notes || '',
+    });
+    setShowInspectionModal(true);
   };
 
   const resetRecordForm = () => {
@@ -588,7 +627,7 @@ export default function HealthPage() {
           <Button
             variant="secondary"
             leftIcon={<ClipboardCheck className="h-4 w-4" />}
-            onClick={() => setShowInspectionModal(true)}
+            onClick={openCreateInspection}
           >
             New Inspection
           </Button>
@@ -992,7 +1031,7 @@ export default function HealthPage() {
                 icon={<ClipboardCheck className="h-12 w-12" />}
                 title={inspectionSearch || inspectionAnimalFilter !== 'all' || famachaFilter !== null ? "No matching inspections" : "No inspections recorded"}
                 description={inspectionSearch || inspectionAnimalFilter !== 'all' || famachaFilter !== null ? "Try adjusting your filters" : "Regular inspections help monitor your herd's health"}
-                action={inspectionSearch || inspectionAnimalFilter !== 'all' || famachaFilter !== null ? undefined : <Button onClick={() => setShowInspectionModal(true)}>New Inspection</Button>}
+                action={inspectionSearch || inspectionAnimalFilter !== 'all' || famachaFilter !== null ? undefined : <Button onClick={openCreateInspection}>New Inspection</Button>}
               />
             ) : (
               <div className="overflow-x-auto">
@@ -1006,6 +1045,7 @@ export default function HealthPage() {
                       <SortableHeader label="Weight" sortKey="weight" currentSort={inspectionSort} currentDirection={inspectionSortDir} onSort={handleInspectionSort} />
                       <SortableHeader label="Temp" sortKey="temp" currentSort={inspectionSort} currentDirection={inspectionSortDir} onSort={handleInspectionSort} />
                       <th className="px-4 py-3 font-medium">Action</th>
+                      <th className="px-4 py-3 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -1048,6 +1088,24 @@ export default function HealthPage() {
                             ) : (
                               <Badge variant="success">None</Badge>
                             )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => openEditInspection(insp)}
+                                className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
+                                title="Edit inspection"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => { if (confirm('Delete this inspection?')) deleteInspection.mutate(insp.id); }}
+                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                title="Delete inspection"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1393,15 +1451,15 @@ export default function HealthPage() {
       {/* New Inspection Modal */}
       <Modal
         open={showInspectionModal}
-        onClose={() => setShowInspectionModal(false)}
-        title="New Health Inspection"
+        onClose={() => { setShowInspectionModal(false); setEditingInspectionId(null); }}
+        title={editingInspectionId ? "Edit Health Inspection" : "New Health Inspection"}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowInspectionModal(false)}>
+            <Button variant="ghost" onClick={() => { setShowInspectionModal(false); setEditingInspectionId(null); }}>
               Cancel
             </Button>
-            <Button onClick={handleAddInspection} loading={createInspection.isPending}>
-              Save Inspection
+            <Button onClick={handleAddInspection} loading={editingInspectionId ? updateInspection.isPending : createInspection.isPending}>
+              {editingInspectionId ? 'Save Changes' : 'Save Inspection'}
             </Button>
           </>
         }

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useTodaysMilk, useMilkStats, useTopProducers, useCreateMilkRecord, useDeleteMilkRecord } from '@/hooks/useMilk';
+import { useTodaysMilk, useMilkStats, useTopProducers, useCreateMilkRecord, useUpdateMilkRecord, useDeleteMilkRecord } from '@/hooks/useMilk';
 import { useAnimals } from '@/hooks/useAnimals';
 import { categoryIs } from '@/lib/animalVocab';
 import { Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, LoadingSpinner, AnimalLink } from '@/components/ui';
 import { formatDate, formatWeight } from '@/lib/utils';
-import { Milk, Plus, TrendingUp, TrendingDown, Droplets, Calendar, Trash2 } from 'lucide-react';
+import { Milk, Plus, TrendingUp, TrendingDown, Droplets, Calendar, Pencil, Trash2 } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -58,7 +58,9 @@ export default function MilkPage() {
     [activeAnimals]
   );
   const createRecord = useCreateMilkRecord();
+  const updateRecord = useUpdateMilkRecord();
   const deleteRecord = useDeleteMilkRecord();
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
 
   // Prepare chart data
   const chartLabels = Array.from({ length: 7 }, (_, i) =>
@@ -102,26 +104,7 @@ export default function MilkPage() {
     r.discarded ? sum : sum + r.amount, 0
   ) || 0;
 
-  const handleRecordMilk = async () => {
-    if (!newRecord.animal_id || !newRecord.amount) return;
-    
-    try {
-      await createRecord.mutateAsync({
-        animal_id: newRecord.animal_id,
-        date: newRecord.date,
-        session: newRecord.session,
-        amount: parseFloat(newRecord.amount),
-        amount_unit: 'lbs',
-        discarded: newRecord.discarded,
-        discard_reason: newRecord.discarded ? newRecord.discard_reason : null,
-      });
-    } catch (error) {
-      console.error('Error recording milk:', error);
-      alert('Could not record the milk entry. Please try again.');
-      return;
-    }
-
-    setShowRecordModal(false);
+  const resetForm = () => {
     setNewRecord({
       animal_id: '',
       date: format(new Date(), 'yyyy-MM-dd'),
@@ -132,6 +115,60 @@ export default function MilkPage() {
     });
   };
 
+  const openCreateRecord = () => {
+    setEditingRecordId(null);
+    resetForm();
+    setShowRecordModal(true);
+  };
+
+  const openEditRecord = (record: any) => {
+    setEditingRecordId(record.id);
+    setNewRecord({
+      animal_id: record.animal_id ?? '',
+      date: record.date ?? format(new Date(), 'yyyy-MM-dd'),
+      session: (record.session ?? 'AM') as any,
+      amount: String(record.amount ?? ''),
+      discarded: record.discarded ?? false,
+      discard_reason: record.discard_reason ?? '',
+    });
+    setShowRecordModal(true);
+  };
+
+  const closeRecordModal = () => {
+    setShowRecordModal(false);
+    setEditingRecordId(null);
+  };
+
+  const handleRecordMilk = async () => {
+    if (!newRecord.animal_id || !newRecord.amount) return;
+
+    const fields = {
+      animal_id: newRecord.animal_id,
+      date: newRecord.date,
+      session: newRecord.session,
+      amount: parseFloat(newRecord.amount),
+      amount_unit: 'lbs',
+      discarded: newRecord.discarded,
+      discard_reason: newRecord.discarded ? newRecord.discard_reason : null,
+    };
+
+    try {
+      if (editingRecordId) {
+        await updateRecord.mutateAsync({ id: editingRecordId, ...fields });
+      } else {
+        await createRecord.mutateAsync(fields);
+      }
+    } catch (error) {
+      console.error('Error recording milk:', error);
+      alert('Could not record the milk entry. Please try again.');
+      return;
+    }
+
+    setShowRecordModal(false);
+    setEditingRecordId(null);
+    resetForm();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -140,7 +177,7 @@ export default function MilkPage() {
           <h1 className="text-2xl font-bold text-gray-900">Milk Production</h1>
           <p className="text-gray-500">Track daily milk production</p>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowRecordModal(true)}>
+        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openCreateRecord}>
           Record Milking
         </Button>
       </div>
@@ -235,7 +272,7 @@ export default function MilkPage() {
             title="No records today"
             description="Start recording milk production"
             action={
-              <Button onClick={() => setShowRecordModal(true)}>Record Milking</Button>
+              <Button onClick={openCreateRecord}>Record Milking</Button>
             }
           />
         ) : (
@@ -280,18 +317,28 @@ export default function MilkPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm('Delete this milk record?')) {
-                            deleteRecord.mutate(record.id);
-                          }
-                        }}
-                        className="text-gray-400 hover:text-red-600"
-                        aria-label="Delete record"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => openEditRecord(record)}
+                          className="text-gray-400 hover:text-gray-600"
+                          aria-label="Edit record"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm('Delete this milk record?')) {
+                              deleteRecord.mutate(record.id);
+                            }
+                          }}
+                          className="text-gray-400 hover:text-red-600"
+                          aria-label="Delete record"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -304,15 +351,18 @@ export default function MilkPage() {
       {/* Record Modal */}
       <Modal
         open={showRecordModal}
-        onClose={() => setShowRecordModal(false)}
-        title="Record Milking"
+        onClose={closeRecordModal}
+        title={editingRecordId ? 'Edit Milk Record' : 'Record Milking'}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowRecordModal(false)}>
+            <Button variant="ghost" onClick={closeRecordModal}>
               Cancel
             </Button>
-            <Button onClick={handleRecordMilk} loading={createRecord.isPending}>
-              Save Record
+            <Button
+              onClick={handleRecordMilk}
+              loading={editingRecordId ? updateRecord.isPending : createRecord.isPending}
+            >
+              {editingRecordId ? 'Save Changes' : 'Save Record'}
             </Button>
           </>
         }
