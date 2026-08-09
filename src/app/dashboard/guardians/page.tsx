@@ -313,9 +313,12 @@ export default function GuardiansPage() {
 
       const { data: urlData } = supabase.storage.from('photos').getPublicUrl(filename);
 
+      // Link to the predation event via its own FK. This used to write
+      // inspection_id (a FK to inspections), which violated the constraint and
+      // silently dropped every predation photo while leaving an orphaned file.
       await (supabase as any).from('photos').insert({
         user_id: user.id,
-        inspection_id: predationEventId,
+        predation_event_id: predationEventId,
         category: predationPhotoCategory,
         filename,
         url: urlData.publicUrl,

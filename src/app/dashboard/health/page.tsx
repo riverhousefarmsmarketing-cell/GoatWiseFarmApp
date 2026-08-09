@@ -128,6 +128,7 @@ const healthTypeOptions = [
   { value: 'hoof_trim', label: 'Hoof Trim' },
   { value: 'injury', label: 'Injury' },
   { value: 'illness', label: 'Illness' },
+  { value: 'observation', label: 'Observation' },
   { value: 'other', label: 'Other' },
 ];
 
