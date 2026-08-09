@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnimals } from '@/hooks/useAnimals';
+import { useUpdateGroup } from '@/hooks/useGroups';
 import {
   Card,
   Button,
@@ -21,6 +22,7 @@ import {
   Users,
   Trash2,
   Check,
+  Pencil,
 } from 'lucide-react';
 
 const groupTypeOptions = [
@@ -50,6 +52,7 @@ export default function GroupsPage() {
   const supabase = getSupabaseClient();
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
   const [selectedAnimals, setSelectedAnimals] = useState<string[]>([]);
@@ -107,6 +110,8 @@ export default function GroupsPage() {
     },
   });
 
+  const updateGroup = useUpdateGroup();
+
   const deleteGroup = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('groups').delete().eq('id', id);
@@ -145,28 +150,65 @@ export default function GroupsPage() {
     return assignments?.filter((a: any) => a.group_id === groupId).map((a: any) => a.animals) || [];
   };
 
-  const handleCreateGroup = async () => {
-    if (!newGroup.name) return;
-
-    try {
-      await createGroup.mutateAsync({
-        name: newGroup.name,
-        type: newGroup.type,
-        description: newGroup.description || null,
-        color: newGroup.color,
-      });
-    } catch (e: any) {
-      alert(`Could not create the group: ${e?.message || 'please try again.'}`);
-      return;
-    }
-
-    setShowAddModal(false);
+  const resetGroupForm = () => {
     setNewGroup({
       name: '',
       type: 'custom',
       description: '',
       color: '#3b82f6',
     });
+  };
+
+  const openCreateModal = () => {
+    setEditingGroupId(null);
+    resetGroupForm();
+    setShowAddModal(true);
+  };
+
+  const openEditModal = (group: any) => {
+    setEditingGroupId(group.id);
+    setNewGroup({
+      name: group.name || '',
+      type: group.type || 'custom',
+      description: group.description || '',
+      color: group.color || '#3b82f6',
+    });
+    setShowAddModal(true);
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setEditingGroupId(null);
+  };
+
+  const handleSaveGroup = async () => {
+    if (!newGroup.name) return;
+
+    const fields = {
+      name: newGroup.name,
+      type: newGroup.type,
+      description: newGroup.description || null,
+      color: newGroup.color,
+    };
+
+    try {
+      if (editingGroupId) {
+        await updateGroup.mutateAsync({ id: editingGroupId, updates: fields });
+      } else {
+        await createGroup.mutateAsync(fields);
+      }
+    } catch (e: any) {
+      alert(
+        `Could not ${editingGroupId ? 'update' : 'create'} the group: ${
+          e?.message || 'please try again.'
+        }`
+      );
+      return;
+    }
+
+    setShowAddModal(false);
+    setEditingGroupId(null);
+    resetGroupForm();
   };
 
   const openAssignModal = (group: any) => {
@@ -216,7 +258,7 @@ export default function GroupsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Groups</h1>
           <p className="text-gray-500">Organize your animals into custom groups</p>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
+        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openCreateModal}>
           Create Group
         </Button>
       </div>
@@ -232,7 +274,7 @@ export default function GroupsPage() {
             icon={<Folder className="h-12 w-12" />}
             title="No groups yet"
             description="Create groups to organize your animals"
-            action={<Button onClick={() => setShowAddModal(true)}>Create Group</Button>}
+            action={<Button onClick={openCreateModal}>Create Group</Button>}
           />
         </Card>
       ) : (
@@ -262,6 +304,13 @@ export default function GroupsPage() {
                       title="Assign animals"
                     >
                       <Users className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => openEditModal(group)}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"
+                      title="Edit group"
+                    >
+                      <Pencil className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => {
@@ -322,15 +371,18 @@ export default function GroupsPage() {
       {/* Create Group Modal */}
       <Modal
         open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Create Group"
+        onClose={closeAddModal}
+        title={editingGroupId ? 'Edit Group' : 'Create Group'}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowAddModal(false)}>
+            <Button variant="ghost" onClick={closeAddModal}>
               Cancel
             </Button>
-            <Button onClick={handleCreateGroup} loading={createGroup.isPending}>
-              Create Group
+            <Button
+              onClick={handleSaveGroup}
+              loading={editingGroupId ? updateGroup.isPending : createGroup.isPending}
+            >
+              {editingGroupId ? 'Save Changes' : 'Create Group'}
             </Button>
           </>
         }

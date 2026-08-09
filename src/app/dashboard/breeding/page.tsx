@@ -651,6 +651,17 @@ export default function BreedingPage() {
                               >
                                 Not Pregnant
                               </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  if (confirm('Delete this breeding record?')) {
+                                    deleteBreeding.mutate(record.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </td>
                         </tr>

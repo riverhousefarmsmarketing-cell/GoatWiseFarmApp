@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useTodaysMilk, useMilkStats, useTopProducers, useCreateMilkRecord } from '@/hooks/useMilk';
+import { useTodaysMilk, useMilkStats, useTopProducers, useCreateMilkRecord, useDeleteMilkRecord } from '@/hooks/useMilk';
 import { useAnimals } from '@/hooks/useAnimals';
 import { categoryIs } from '@/lib/animalVocab';
 import { Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, LoadingSpinner, AnimalLink } from '@/components/ui';
 import { formatDate, formatWeight } from '@/lib/utils';
-import { Milk, Plus, TrendingUp, TrendingDown, Droplets, Calendar } from 'lucide-react';
+import { Milk, Plus, TrendingUp, TrendingDown, Droplets, Calendar, Trash2 } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -58,6 +58,7 @@ export default function MilkPage() {
     [activeAnimals]
   );
   const createRecord = useCreateMilkRecord();
+  const deleteRecord = useDeleteMilkRecord();
 
   // Prepare chart data
   const chartLabels = Array.from({ length: 7 }, (_, i) =>
@@ -246,6 +247,7 @@ export default function MilkPage() {
                   <th className="px-4 py-3 font-medium">Session</th>
                   <th className="px-4 py-3 font-medium">Amount</th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -276,6 +278,20 @@ export default function MilkPage() {
                       ) : (
                         <Badge variant="success">Recorded</Badge>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm('Delete this milk record?')) {
+                            deleteRecord.mutate(record.id);
+                          }
+                        }}
+                        className="text-gray-400 hover:text-red-600"
+                        aria-label="Delete record"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

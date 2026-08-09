@@ -7,6 +7,7 @@ import {
   usePaddockMoves,
   useActivePaddockMoves,
   useCreatePaddock,
+  useUpdatePaddock,
   useDeletePaddock,
   useCreatePaddockMove,
   useRecordMoveOut,
@@ -30,6 +31,7 @@ import {
 import {
   MapPin,
   Plus,
+  Pencil,
   Trash2,
   ArrowRight,
   Clock,
@@ -89,12 +91,14 @@ export default function GrazingPage() {
 
   // Mutations
   const createPaddock = useCreatePaddock();
+  const updatePaddock = useUpdatePaddock();
   const deletePaddock = useDeletePaddock();
   const createMove = useCreatePaddockMove();
   const recordMoveOut = useRecordMoveOut();
 
   // Modal state
   const [showAddPaddock, setShowAddPaddock] = useState(false);
+  const [editingPaddockId, setEditingPaddockId] = useState<string | null>(null);
   const [showAssign, setShowAssign] = useState(false);
   const [showMoveOut, setShowMoveOut] = useState(false);
   const [selectedMove, setSelectedMove] = useState<PaddockMove | null>(null);
@@ -123,20 +127,46 @@ export default function GrazingPage() {
   const paddockOptions = paddocks?.map(p => ({ value: p.id, label: p.name })) || [];
 
   // Handlers
-  const handleCreatePaddock = async () => {
+  const openCreatePaddock = () => {
+    setEditingPaddockId(null);
+    setNewPaddock({ name: '', acres: '', notes: '' });
+    setShowAddPaddock(true);
+  };
+
+  const openEditPaddock = (paddock: Paddock) => {
+    setEditingPaddockId(paddock.id);
+    setNewPaddock({
+      name: paddock.name,
+      acres: paddock.acres != null ? String(paddock.acres) : '',
+      notes: paddock.notes || '',
+    });
+    setShowAddPaddock(true);
+  };
+
+  const closePaddockModal = () => {
+    setShowAddPaddock(false);
+    setEditingPaddockId(null);
+    setNewPaddock({ name: '', acres: '', notes: '' });
+  };
+
+  const handleSavePaddock = async () => {
     if (!newPaddock.name) return;
+    const values = {
+      name: newPaddock.name,
+      acres: newPaddock.acres ? parseFloat(newPaddock.acres) : null,
+      notes: newPaddock.notes || null,
+    };
     try {
-      await createPaddock.mutateAsync({
-        name: newPaddock.name,
-        acres: newPaddock.acres ? parseFloat(newPaddock.acres) : null,
-        notes: newPaddock.notes || null,
-      });
+      if (editingPaddockId) {
+        await updatePaddock.mutateAsync({ id: editingPaddockId, updates: values });
+      } else {
+        await createPaddock.mutateAsync(values);
+      }
     } catch (e: any) {
       alert(`Could not save the paddock: ${e?.message || 'please try again.'}`);
       return;
     }
-    setShowAddPaddock(false);
-    setNewPaddock({ name: '', acres: '', notes: '' });
+    closePaddockModal();
   };
 
   const handleAssign = async () => {
@@ -199,7 +229,7 @@ export default function GrazingPage() {
           <Button
             variant="secondary"
             leftIcon={<MapPin className="h-4 w-4" />}
-            onClick={() => setShowAddPaddock(true)}
+            onClick={openCreatePaddock}
           >
             Add Paddock
           </Button>
@@ -250,7 +280,7 @@ export default function GrazingPage() {
                 icon={<Leaf className="h-12 w-12" />}
                 title="No paddocks yet"
                 description="Add your first paddock to start tracking rotational grazing"
-                action={<Button onClick={() => setShowAddPaddock(true)}>Add Paddock</Button>}
+                action={<Button onClick={openCreatePaddock}>Add Paddock</Button>}
               />
             </Card>
           ) : (
@@ -290,6 +320,13 @@ export default function GrazingPage() {
                         }`}>
                           {isOccupied ? 'Occupied' : 'Resting'}
                         </span>
+                        <button
+                          onClick={() => openEditPaddock(paddock)}
+                          className="p-1.5 text-gray-400 hover:text-rhf-forest-mid rounded hover:bg-gray-100"
+                          aria-label={`Edit paddock ${paddock.name}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => {
                             if (isOccupied) {
@@ -431,13 +468,16 @@ export default function GrazingPage() {
       {/* ADD PADDOCK MODAL */}
       <Modal
         open={showAddPaddock}
-        onClose={() => setShowAddPaddock(false)}
-        title="Add Paddock"
+        onClose={closePaddockModal}
+        title={editingPaddockId ? 'Edit Paddock' : 'Add Paddock'}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowAddPaddock(false)}>Cancel</Button>
-            <Button onClick={handleCreatePaddock} loading={createPaddock.isPending}>
-              Add Paddock
+            <Button variant="ghost" onClick={closePaddockModal}>Cancel</Button>
+            <Button
+              onClick={handleSavePaddock}
+              loading={editingPaddockId ? updatePaddock.isPending : createPaddock.isPending}
+            >
+              {editingPaddockId ? 'Save Changes' : 'Add Paddock'}
             </Button>
           </>
         }
