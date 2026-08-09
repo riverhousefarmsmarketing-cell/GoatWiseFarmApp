@@ -25,6 +25,7 @@ import {
   getStatusColor,
   getFamachaColor,
 } from '@/lib/utils';
+import { isFemale, toCanonicalCategory, getCategoryOptions } from '@/lib/animalVocab';
 import {
   ArrowLeft,
   Edit,
@@ -60,17 +61,6 @@ const ANIMAL_PHOTO_CATEGORIES = [
   { value: 'progress', label: 'Progress/Growth' },
   { value: 'general', label: 'General' },
   { value: 'other', label: 'Other' },
-];
-
-const categoryOptions = [
-  { value: 'milking_doe', label: 'Milking Doe' },
-  { value: 'dry_doe', label: 'Dry Doe' },
-  { value: 'bred_doe', label: 'Bred Doe' },
-  { value: 'doeling', label: 'Doeling' },
-  { value: 'buck', label: 'Buck' },
-  { value: 'buckling', label: 'Buckling' },
-  { value: 'wether', label: 'Wether' },
-  { value: 'kid', label: 'Kid' },
 ];
 
 const statusOptions = [
@@ -285,7 +275,9 @@ export default function AnimalDetailPage() {
     setEditData({
       name: animal?.name || '',
       breed: animal?.breed || '',
-      category: animal?.category || '',
+      // Normalize to the neutral category value so it matches an option in the
+      // (species-aware) category dropdown even for animals stored with goat words.
+      category: toCanonicalCategory(animal?.category) || '',
       status: animal?.status || 'active',
       date_of_birth: animal?.date_of_birth || '',
       tag_number: animal?.tag_number || '',
@@ -442,7 +434,7 @@ export default function AnimalDetailPage() {
               <Badge className={getStatusColor(animal.status)}>{animal.status}</Badge>
             </div>
             <p className="text-gray-500 mt-1">
-              {animal.breed} • {getCategoryDisplay(animal.category)}
+              {animal.breed} • {getCategoryDisplay(animal.category, animal.species)}
             </p>
             <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
               {animal.date_of_birth && (
@@ -885,7 +877,7 @@ export default function AnimalDetailPage() {
                         <td className="px-4 py-3">
                           <Badge variant="default">{record.session}</Badge>
                         </td>
-                        <td className="px-4 py-3 font-medium">{record.amount} {record.unit}</td>
+                        <td className="px-4 py-3 font-medium">{record.amount} {record.amount_unit}</td>
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {record.discarded ? `Discarded: ${record.discard_reason}` : '—'}
                         </td>
@@ -950,7 +942,7 @@ export default function AnimalDetailPage() {
                 {offspring.map((kid: any) => (
                   <Card key={kid.id} className="p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3">
-                      <span className="text-xl">{kid.sex === 'doe' ? '♀' : '♂'}</span>
+                      <span className="text-xl">{isFemale({ sex: kid.sex }) ? '♀' : '♂'}</span>
                       <div className="flex-1 min-w-0">
                         <AnimalLink 
                           animalId={kid.id} 
@@ -1073,7 +1065,7 @@ export default function AnimalDetailPage() {
             />
             <Select
               label="Category"
-              options={categoryOptions}
+              options={getCategoryOptions(animal?.species)}
               value={editData.category}
               onChange={(e) => setEditData({ ...editData, category: e.target.value })}
             />

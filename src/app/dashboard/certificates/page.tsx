@@ -661,7 +661,7 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Microchip #:</span>
-              <span class="info-value">${animal.microchip_number || 'N/A'}</span>
+              <span class="info-value">${animal.microchip_id || 'N/A'}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Breed:</span>
@@ -687,7 +687,7 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Horn Status:</span>
-              <span class="info-value">${animal.horn_status || 'N/A'}</span>
+              <span class="info-value">${animal.polled ? 'Polled' : animal.disbudded ? 'Disbudded' : 'Horned'}</span>
             </div>
           </div>
         </div>

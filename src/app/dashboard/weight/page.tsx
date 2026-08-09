@@ -15,6 +15,7 @@ import {
   AnimalLink,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { toCanonicalCategory } from '@/lib/animalVocab';
 import {
   Scale,
   Plus,
@@ -46,16 +47,16 @@ interface WeightRecord {
 
 // Ideal weight ranges by category (in lbs)
 const IDEAL_WEIGHTS: Record<string, { min: number; max: number; label: string }> = {
-  'buckling': { min: 20, max: 50, label: '0-6 months' },
-  'doeling': { min: 20, max: 50, label: '0-6 months' },
-  'kid': { min: 5, max: 30, label: '0-3 months' },
+  'young_male': { min: 20, max: 50, label: '0-6 months' },
+  'young_female': { min: 20, max: 50, label: '0-6 months' },
+  'young': { min: 5, max: 30, label: '0-3 months' },
   'yearling_doe': { min: 60, max: 100, label: '6-12 months' },
   'yearling_buck': { min: 70, max: 120, label: '6-12 months' },
-  'dry_doe': { min: 100, max: 180, label: 'Adult' },
-  'milking_doe': { min: 100, max: 180, label: 'Adult' },
-  'bred_doe': { min: 110, max: 200, label: 'Adult (pregnant)' },
-  'buck': { min: 150, max: 300, label: 'Adult' },
-  'wether': { min: 100, max: 200, label: 'Adult' },
+  'dry_female': { min: 100, max: 180, label: 'Adult' },
+  'milking_female': { min: 100, max: 180, label: 'Adult' },
+  'bred_female': { min: 110, max: 200, label: 'Adult (pregnant)' },
+  'male': { min: 150, max: 300, label: 'Adult' },
+  'castrated': { min: 100, max: 200, label: 'Adult' },
 };
 
 export default function WeightTrackingPage() {
@@ -221,7 +222,7 @@ export default function WeightTrackingPage() {
       }
 
       // Check ideal weight range
-      const idealRange = IDEAL_WEIGHTS[animal.category] || null;
+      const idealRange = IDEAL_WEIGHTS[toCanonicalCategory(animal.category)] || null;
       const isUnderweight = currentWeight && idealRange ? currentWeight < idealRange.min : false;
       const isOverweight = currentWeight && idealRange ? currentWeight > idealRange.max : false;
 

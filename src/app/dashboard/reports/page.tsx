@@ -13,6 +13,7 @@ import {
   AnimalLink,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { isFemale, isIntactMale } from '@/lib/animalVocab';
 import {
   BarChart3,
   TrendingUp,
@@ -122,10 +123,11 @@ export default function ReportsPage() {
     const avgDaily = uniqueDates > 0 ? totalMilk / uniqueDates : 0;
 
     const byDate = records.reduce((acc: any, r: any) => {
-      if (!acc[r.date]) acc[r.date] = { date: r.date, am: 0, pm: 0, total: 0 };
+      if (!acc[r.date]) acc[r.date] = { date: r.date, am: 0, pm: 0, once: 0, total: 0 };
       acc[r.date].total += r.amount || 0;
       if (r.session === 'AM') acc[r.date].am += r.amount || 0;
       if (r.session === 'PM') acc[r.date].pm += r.amount || 0;
+      if (r.session === 'once_daily') acc[r.date].once += r.amount || 0;
       return acc;
     }, {} as Record<string, any>);
 
@@ -275,9 +277,9 @@ export default function ReportsPage() {
       return acc;
     }, {} as Record<string, number>);
 
-    const does = animalsList.filter((a: any) => a.sex === 'doe' && a.status === 'active').length;
-    const bucks = animalsList.filter((a: any) => a.sex === 'buck' && a.status === 'active').length;
-    const wethers = animalsList.filter((a: any) => a.sex === 'wether' && a.status === 'active').length;
+    const does = animalsList.filter((a: any) => isFemale(a) && a.status === 'active').length;
+    const bucks = animalsList.filter((a: any) => isIntactMale(a) && a.status === 'active').length;
+    const wethers = animalsList.filter((a: any) => (a.sex === 'wether' || a.sex === 'castrated') && a.status === 'active').length;
 
     return {
       total,

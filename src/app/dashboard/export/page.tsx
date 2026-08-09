@@ -12,6 +12,7 @@ import {
   LoadingSpinner,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { isFemale, isIntactMale } from '@/lib/animalVocab';
 import {
   Download,
   FileText,
@@ -235,7 +236,7 @@ export default function ExportPage() {
         sex: a.sex,
         category: a.category,
         status: a.status,
-        date_of_birth: a.date_of_birth || '',
+        birth_date: a.date_of_birth || '',
         tag_number: a.tag_number || '',
         registration_number: a.registration_number || '',
         color_markings: a.color_markings || '',
@@ -244,8 +245,8 @@ export default function ExportPage() {
       exportToCSV(data, 'goatwise_animals', headers);
     } else {
       const activeAnimals = animalsList.filter((a: any) => a.status === 'active');
-      const does = activeAnimals.filter((a: any) => a.sex === 'doe').length;
-      const bucks = activeAnimals.filter((a: any) => a.sex === 'buck').length;
+      const does = activeAnimals.filter((a: any) => isFemale(a)).length;
+      const bucks = activeAnimals.filter((a: any) => isIntactMale(a)).length;
 
       let tableRows = animalsList.map((a: any) => `
         <tr>
@@ -452,14 +453,13 @@ export default function ExportPage() {
     const records = filterByDateRange((transactions as any[]) || [], 'date');
 
     if (format === 'csv') {
-      const headers = ['Date', 'Type', 'Category', 'Amount', 'Description', 'Vendor', 'Animal_Name', 'Tax_Deductible', 'Notes'];
+      const headers = ['Date', 'Type', 'Category', 'Amount', 'Description', 'Animal_Name', 'Tax_Deductible', 'Notes'];
       const data = records.map((r: any) => ({
         date: r.date,
         type: r.type,
         category: r.category,
         amount: r.amount,
         description: r.description || '',
-        vendor: r.vendor || '',
         animal_name: r.animal?.name || '',
         tax_deductible: r.tax_deductible ? 'Yes' : 'No',
         notes: r.notes || '',
@@ -511,8 +511,8 @@ export default function ExportPage() {
     const transactionsList = (transactions as any[]) || [];
 
     const activeAnimals = animalsList.filter((a: any) => a.status === 'active');
-    const does = activeAnimals.filter((a: any) => a.sex === 'doe');
-    const bucks = activeAnimals.filter((a: any) => a.sex === 'buck');
+    const does = activeAnimals.filter((a: any) => isFemale(a));
+    const bucks = activeAnimals.filter((a: any) => isIntactMale(a));
     
     // Categories
     const byCategory: Record<string, number> = {};

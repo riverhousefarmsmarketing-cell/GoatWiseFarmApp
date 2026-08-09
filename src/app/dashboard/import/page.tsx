@@ -96,7 +96,7 @@ const IMPORT_CONFIGS: Record<ImportType, {
     },
     selectOptions: {
       sex: ['doe', 'buck', 'wether'],
-      category: ['milking_doe', 'dry_doe', 'bred_doe', 'doeling', 'buckling', 'buck', 'wether', 'kid'],
+      category: ['milking_doe', 'dry_doe', 'bred_doe', 'doeling', 'buckling', 'buck', 'wether', 'kid', 'milking_female', 'dry_female', 'bred_female', 'young_female', 'male', 'young_male', 'castrated', 'young'],
       status: ['active', 'sold', 'deceased', 'culled'],
     },
   },

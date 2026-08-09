@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+import { categoryIs, isFemale } from '@/lib/animalVocab';
 import type { Animal, AnimalInsert, AnimalUpdate } from '@/types/database';
 
 // ==========================================
@@ -90,17 +91,18 @@ export function useAnimalStats() {
 
       const animals = data as Pick<Animal, 'status' | 'category' | 'sex'>[];
 
+      const activeAnimals = animals.filter((a) => a.status === 'active');
       return {
         total: animals.length,
-        active: animals.filter((a) => a.status === 'active').length,
-        milkingDoes: animals.filter((a) => a.category === 'milking_doe' && a.status === 'active').length,
-        dryDoes: animals.filter((a) => a.category === 'dry_doe' && a.status === 'active').length,
-        bredDoes: animals.filter((a) => a.category === 'bred_doe' && a.status === 'active').length,
-        bucks: animals.filter((a) => a.category === 'buck' && a.status === 'active').length,
-        bucklings: animals.filter((a) => a.category === 'buckling' && a.status === 'active').length,
-        doelings: animals.filter((a) => a.category === 'doeling' && a.status === 'active').length,
-        kids: animals.filter((a) => a.category === 'kid' && a.status === 'active').length,
-        does: animals.filter((a) => a.sex === 'doe' && a.status === 'active').length,
+        active: activeAnimals.length,
+        milkingDoes: activeAnimals.filter((a) => categoryIs(a, 'milking_female')).length,
+        dryDoes: activeAnimals.filter((a) => categoryIs(a, 'dry_female')).length,
+        bredDoes: activeAnimals.filter((a) => categoryIs(a, 'bred_female')).length,
+        bucks: activeAnimals.filter((a) => categoryIs(a, 'male')).length,
+        bucklings: activeAnimals.filter((a) => categoryIs(a, 'young_male')).length,
+        doelings: activeAnimals.filter((a) => categoryIs(a, 'young_female')).length,
+        kids: activeAnimals.filter((a) => categoryIs(a, 'young')).length,
+        does: activeAnimals.filter((a) => isFemale(a)).length,
       };
     },
   });

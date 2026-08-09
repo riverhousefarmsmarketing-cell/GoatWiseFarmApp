@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useAnimals, useAnimalStats, useCreateAnimal, useDeleteAnimal } from '@/hooks/useAnimals';
 import { Card, Button, Input, Select, Badge, Modal, EmptyState, LoadingSpinner } from '@/components/ui';
 import { formatDate, calculateAge, getStatusColor, getCategoryDisplay } from '@/lib/utils';
+import { categoryIs } from '@/lib/animalVocab';
 import { Plus, Search, Filter, Users, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
@@ -50,7 +51,7 @@ export default function HerdPage() {
     { value: 'young_female', label: speciesConfig.categories.youngFemale },
     { value: 'male', label: speciesConfig.categories.male },
     { value: 'young_male', label: speciesConfig.categories.youngMale },
-    { value: 'wether', label: speciesConfig.categories.castrated },
+    { value: 'castrated', label: speciesConfig.categories.castrated },
     { value: 'young', label: speciesConfig.categories.young },
   ];
 
@@ -75,7 +76,7 @@ export default function HerdPage() {
   const deleteAnimal = useDeleteAnimal();
 
   const kidsCount = animals?.filter(a =>
-    a.category === 'doeling' || a.category === 'buckling' || a.category === 'young'
+    categoryIs(a, 'young_female') || categoryIs(a, 'young_male') || categoryIs(a, 'young')
   ).length || 0;
 
   const handleSpeciesChange = (val: 'all' | Species) => {
@@ -221,7 +222,7 @@ export default function HerdPage() {
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-500">
-                    {animal.breed || 'Unknown breed'} • {getCategoryDisplay(animal.category)}
+                    {animal.breed || 'Unknown breed'} • {getCategoryDisplay(animal.category, animal.species)}
                    {(animal as any).date_of_birth && ` • ${calculateAge((animal as any).date_of_birth)}`}
                   </p>
                 </div>
