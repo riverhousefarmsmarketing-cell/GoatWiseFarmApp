@@ -198,6 +198,37 @@ export function useCreatePaddockMove() {
   });
 }
 
+export function useUpdatePaddockMove() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<PaddockMove> }) => {
+      const { data, error } = await mutationFrom('paddock_moves')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as PaddockMove;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paddock_moves'] });
+    },
+  });
+}
+
+export function useDeletePaddockMove() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await mutationFrom('paddock_moves').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paddock_moves'] });
+    },
+  });
+}
+
 export function useRecordMoveOut() {
   const queryClient = useQueryClient();
   return useMutation({

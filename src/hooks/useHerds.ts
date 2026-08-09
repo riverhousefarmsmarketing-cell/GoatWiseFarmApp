@@ -335,6 +335,26 @@ export function useCreateFeedType() {
   });
 }
 
+export function useUpdateFeedType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<FeedType> & { id: string }) => {
+      const { data, error } = await mutationFrom('feed_types')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-types'] });
+    },
+  });
+}
+
 export function useDeleteFeedType() {
   const queryClient = useQueryClient();
 

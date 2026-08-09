@@ -11,6 +11,8 @@ import {
   useDeletePaddock,
   useCreatePaddockMove,
   useRecordMoveOut,
+  useUpdatePaddockMove,
+  useDeletePaddockMove,
   getParasiteRisk,
   getSafeReturnDate,
   getDaysResting,
@@ -95,6 +97,8 @@ export default function GrazingPage() {
   const deletePaddock = useDeletePaddock();
   const createMove = useCreatePaddockMove();
   const recordMoveOut = useRecordMoveOut();
+  const updatePaddockMove = useUpdatePaddockMove();
+  const deletePaddockMove = useDeletePaddockMove();
 
   // Modal state
   const [showAddPaddock, setShowAddPaddock] = useState(false);
@@ -102,6 +106,7 @@ export default function GrazingPage() {
   const [showAssign, setShowAssign] = useState(false);
   const [showMoveOut, setShowMoveOut] = useState(false);
   const [selectedMove, setSelectedMove] = useState<PaddockMove | null>(null);
+  const [editingMove, setEditingMove] = useState<PaddockMove | null>(null);
 
   const [newPaddock, setNewPaddock] = useState({ name: '', acres: '', notes: '' });
   const [assignForm, setAssignForm] = useState({
@@ -113,6 +118,11 @@ export default function GrazingPage() {
   const [moveOutForm, setMoveOutForm] = useState({
     moved_out_at: new Date().toISOString().split('T')[0],
     next_paddock_id: '',
+    notes: '',
+  });
+  const [editMoveForm, setEditMoveForm] = useState({
+    moved_in_at: '',
+    moved_out_at: '',
     notes: '',
   });
 
@@ -209,6 +219,36 @@ export default function GrazingPage() {
   const openMoveOut = (move: PaddockMove) => {
     setSelectedMove(move);
     setShowMoveOut(true);
+  };
+
+  const openEditMove = (move: PaddockMove) => {
+    setEditingMove(move);
+    setEditMoveForm({
+      moved_in_at: move.moved_in_at.slice(0, 10),
+      moved_out_at: move.moved_out_at ? move.moved_out_at.slice(0, 10) : '',
+      notes: move.notes || '',
+    });
+  };
+
+  const closeEditMove = () => {
+    setEditingMove(null);
+    setEditMoveForm({ moved_in_at: '', moved_out_at: '', notes: '' });
+  };
+
+  const handleSaveEditMove = async () => {
+    if (!editingMove || !editMoveForm.moved_in_at) return;
+    const updates = {
+      moved_in_at: editMoveForm.moved_in_at,
+      moved_out_at: editMoveForm.moved_out_at || null,
+      notes: editMoveForm.notes || null,
+    };
+    try {
+      await updatePaddockMove.mutateAsync({ id: editingMove.id, updates });
+    } catch (e: any) {
+      alert(`Could not save the move: ${e?.message || 'please try again.'}`);
+      return;
+    }
+    closeEditMove();
   };
 
   // Count at-risk groups for header alert
@@ -452,11 +492,29 @@ export default function GrazingPage() {
                         <p className="text-xs text-gray-400 mt-0.5">{move.notes}</p>
                       )}
                     </div>
-                    {!move.moved_out_at && (
-                      <Button size="sm" variant="secondary" onClick={() => openMoveOut(move)}>
-                        Move Out
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {!move.moved_out_at && (
+                        <Button size="sm" variant="secondary" onClick={() => openMoveOut(move)}>
+                          Move Out
+                        </Button>
+                      )}
+                      <button
+                        onClick={() => openEditMove(move)}
+                        className="p-1.5 text-gray-400 hover:text-rhf-forest-mid rounded hover:bg-gray-100"
+                        aria-label="Edit move record"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this move record?')) deletePaddockMove.mutate(move.id);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100"
+                        aria-label="Delete move record"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -611,6 +669,57 @@ export default function GrazingPage() {
                 rows={2}
                 value={moveOutForm.notes}
                 onChange={(e) => setMoveOutForm({ ...moveOutForm, notes: e.target.value })}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* EDIT MOVE MODAL */}
+      <Modal
+        open={!!editingMove}
+        onClose={closeEditMove}
+        title="Edit Move"
+        footer={
+          <>
+            <Button variant="ghost" onClick={closeEditMove}>Cancel</Button>
+            <Button
+              onClick={handleSaveEditMove}
+              loading={updatePaddockMove.isPending}
+              disabled={!editMoveForm.moved_in_at}
+            >
+              Save Changes
+            </Button>
+          </>
+        }
+      >
+        {editingMove && (
+          <div className="space-y-4">
+            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+              <p className="text-gray-600">
+                <span className="font-medium text-gray-900">{editingMove.groups?.name || 'Unknown group'}</span>{' '}
+                in <span className="font-medium text-gray-900">{editingMove.paddocks?.name || 'Unknown paddock'}</span>
+              </p>
+            </div>
+            <Input
+              label="Move-in Date"
+              type="date"
+              value={editMoveForm.moved_in_at}
+              onChange={(e) => setEditMoveForm({ ...editMoveForm, moved_in_at: e.target.value })}
+            />
+            <Input
+              label="Move-out Date (leave blank if still grazing)"
+              type="date"
+              value={editMoveForm.moved_out_at}
+              onChange={(e) => setEditMoveForm({ ...editMoveForm, moved_out_at: e.target.value })}
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+              <textarea
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                rows={2}
+                value={editMoveForm.notes}
+                onChange={(e) => setEditMoveForm({ ...editMoveForm, notes: e.target.value })}
               />
             </div>
           </div>
