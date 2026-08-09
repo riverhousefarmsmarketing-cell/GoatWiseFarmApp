@@ -472,23 +472,29 @@ export default function HealthPage() {
   const handleAddInspection = async () => {
     if (!newInspection.animal_id) return;
 
-    await createInspection.mutateAsync({
-      animal_id: newInspection.animal_id,
-      date: newInspection.date,
-      famacha: newInspection.famacha ? parseInt(newInspection.famacha) : null,
-      body_condition_score: newInspection.body_condition_score ? parseFloat(newInspection.body_condition_score) : null,
-      weight: newInspection.weight ? parseFloat(newInspection.weight) : null,
-      weight_unit: 'lbs',
-      temperature: newInspection.temperature ? parseFloat(newInspection.temperature) : null,
-      temperature_unit: 'F',
-      respiration: newInspection.respiration ? parseInt(newInspection.respiration) : null,
-      heart_rate: newInspection.heart_rate ? parseInt(newInspection.heart_rate) : null,
-      appetite: newInspection.appetite || null,
-      attitude: newInspection.attitude || null,
-      action_required: newInspection.action_required,
-      action_taken: newInspection.action_taken || null,
-      notes: newInspection.notes || null,
-    });
+    try {
+      await createInspection.mutateAsync({
+        animal_id: newInspection.animal_id,
+        date: newInspection.date,
+        famacha: newInspection.famacha ? parseInt(newInspection.famacha) : null,
+        body_condition_score: newInspection.body_condition_score ? parseFloat(newInspection.body_condition_score) : null,
+        weight: newInspection.weight ? parseFloat(newInspection.weight) : null,
+        weight_unit: 'lbs',
+        temperature: newInspection.temperature ? parseFloat(newInspection.temperature) : null,
+        temperature_unit: 'F',
+        respiration: newInspection.respiration ? parseInt(newInspection.respiration) : null,
+        heart_rate: newInspection.heart_rate ? parseInt(newInspection.heart_rate) : null,
+        appetite: newInspection.appetite || null,
+        attitude: newInspection.attitude || null,
+        action_required: newInspection.action_required,
+        action_taken: newInspection.action_taken || null,
+        notes: newInspection.notes || null,
+      });
+    } catch (error) {
+      console.error('Error saving inspection:', error);
+      alert('Could not save the inspection. Please try again.');
+      return;
+    }
 
     setShowInspectionModal(false);
     resetInspectionForm();

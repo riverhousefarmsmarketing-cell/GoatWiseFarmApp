@@ -104,16 +104,22 @@ export default function MilkPage() {
   const handleRecordMilk = async () => {
     if (!newRecord.animal_id || !newRecord.amount) return;
     
-    await createRecord.mutateAsync({
-      animal_id: newRecord.animal_id,
-      date: newRecord.date,
-      session: newRecord.session,
-      amount: parseFloat(newRecord.amount),
-      amount_unit: 'lbs',
-      discarded: newRecord.discarded,
-      discard_reason: newRecord.discarded ? newRecord.discard_reason : null,
-    });
-    
+    try {
+      await createRecord.mutateAsync({
+        animal_id: newRecord.animal_id,
+        date: newRecord.date,
+        session: newRecord.session,
+        amount: parseFloat(newRecord.amount),
+        amount_unit: 'lbs',
+        discarded: newRecord.discarded,
+        discard_reason: newRecord.discarded ? newRecord.discard_reason : null,
+      });
+    } catch (error) {
+      console.error('Error recording milk:', error);
+      alert('Could not record the milk entry. Please try again.');
+      return;
+    }
+
     setShowRecordModal(false);
     setNewRecord({
       animal_id: '',
