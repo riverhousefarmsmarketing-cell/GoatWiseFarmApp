@@ -30,7 +30,7 @@ export default function HerdPage() {
     breed: '',
     sex: 'female' as const,
     category: 'milking_female' as const,
-    birth_date: '',
+    date_of_birth: '',
   });
 
   const activeSpecies: Species = speciesFilter === 'all' ? 'goat' : speciesFilter;
@@ -91,12 +91,12 @@ export default function HerdPage() {
       breed: newAnimal.breed || null,
       sex: newAnimal.sex,
       category: newAnimal.category,
-      date_of_birth: newAnimal.birth_date || null,
+      date_of_birth: newAnimal.date_of_birth || null,
       status: 'active',
       species: speciesFilter === 'all' ? 'goat' : speciesFilter,
     });
     setShowAddModal(false);
-    setNewAnimal({ name: '', breed: '', sex: 'female', category: 'milking_female', birth_date: '' });
+    setNewAnimal({ name: '', breed: '', sex: 'female', category: 'milking_female', date_of_birth: '' });
   };
 
   return (
@@ -287,8 +287,8 @@ export default function HerdPage() {
           <Input
             label="Birth Date"
             type="date"
-            value={newAnimal.birth_date}
-            onChange={(e) => setNewAnimal({ ...newAnimal, birth_date: e.target.value })}
+            value={newAnimal.date_of_birth}
+            onChange={(e) => setNewAnimal({ ...newAnimal, date_of_birth: e.target.value })}
           />
         </div>
       </Modal>

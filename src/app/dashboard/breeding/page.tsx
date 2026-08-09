@@ -73,6 +73,7 @@ export default function BreedingPage() {
   const [showBreedingModal, setShowBreedingModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showKiddingModal, setShowKiddingModal] = useState(false);
+  const [kidWarnings, setKidWarnings] = useState<string[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<BreedingRecord | null>(null);
   const [editingRecord, setEditingRecord] = useState<BreedingRecord | null>(null);
 
@@ -203,11 +204,16 @@ export default function BreedingPage() {
     sireId: string | null,
     birthDate: string,
     damBreed?: string
-  ): Promise<number> => {
+  ): Promise<{ createdCount: number; failures: string[] }> => {
     // Filter kids that should create animal records (alive, with or without name)
     const kidsToCreate = kids.filter(k => k.status === 'alive');
     let createdCount = 0;
-    
+    // Collected so the caller can tell the user. These failures used to go to
+    // console.error only, which is how a hard schema error (date_of_birth) went
+    // unnoticed for months: every kid silently failed while the UI reported the
+    // kidding as saved.
+    const failures: string[] = [];
+
     for (let i = 0; i < kidsToCreate.length; i++) {
       const kid = kidsToCreate[i];
       // Generate name if not provided
@@ -227,7 +233,7 @@ export default function BreedingPage() {
           sex: kid.sex,
           category: kid.sex === 'doe' ? 'doeling' : 'buckling',
           breed: damBreed || null,
-          birth_date: birthDate,
+          date_of_birth: birthDate,
           dam_id: damId,
           sire_id: sireId,
           status: 'active',
@@ -237,27 +243,34 @@ export default function BreedingPage() {
         
         if (error) {
           console.error('Error creating kid animal:', error);
+          failures.push(`${kidName}: ${error.message}`);
         } else {
           createdCount++;
-          
+
           // If birth weight provided, create a weight record
           if (kid.birth_weight && data?.id) {
-            await (supabase.from('weight_records') as any).insert({
+            // Column is weight_unit, not unit.
+            const { error: weightError } = await (supabase.from('weight_records') as any).insert({
               user_id: user!.id,
               animal_id: data.id,
               weight: parseFloat(kid.birth_weight),
-              unit: 'lbs',
+              weight_unit: 'lbs',
               date: birthDate,
               notes: 'Birth weight',
             });
+            if (weightError) {
+              console.error('Error creating birth weight record:', weightError);
+              failures.push(`${kidName} birth weight: ${weightError.message}`);
+            }
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Exception creating kid animal:', err);
+        failures.push(`${kidName}: ${err?.message ?? 'unexpected error'}`);
       }
     }
-    
-    return createdCount;
+
+    return { createdCount, failures };
   };
 
   const resetForms = () => {
@@ -378,13 +391,14 @@ export default function BreedingPage() {
     const totalKids = kiddingForm.kids.length;
 
     // Create animal records for live kids
-    const createdCount = await createKidAnimals(
+    const { failures } = await createKidAnimals(
       kiddingForm.kids,
       selectedRecord.doe_id,
       selectedRecord.buck_id,
       kiddingForm.kidding_date,
       selectedRecord.doe?.breed
     );
+    setKidWarnings(failures);
 
     // Build comprehensive kidding notes
     const laborNotes = [
@@ -448,6 +462,33 @@ export default function BreedingPage() {
 
   return (
     <div className="space-y-6">
+      {/* Kid-creation failures. The kidding record itself saves via a separate
+          mutation that closes the modal, so a failure here has to surface at
+          page level or it is invisible -- which is exactly what happened. */}
+      {kidWarnings.length > 0 && (
+        <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 print:hidden">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-amber-900">
+                The kidding was saved, but {kidWarnings.length} kid record
+                {kidWarnings.length === 1 ? '' : 's'} could not be created:
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-amber-800 list-disc list-inside">
+                {kidWarnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </div>
+            <button
+              onClick={() => setKidWarnings([])}
+              className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>

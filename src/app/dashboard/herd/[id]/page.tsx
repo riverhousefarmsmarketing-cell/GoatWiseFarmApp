@@ -209,9 +209,9 @@ export default function AnimalDetailPage() {
     queryFn: async () => {
       const { data, error } = await (supabase
         .from('animals') as any)
-        .select('id, name, sex, birth_date, status, category')
+        .select('id, name, sex, date_of_birth, status, category')
         .or(`sire_id.eq.${animalId},dam_id.eq.${animalId}`)
-        .order('birth_date', { ascending: false });
+        .order('date_of_birth', { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -287,7 +287,7 @@ export default function AnimalDetailPage() {
       breed: animal?.breed || '',
       category: animal?.category || '',
       status: animal?.status || 'active',
-      birth_date: animal?.birth_date || '',
+      date_of_birth: animal?.date_of_birth || '',
       tag_number: animal?.tag_number || '',
       registration_number: animal?.registration_number || '',
       microchip_id: animal?.microchip_id || '',
@@ -445,10 +445,10 @@ export default function AnimalDetailPage() {
               {animal.breed} • {getCategoryDisplay(animal.category)}
             </p>
             <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-              {animal.birth_date && (
+              {animal.date_of_birth && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {calculateAge(animal.birth_date)} old
+                  {calculateAge(animal.date_of_birth)} old
                 </span>
               )}
               {animal.tag_number && (
@@ -628,7 +628,7 @@ export default function AnimalDetailPage() {
               <div className="flex justify-between">
                 <dt className="text-gray-500">Birth Date</dt>
                 <dd className="font-medium">
-                  {animal.birth_date ? formatDate(animal.birth_date) : '—'}
+                  {animal.date_of_birth ? formatDate(animal.date_of_birth) : '—'}
                 </dd>
               </div>
               <div className="flex justify-between">
@@ -958,7 +958,7 @@ export default function AnimalDetailPage() {
                           variant="bold"
                         />
                         <p className="text-sm text-gray-500">
-                          {kid.birth_date ? calculateAge(kid.birth_date) : '—'}
+                          {kid.date_of_birth ? calculateAge(kid.date_of_birth) : '—'}
                         </p>
                       </div>
                       <Badge className={getStatusColor(kid.status)}>{kid.status}</Badge>
@@ -1086,8 +1086,8 @@ export default function AnimalDetailPage() {
             <Input
               label="Birth Date"
               type="date"
-              value={editData.birth_date}
-              onChange={(e) => setEditData({ ...editData, birth_date: e.target.value })}
+              value={editData.date_of_birth}
+              onChange={(e) => setEditData({ ...editData, date_of_birth: e.target.value })}
             />
             <Input
               label="Tag Number"

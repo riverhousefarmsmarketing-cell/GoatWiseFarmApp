@@ -132,7 +132,7 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
     queryKey: ['guardians_search'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('guardian_animals')
+        .from('guardians')
         .select('id, name, type, breed, status')
         .eq('user_id', user!.id);
       return data || [];

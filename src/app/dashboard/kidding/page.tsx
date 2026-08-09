@@ -220,7 +220,7 @@ export default function KiddingPage() {
             sex: data.kidForm.sex,
             category: data.kidForm.sex === 'doe' ? 'doeling' : 'buckling',
             breed: dam?.breed || null,
-            birth_date: selectedBreeding?.kidding_date || new Date().toISOString().split('T')[0],
+            date_of_birth: selectedBreeding?.kidding_date || new Date().toISOString().split('T')[0],
             dam_id: data.dam_id,
             sire_id: data.sire_id,
             status: data.kidForm.retained ? 'active' : 'sold',

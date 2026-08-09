@@ -235,7 +235,7 @@ export default function ExportPage() {
         sex: a.sex,
         category: a.category,
         status: a.status,
-        birth_date: a.birth_date || '',
+        date_of_birth: a.date_of_birth || '',
         tag_number: a.tag_number || '',
         registration_number: a.registration_number || '',
         color_markings: a.color_markings || '',
@@ -254,7 +254,7 @@ export default function ExportPage() {
           <td>${a.sex}</td>
           <td>${a.category.replace('_', ' ')}</td>
           <td>${a.status}</td>
-          <td>${a.birth_date ? formatDate(a.birth_date) : '-'}</td>
+          <td>${a.date_of_birth ? formatDate(a.date_of_birth) : '-'}</td>
           <td>${a.tag_number || '-'}</td>
         </tr>
       `).join('');

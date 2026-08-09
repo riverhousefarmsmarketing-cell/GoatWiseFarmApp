@@ -184,12 +184,14 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  // Fetch guardian incidents
+  // Fetch guardian incidents. The table is predation_events -- there has never
+  // been a guardian_incidents table, so this query failed on every dashboard
+  // load and the Decision Layer always saw zero incidents.
   const { data: guardianIncidents } = useQuery({
-    queryKey: ['guardian_incidents'],
+    queryKey: ['predation_events'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('guardian_incidents')
+        .from('predation_events')
         .select('*')
         .eq('user_id', user!.id)
         .order('date', { ascending: false });

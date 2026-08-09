@@ -419,11 +419,11 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Date of Birth:</span>
-              <span class="info-value">${animal.birth_date ? formatDate(animal.birth_date) : 'Unknown'}</span>
+              <span class="info-value">${animal.date_of_birth ? formatDate(animal.date_of_birth) : 'Unknown'}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Age:</span>
-              <span class="info-value">${calculateAge(animal.birth_date)}</span>
+              <span class="info-value">${calculateAge(animal.date_of_birth)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Color/Markings:</span>
@@ -551,11 +551,11 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Date of Birth:</span>
-              <span class="info-value">${animal.birth_date ? formatDate(animal.birth_date) : 'Unknown'}</span>
+              <span class="info-value">${animal.date_of_birth ? formatDate(animal.date_of_birth) : 'Unknown'}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Age:</span>
-              <span class="info-value">${calculateAge(animal.birth_date)}</span>
+              <span class="info-value">${calculateAge(animal.date_of_birth)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Color/Markings:</span>
@@ -679,7 +679,7 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Date of Birth:</span>
-              <span class="info-value">${animal.birth_date ? formatDate(animal.birth_date) : 'Unknown'}</span>
+              <span class="info-value">${animal.date_of_birth ? formatDate(animal.date_of_birth) : 'Unknown'}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Color/Pattern:</span>
@@ -789,7 +789,7 @@ export default function CertificatesPage() {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Date of Birth:</span>
-              <span class="info-value">${animal.birth_date ? formatDate(animal.birth_date) : 'Unknown'}</span>
+              <span class="info-value">${animal.date_of_birth ? formatDate(animal.date_of_birth) : 'Unknown'}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Sex:</span>
@@ -917,7 +917,7 @@ export default function CertificatesPage() {
                   <div><span className="text-gray-500">Name:</span> <strong>{animal.name}</strong></div>
                   <div><span className="text-gray-500">Breed:</span> {animal.breed || 'N/A'}</div>
                   <div><span className="text-gray-500">Sex:</span> {animal.sex}</div>
-                  <div><span className="text-gray-500">Age:</span> {calculateAge(animal.birth_date)}</div>
+                  <div><span className="text-gray-500">Age:</span> {calculateAge(animal.date_of_birth)}</div>
                   <div><span className="text-gray-500">Tag:</span> {animal.tag_number || 'N/A'}</div>
                   <div><span className="text-gray-500">Reg #:</span> {animal.registration_number || 'N/A'}</div>
                   {stats.currentWeight && (
