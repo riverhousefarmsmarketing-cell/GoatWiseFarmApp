@@ -35,23 +35,57 @@ const SAMPLE_HERDS = [
   { name: 'Kids & Youngstock', description: 'Current year kids and yearlings' },
 ];
 
+// NOTE: the column is date_of_birth, not birth_date. These entries still said
+// birth_date after the rename, so every insert here failed with 42703 and the
+// loader never got past step 2. (public.guardians really does use birth_date --
+// the two tables genuinely differ, so don't "fix" SAMPLE_GUARDIANS to match.)
 const SAMPLE_ANIMALS = [
-  { name: 'Maple', breed: 'Nigerian Dwarf', sex: 'doe', category: 'milking_doe', birth_date: '2021-03-15', tag_number: 'ND-001', registration_number: 'ADGA N001234', status: 'active' },
-  { name: 'Willow', breed: 'LaMancha', sex: 'doe', category: 'milking_doe', birth_date: '2020-04-22', tag_number: 'LM-001', registration_number: 'ADGA L002345', status: 'active' },
-  { name: 'Clover', breed: 'Mini-LaMancha', sex: 'doe', category: 'milking_doe', birth_date: '2022-02-10', tag_number: 'MLM-001', status: 'active' },
-  { name: 'Daisy', breed: 'Nigerian Dwarf', sex: 'doe', category: 'milking_doe', birth_date: '2021-05-08', tag_number: 'ND-002', registration_number: 'ADGA N001567', status: 'active' },
-  { name: 'Rosemary', breed: 'LaMancha', sex: 'doe', category: 'milking_doe', birth_date: '2019-03-20', tag_number: 'LM-002', status: 'active' },
-  { name: 'Sage', breed: 'Nigerian Dwarf', sex: 'doe', category: 'bred_doe', birth_date: '2022-04-12', tag_number: 'ND-003', status: 'active' },
-  { name: 'Ivy', breed: 'Mini-LaMancha', sex: 'doe', category: 'bred_doe', birth_date: '2021-06-18', tag_number: 'MLM-002', status: 'active' },
-  { name: 'Hazel', breed: 'LaMancha', sex: 'doe', category: 'dry_doe', birth_date: '2018-04-05', tag_number: 'LM-003', status: 'active' },
-  { name: 'Poppy', breed: 'Nigerian Dwarf', sex: 'doe', category: 'doeling', birth_date: '2024-03-10', tag_number: 'ND-004', status: 'active' },
-  { name: 'Violet', breed: 'Mini-LaMancha', sex: 'doe', category: 'doeling', birth_date: '2024-04-02', tag_number: 'MLM-003', status: 'active' },
-  { name: 'Fern', breed: 'LaMancha', sex: 'doe', category: 'doeling', birth_date: '2024-02-28', tag_number: 'LM-004', status: 'active' },
-  { name: 'Thunder', breed: 'Nigerian Dwarf', sex: 'buck', category: 'buck', birth_date: '2020-09-15', tag_number: 'ND-B01', registration_number: 'ADGA N003456', status: 'active' },
-  { name: 'Apollo', breed: 'LaMancha', sex: 'buck', category: 'buck', birth_date: '2021-08-22', tag_number: 'LM-B01', registration_number: 'ADGA L004567', status: 'active' },
-  { name: 'Comet', breed: 'Nigerian Dwarf', sex: 'buck', category: 'buckling', birth_date: '2024-03-12', tag_number: 'ND-B02', status: 'active' },
-  { name: 'Biscuit', breed: 'Nigerian Dwarf', sex: 'buck', category: 'wether', birth_date: '2023-04-05', tag_number: 'ND-W01', status: 'active' },
-  { name: 'Juniper', breed: 'Nigerian Dwarf', sex: 'doe', category: 'milking_doe', birth_date: '2019-05-10', tag_number: 'ND-005', status: 'sold', notes: 'Sold to Happy Acres Farm' },
+  { name: 'Maple', breed: 'Nigerian Dwarf', sex: 'doe', category: 'milking_doe', date_of_birth: '2021-03-15', tag_number: 'ND-001', registration_number: 'ADGA N001234', status: 'active' },
+  { name: 'Willow', breed: 'LaMancha', sex: 'doe', category: 'milking_doe', date_of_birth: '2020-04-22', tag_number: 'LM-001', registration_number: 'ADGA L002345', status: 'active' },
+  { name: 'Clover', breed: 'Mini-LaMancha', sex: 'doe', category: 'milking_doe', date_of_birth: '2022-02-10', tag_number: 'MLM-001', status: 'active' },
+  { name: 'Daisy', breed: 'Nigerian Dwarf', sex: 'doe', category: 'milking_doe', date_of_birth: '2021-05-08', tag_number: 'ND-002', registration_number: 'ADGA N001567', status: 'active' },
+  { name: 'Rosemary', breed: 'LaMancha', sex: 'doe', category: 'milking_doe', date_of_birth: '2019-03-20', tag_number: 'LM-002', status: 'active' },
+  { name: 'Sage', breed: 'Nigerian Dwarf', sex: 'doe', category: 'bred_doe', date_of_birth: '2022-04-12', tag_number: 'ND-003', status: 'active' },
+  { name: 'Ivy', breed: 'Mini-LaMancha', sex: 'doe', category: 'bred_doe', date_of_birth: '2021-06-18', tag_number: 'MLM-002', status: 'active' },
+  { name: 'Hazel', breed: 'LaMancha', sex: 'doe', category: 'dry_doe', date_of_birth: '2018-04-05', tag_number: 'LM-003', status: 'active' },
+  { name: 'Poppy', breed: 'Nigerian Dwarf', sex: 'doe', category: 'doeling', date_of_birth: '2024-03-10', tag_number: 'ND-004', status: 'active' },
+  { name: 'Violet', breed: 'Mini-LaMancha', sex: 'doe', category: 'doeling', date_of_birth: '2024-04-02', tag_number: 'MLM-003', status: 'active' },
+  { name: 'Fern', breed: 'LaMancha', sex: 'doe', category: 'doeling', date_of_birth: '2024-02-28', tag_number: 'LM-004', status: 'active' },
+  { name: 'Thunder', breed: 'Nigerian Dwarf', sex: 'buck', category: 'buck', date_of_birth: '2020-09-15', tag_number: 'ND-B01', registration_number: 'ADGA N003456', status: 'active' },
+  { name: 'Apollo', breed: 'LaMancha', sex: 'buck', category: 'buck', date_of_birth: '2021-08-22', tag_number: 'LM-B01', registration_number: 'ADGA L004567', status: 'active' },
+  { name: 'Comet', breed: 'Nigerian Dwarf', sex: 'buck', category: 'buckling', date_of_birth: '2024-03-12', tag_number: 'ND-B02', status: 'active' },
+  { name: 'Biscuit', breed: 'Nigerian Dwarf', sex: 'buck', category: 'wether', date_of_birth: '2023-04-05', tag_number: 'ND-W01', status: 'active' },
+  { name: 'Juniper', breed: 'Nigerian Dwarf', sex: 'doe', category: 'milking_doe', date_of_birth: '2019-05-10', tag_number: 'ND-005', status: 'sold', notes: 'Sold to Happy Acres Farm' },
+];
+
+// Every table the loader writes to, ordered children-before-parents so a
+// straight pass of deletes never trips a foreign key. Shared by the rollback
+// and by Clear All Data so the two can't drift apart.
+const SAMPLE_DATA_TABLES = [
+  'feed_inventory',
+  'feed_usage',
+  'feed_schedules',
+  'feed_types',
+  'guardian_health_records',
+  'guardian_vaccinations',
+  'predation_events',
+  'kidding_records',
+  'breeding_records',
+  'breeding_plans',
+  'milk_records',
+  'weight_records',
+  'inspections',
+  'health_records',
+  'animal_groups',
+  'groups',
+  'guardians',
+  'paddock_moves',
+  'paddocks',
+  'transactions',
+  'herd_transfers',
+  'animals',
+  'herds',
+  'photos',
 ];
 
 const SAMPLE_GROUPS = [
@@ -87,15 +121,58 @@ function SampleDataSection() {
     setProgress(prev => [...prev, message]);
   };
 
+  /** Removes every row this user owns across the sample tables. */
+  const wipeUserData = async (announce: boolean) => {
+    for (const table of SAMPLE_DATA_TABLES) {
+      if (announce) addProgress(`Deleting ${table}...`);
+      const { error: delError } = await (supabase.from(table) as any)
+        .delete()
+        .eq('user_id', user!.id);
+      // Surface failures instead of swallowing them -- a table that silently
+      // refuses to clear is how duplicates creep back in.
+      if (delError && announce) {
+        addProgress(`   ⚠ ${table}: ${delError.message}`);
+      }
+    }
+  };
+
   const loadSampleData = async () => {
     if (!user) return;
-    
+
     setIsLoading(true);
     setProgress([]);
     setError(null);
     setIsComplete(false);
 
+    // Tracks whether anything was written, so the pre-flight rejection below
+    // doesn't trigger a pointless wipe.
+    let wroteData = false;
+
     try {
+      // Refuse to run on an account that already holds data. Without this the
+      // loader happily ran a second time and stacked another full set of herds
+      // on top of the first, which is exactly what happened in beta.
+      addProgress('Checking for existing data...');
+      const [{ count: animalCount }, { count: herdCount }] = await Promise.all([
+        supabase
+          .from('animals')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id),
+        supabase
+          .from('herds')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id),
+      ]);
+
+      if ((animalCount ?? 0) > 0 || (herdCount ?? 0) > 0) {
+        throw new Error(
+          `This account already has ${animalCount ?? 0} animal(s) and ` +
+            `${herdCount ?? 0} herd(s). Sample data can only be loaded into an ` +
+            `empty account -- use "Clear All Data" first if you want to start over. ` +
+            `Nothing has been changed.`
+        );
+      }
+
       const animalIds: Record<string, string> = {};
       const buckIds: Record<string, string> = {};
       const milkingDoeIds: Record<string, string> = {};
@@ -103,6 +180,9 @@ function SampleDataSection() {
       const feedTypeIds: Record<string, string> = {};
       const herdIds: Record<string, string> = {};
       const groupIds: Record<string, string> = {};
+
+      // Past this point rows exist, so any failure has to be rolled back.
+      wroteData = true;
 
       // 1. Create Herds
       addProgress('Creating herds...');
@@ -501,7 +581,29 @@ function SampleDataSection() {
 
     } catch (err: any) {
       console.error('Error loading sample data:', err);
+
+      if (wroteData) {
+        // The loader is not transactional, so a failure partway through used to
+        // leave whatever it had already created sitting in the account -- and a
+        // retry then stacked a second copy on top. Undo this run instead.
+        // Safe to wipe wholesale: the pre-flight check proved the account was
+        // empty before we started.
+        addProgress('');
+        addProgress('Load failed — rolling back partial data...');
+        try {
+          await wipeUserData(false);
+          addProgress('✓ Rolled back. The account is empty again, safe to retry.');
+        } catch (rollbackErr: any) {
+          console.error('Rollback failed:', rollbackErr);
+          addProgress(
+            `⚠ Rollback failed: ${rollbackErr?.message ?? 'unknown error'}. ` +
+              `Use "Clear All Data" before retrying.`
+          );
+        }
+      }
+
       setError(err.message || 'An error occurred while loading sample data');
+      queryClient.invalidateQueries();
     } finally {
       setIsLoading(false);
     }
@@ -515,32 +617,12 @@ function SampleDataSection() {
     setError(null);
 
     try {
-      const tables = [
-        'feed_inventory',
-        'feed_types',
-        'feed_logs',
-        'guardian_health_records',
-        'guardian_vaccinations',
-        'predation_events',
-        'kidding_records',
-        'breeding_records',
-        'milk_records',
-        'inspections',
-        'health_records',
-        'animal_groups',
-        'groups',
-        'guardians',
-        'animals',
-        'herds',
-        'photos',
-      ];
-
       addProgress('Clearing all data...');
-      
-      for (const table of tables) {
-        addProgress(`Deleting ${table}...`);
-        await (supabase.from(table) as any).delete().eq('user_id', user.id);
-      }
+
+      // Was a separate hand-maintained list that named feed_logs (no such
+      // table) and omitted weight_records, transactions, paddocks and others,
+      // so "Clear All Data" quietly left rows behind.
+      await wipeUserData(true);
 
       addProgress('');
       addProgress('✓ All data cleared successfully!');
