@@ -66,55 +66,6 @@ function StepCard({ number, title, description }: { number: number; title: strin
 }
 
 // ─── PRICING CARD ────────────────────────────────────────────
-function PricingCard({
-  name, price, period, description, features, highlight, cta
-}: {
-  name: string; price: string; period?: string; description: string;
-  features: string[]; highlight?: boolean; cta: string;
-}) {
-  return (
-    <div className={`relative rounded-2xl p-6 md:p-8 flex flex-col ${
-      highlight
-        ? 'bg-[#105040] text-white shadow-xl shadow-[#B8DCC8]/40 scale-[1.02]'
-        : 'bg-white border border-[#DDD8D4] shadow-sm'
-    }`}>
-      {highlight && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#5E1840] text-white text-xs font-bold px-3 py-1 rounded-full">
-          MOST POPULAR
-        </div>
-      )}
-      <div className="mb-4">
-        <h3 className={`font-semibold text-lg ${highlight ? 'text-white' : 'text-[#081810]'}`}>{name}</h3>
-        <p className={`text-sm mt-1 ${highlight ? 'text-[#B8DCC8]' : 'text-[#6A7E70]'}`}>{description}</p>
-      </div>
-      <div className="mb-6">
-        <span className={`text-4xl font-bold ${highlight ? 'text-white' : 'text-[#081810]'}`}>{price}</span>
-        {period && <span className={`text-sm ml-1 ${highlight ? 'text-[#B8DCC8]' : 'text-[#6A7E70]'}`}>/{period}</span>}
-      </div>
-      <ul className="space-y-3 mb-8 flex-grow">
-        {features.map((f, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm">
-            <svg className={`w-4 h-4 mt-0.5 flex-shrink-0 ${highlight ? 'text-[#B8DCC8]' : 'text-[#105040]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            <span className={highlight ? 'text-[#B8DCC8]' : 'text-[#384E42]'}>{f}</span>
-          </li>
-        ))}
-      </ul>
-      <Link
-        href="/signup"
-        className={`block text-center py-3 px-6 rounded-xl font-semibold text-sm transition-all ${
-          highlight
-            ? 'bg-white text-[#105040] hover:bg-[#B8DCC8]/30'
-            : 'bg-[#105040] text-white hover:bg-[#0A3228]'
-        }`}
-      >
-        {cta}
-      </Link>
-    </div>
-  );
-}
-
 // ─── MAIN LANDING PAGE ───────────────────────────────────────
 export default function LandingPage() {
   return (
@@ -197,7 +148,7 @@ export default function LandingPage() {
 
             {/* Social proof line */}
             <p className="text-sm text-[#6A7E70]">
-              Free forever for herds of 5 or fewer · Paid plans from $9/month
+              Free while in early access · Early users lock in a discount when paid plans launch
             </p>
           </div>
         </div>
@@ -350,73 +301,52 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-[#081810] tracking-tight mb-4 font-display">
-              Simple, honest pricing
+              Free while we make it great
             </h2>
             <p className="text-[#384E42] max-w-xl mx-auto">
-              All features included at every paid tier. We don&#39;t hide health tools or breeding records behind premium plans.
+              GoatWise is in early access, so it&#39;s completely free right now — every feature, no herd-size limits, no credit card. Paid plans will come later, once they&#39;re earned.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
-            <PricingCard
-              name="Starter"
-              price="$0"
-              description="Try it out"
-              cta="Sign Up Free"
-              features={[
-                'Up to 5 animals',
-                'All tracking features',
-                'Knowledge base access',
-                'No credit card required',
-              ]}
-            />
-            <PricingCard
-              name="Homestead"
-              price="$9"
-              period="mo"
-              description="Small herds"
-              cta="Start Free Trial"
-              features={[
-                'Up to 25 animals',
-                'All features included',
-                'Schedule F tax export',
-                'CSV import & export',
-                'Email support',
-              ]}
-            />
-            <PricingCard
-              name="Farm"
-              price="$19"
-              period="mo"
-              description="Growing operations"
-              cta="Start Free Trial"
-              highlight
-              features={[
-                'Up to 100 animals',
-                'All features included',
-                'Up to 3 users',
-                'Priority support',
-                'Advanced reports',
-              ]}
-            />
-            <PricingCard
-              name="Ranch"
-              price="$39"
-              period="mo"
-              description="Large operations"
-              cta="Start Free Trial"
-              features={[
-                'Unlimited animals',
-                'All features included',
-                'Unlimited users',
-                'API access',
-                'Priority support',
-              ]}
-            />
+          <div className="max-w-lg mx-auto">
+            <div className="relative rounded-2xl p-8 bg-[#105040] text-white shadow-xl shadow-[#B8DCC8]/40">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#5E1840] text-white text-xs font-bold px-3 py-1 rounded-full">
+                EARLY ACCESS
+              </div>
+              <div className="text-center mb-4">
+                <h3 className="font-semibold text-lg text-white">Everything, free</h3>
+                <p className="text-sm mt-1 text-[#B8DCC8]">While GoatWise is in early access</p>
+              </div>
+              <div className="text-center mb-6">
+                <span className="text-5xl font-bold text-white">$0</span>
+              </div>
+              <ul className="space-y-3 mb-8">
+                {[
+                  'Every feature — health, breeding, milk, and finances',
+                  'FAMACHA scoring, kidding calendars, Schedule F export',
+                  'Unlimited animals — no herd-size limit',
+                  'CSV import & export, and the full knowledge base',
+                  'No credit card, no commitment',
+                ].map((f, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-[#B8DCC8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-[#B8DCC8]">{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className="block text-center py-3 px-6 rounded-xl font-semibold text-sm transition-all bg-white text-[#105040] hover:bg-[#B8DCC8]/30"
+              >
+                Start Free — No Credit Card Required
+              </Link>
+            </div>
           </div>
 
-          <p className="text-center text-sm text-[#6A7E70] mt-8">
-            Save 20% with annual billing. All paid plans include a 14-day free trial.
+          <p className="text-center text-sm text-[#6A7E70] mt-8 max-w-xl mx-auto">
+            💚 Early users lock in a permanent discount when paid plans launch — our thanks for helping shape GoatWise.
           </p>
         </div>
       </section>
@@ -459,8 +389,8 @@ export default function LandingPage() {
               answer="Yes. GoatWise is a responsive web app that works on any device with a browser — phone, tablet, or desktop. Take it to the barn with you."
             />
             <FaqItem
-              question="What happens to my data if I cancel?"
-              answer="You'll have a full export period to download all your data as CSV files. After that, your data is deleted. We never hold your records hostage."
+              question="What does GoatWise cost?"
+              answer="Nothing right now — GoatWise is free while it's in early access, with every feature unlocked and no herd-size limits. Paid plans will come later, and early users will lock in a permanent discount as our thanks. You can always export all your data as CSV; we never hold your records hostage."
             />
             <FaqItem
               question="Can I import my existing records?"
@@ -489,7 +419,7 @@ export default function LandingPage() {
             Your herd is waiting
           </h2>
           <p className="text-[#B8DCC8] text-lg mb-8 max-w-xl mx-auto">
-            Start tracking with the free Starter plan — no credit card, no commitment. Just better record-keeping from day one.
+            Start tracking free while GoatWise is in early access — no credit card, no commitment. Just better record-keeping from day one.
           </p>
           <Link
             href="/signup"
