@@ -6,7 +6,30 @@ import type { Database } from '@/types/database';
 export function createBrowserSupabaseClient() {
   return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      // Empty object on purpose: @supabase/ssr falls back to document.cookie
+      // storage when no get/set/remove are supplied, which is what the
+      // middleware reads. Passing this only so `auth` below can be merged in
+      // (user options win via mergeDeepRight).
+      cookies: {},
+      auth: {
+        // @supabase/ssr defaults to PKCE, which ties an emailed link to the
+        // browser that requested it -- the code verifier lives in that
+        // browser's storage. Real users request a password reset on a laptop
+        // and open the email on a phone, or their mail app opens the link in
+        // an in-app browser with its own storage. Either way the verifier is
+        // missing and the exchange dies with `bad_code_verifier`, which is
+        // exactly what a beta user hit.
+        //
+        // Implicit puts the token in the URL fragment instead, so the link
+        // works from any device or browser. This also applies to signup
+        // confirmation links. No OAuth provider is configured, and nothing in
+        // the app calls exchangeCodeForSession, so nothing else depends on
+        // PKCE. /reset-password handles both shapes regardless.
+        flowType: 'implicit',
+      },
+    }
   );
 }
 
