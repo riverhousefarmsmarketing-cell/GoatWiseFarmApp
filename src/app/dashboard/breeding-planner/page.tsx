@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnimals } from '@/hooks/useAnimals';
+import { isFemale, isIntactMale } from '@/lib/animalVocab';
 import {
   Card,
   Button,
@@ -64,12 +65,10 @@ export default function BreedingPlannerPage() {
 
   // Fetch data
   const { data: does } = useAnimals({ status: 'active' });
-  const { data: bucks } = useAnimals({ category: 'buck', status: 'active' });
+  const { data: activeAnimals } = useAnimals({ status: 'active' });
 
-  const breedableDoes = does?.filter(a => 
-    ['milking_doe', 'dry_doe', 'doeling', 'bred_doe'].includes(a.category) && 
-    a.sex === 'doe'
-  );
+  const breedableDoes = does?.filter(a => isFemale(a));
+  const bucks = activeAnimals?.filter(a => isIntactMale(a));
 
   const { data: plans, isLoading } = useQuery<any>({
     queryKey: ['breeding_plans'],

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTodaysMilk, useMilkStats, useTopProducers, useCreateMilkRecord } from '@/hooks/useMilk';
 import { useAnimals } from '@/hooks/useAnimals';
+import { categoryIs } from '@/lib/animalVocab';
 import { Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, LoadingSpinner, AnimalLink } from '@/components/ui';
 import { formatDate, formatWeight } from '@/lib/utils';
 import { Milk, Plus, TrendingUp, TrendingDown, Droplets, Calendar } from 'lucide-react';
@@ -51,7 +52,11 @@ export default function MilkPage() {
   const { data: todaysMilk, isLoading: todayLoading } = useTodaysMilk();
   const { data: milkStats } = useMilkStats(7);
   const { data: topProducers } = useTopProducers(7);
-  const { data: milkingDoes } = useAnimals({ category: 'milking_doe', status: 'active' });
+  const { data: activeAnimals } = useAnimals({ status: 'active' });
+  const milkingDoes = useMemo(
+    () => activeAnimals?.filter(a => categoryIs(a, 'milking_female')) || [],
+    [activeAnimals]
+  );
   const createRecord = useCreateMilkRecord();
 
   // Prepare chart data

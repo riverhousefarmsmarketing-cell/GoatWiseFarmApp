@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format, formatDistanceToNow, differenceInDays, differenceInYears, differenceInMonths } from 'date-fns';
+import { getCategoryLabel } from './animalVocab';
+import type { Species } from './speciesConfig';
 
 /**
  * Merge Tailwind CSS classes
@@ -78,20 +80,11 @@ export function getStatusColor(status: string): string {
 }
 
 /**
- * Get category display name
+ * Get category display name. Accepts both the goat and species-neutral
+ * vocabularies and is species-aware; see src/lib/animalVocab.ts.
  */
-export function getCategoryDisplay(category: string): string {
-  const names: Record<string, string> = {
-    milking_doe: 'Milking Doe',
-    dry_doe: 'Dry Doe',
-    bred_doe: 'Bred Doe',
-    doeling: 'Doeling',
-    buck: 'Buck',
-    buckling: 'Buckling',
-    wether: 'Wether',
-    kid: 'Kid',
-  };
-  return names[category] || category;
+export function getCategoryDisplay(category: string, species: Species = 'goat'): string {
+  return getCategoryLabel(category, species);
 }
 
 /**

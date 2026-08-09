@@ -41,6 +41,11 @@ import {
   DecisionSummaryBar,
   DecisionSignalList,
 } from '@/lib/decisionLayer/decision-status';
+import {
+  isIntactMale,
+  categoryIs,
+  toCanonicalCategory,
+} from '@/lib/animalVocab';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -497,9 +502,9 @@ export default function DashboardPage() {
     const transactionsList = (transactions as any[]) || [];
 
     const activeAnimals = animalsList.filter((a: any) => a.status === 'active').length;
-    const milkingDoes = animalsList.filter((a: any) => a.category === 'milking_doe' && a.status === 'active').length;
-    const bucks = animalsList.filter((a: any) => a.sex === 'buck' && a.status === 'active').length;
-    const kids = animalsList.filter((a: any) => (a.category === 'doeling' || a.category === 'buckling' || a.category === 'kid') && a.status === 'active').length;
+    const milkingDoes = animalsList.filter((a: any) => categoryIs(a, 'milking_female') && a.status === 'active').length;
+    const bucks = animalsList.filter((a: any) => isIntactMale(a) && a.status === 'active').length;
+    const kids = animalsList.filter((a: any) => (categoryIs(a, 'young_female') || categoryIs(a, 'young_male') || categoryIs(a, 'young')) && a.status === 'active').length;
 
     // Pregnant does
     const pregnantDoes = breedingList.filter((b: any) => 
@@ -981,29 +986,30 @@ export default function DashboardPage() {
             {(() => {
               const animalsList = (animals as any[]) || [];
               const categories: Record<string, { count: number; color: string }> = {
-                'milking_doe': { count: 0, color: 'bg-green-500' },
-                'dry_doe': { count: 0, color: 'bg-yellow-500' },
-                'bred_doe': { count: 0, color: 'bg-purple-500' },
-                'buck': { count: 0, color: 'bg-blue-500' },
-                'doeling': { count: 0, color: 'bg-pink-400' },
-                'buckling': { count: 0, color: 'bg-cyan-400' },
+                'milking_female': { count: 0, color: 'bg-green-500' },
+                'dry_female': { count: 0, color: 'bg-yellow-500' },
+                'bred_female': { count: 0, color: 'bg-purple-500' },
+                'male': { count: 0, color: 'bg-blue-500' },
+                'young_female': { count: 0, color: 'bg-pink-400' },
+                'young_male': { count: 0, color: 'bg-cyan-400' },
               };
 
               animalsList.filter((a: any) => a.status === 'active').forEach((a: any) => {
-                if (categories[a.category]) {
-                  categories[a.category].count++;
-                } else if (a.sex === 'buck') {
-                  categories['buck'].count++;
+                const canonical = toCanonicalCategory(a.category);
+                if (categories[canonical]) {
+                  categories[canonical].count++;
+                } else if (isIntactMale(a)) {
+                  categories['male'].count++;
                 }
               });
 
               const categoryLabels: Record<string, string> = {
-                'milking_doe': 'Milking Does',
-                'dry_doe': 'Dry Does',
-                'bred_doe': 'Bred Does',
-                'buck': 'Bucks',
-                'doeling': 'Doelings',
-                'buckling': 'Bucklings',
+                'milking_female': 'Milking Does',
+                'dry_female': 'Dry Does',
+                'bred_female': 'Bred Does',
+                'male': 'Bucks',
+                'young_female': 'Doelings',
+                'young_male': 'Bucklings',
               };
 
               return Object.entries(categories).map(([cat, data]) => (

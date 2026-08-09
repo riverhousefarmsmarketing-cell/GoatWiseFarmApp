@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
+import { isFemale, isIntactMale } from '@/lib/animalVocab';
 import { BREEDS } from '@/lib/breedData';
 
 // ==========================================
@@ -113,8 +114,8 @@ export default function AddAnimalPage() {
   const { data: allAnimals } = useAnimals({ status: 'active' });
 
   // Does and bucks for pedigree selection
-  const does = allAnimals?.filter(a => a.sex === 'doe' || a.sex === 'female') || [];
-  const bucks = allAnimals?.filter(a => a.sex === 'buck' || a.sex === 'male' || a.category === 'buck') || [];
+  const does = allAnimals?.filter(isFemale) || [];
+  const bucks = allAnimals?.filter(isIntactMale) || [];
 
   // Species state — drives all terminology, categories, and breed list
   const [species, setSpecies] = useState<Species>('goat');

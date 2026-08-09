@@ -17,6 +17,7 @@ import {
   AnimalLink,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { isFemale, isIntactMale } from '@/lib/animalVocab';
 import {
   Baby,
   Plus,
@@ -140,25 +141,17 @@ export default function BreedingPage() {
     enabled: !!user,
   });
 
-  // Match BOTH vocabularies. The Add Animal form now writes the species-neutral
-  // values ('female'/'male' + '*_female'/'male'/'young_male' categories), while
-  // older records and kidding-created kids still use the goat words
-  // ('doe'/'buck' + 'doeling'/'buckling'). Filtering on only the goat words left
-  // these dropdowns empty for every animal added through the current form.
+  // Accept both the goat and species-neutral vocabularies via the shared helper
+  // (src/lib/animalVocab.ts). The Add Animal form writes 'female'/'male' while
+  // older/kidding-created records use 'doe'/'buck'; filtering on only one left
+  // these dropdowns empty.
   const does = useMemo(() =>
-    (animals as any[])?.filter(a =>
-      ['doe', 'female'].includes(a.sex) ||
-      ['milking_doe', 'dry_doe', 'doeling', 'bred_doe',
-       'milking_female', 'dry_female', 'bred_female', 'young_female'].includes(a.category)
-    ) || [],
+    (animals as any[])?.filter(isFemale) || [],
     [animals]
   );
 
   const bucks = useMemo(() =>
-    (animals as any[])?.filter(a =>
-      ['buck', 'male'].includes(a.sex) ||
-      ['buck', 'buckling', 'male', 'young_male'].includes(a.category)
-    ) || [],
+    (animals as any[])?.filter(isIntactMale) || [],
     [animals]
   );
 

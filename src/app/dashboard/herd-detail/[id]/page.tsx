@@ -22,6 +22,7 @@ import {
   LoadingSpinner,
 } from '@/components/ui';
 import { formatDate, calculateAge, getCategoryDisplay } from '@/lib/utils';
+import { categoryIs, toCanonicalCategory } from '@/lib/animalVocab';
 import {
   ArrowLeft,
   Edit,
@@ -36,14 +37,17 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+// Keyed by canonical (neutral) category; look up via toCanonicalCategory so
+// both goat and neutral vocabularies resolve to the same color.
 const categoryColors: Record<string, string> = {
-  buck: 'bg-blue-100 text-blue-700',
-  milking_doe: 'bg-green-100 text-green-700',
-  dry_doe: 'bg-gray-100 text-gray-700',
-  bred_doe: 'bg-purple-100 text-purple-700',
-  wether: 'bg-amber-100 text-amber-700',
-  buckling: 'bg-cyan-100 text-cyan-700',
-  doeling: 'bg-pink-100 text-pink-700',
+  male: 'bg-blue-100 text-blue-700',
+  milking_female: 'bg-green-100 text-green-700',
+  dry_female: 'bg-gray-100 text-gray-700',
+  bred_female: 'bg-purple-100 text-purple-700',
+  castrated: 'bg-amber-100 text-amber-700',
+  young_male: 'bg-cyan-100 text-cyan-700',
+  young_female: 'bg-pink-100 text-pink-700',
+  young: 'bg-slate-100 text-slate-700',
 };
 
 const herdColors = [
@@ -89,9 +93,9 @@ export default function HerdDetailPage() {
   const otherHerds = allHerds?.filter((h: any) => h.id !== herdId && h.id !== 'unassigned') || [];
 
   // Stats
-  const milkingCount = herdAnimals?.filter((a: any) => a.category === 'milking_doe').length || 0;
-  const buckCount = herdAnimals?.filter((a: any) => a.category === 'buck').length || 0;
-  const kidCount = herdAnimals?.filter((a: any) => ['buckling', 'doeling', 'kid'].includes(a.category)).length || 0;
+  const milkingCount = herdAnimals?.filter((a: any) => categoryIs(a, 'milking_female')).length || 0;
+  const buckCount = herdAnimals?.filter((a: any) => categoryIs(a, 'male')).length || 0;
+  const kidCount = herdAnimals?.filter((a: any) => categoryIs(a, 'young_male') || categoryIs(a, 'young_female') || categoryIs(a, 'young')).length || 0;
 
   const handleEdit = () => {
     if (herdId === 'unassigned') return;
@@ -290,8 +294,8 @@ export default function HerdDetailPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-gray-900">{animal.name}</p>
-                      <Badge className={categoryColors[animal.category] || 'bg-gray-100'}>
-                        {getCategoryDisplay(animal.category)}
+                      <Badge className={categoryColors[toCanonicalCategory(animal.category)] || 'bg-gray-100'}>
+                        {getCategoryDisplay(animal.category, animal.species)}
                       </Badge>
                     </div>
                     <p className="text-sm text-gray-500">
@@ -415,7 +419,7 @@ export default function HerdDetailPage() {
                 <div className="flex-1">
                   <p className="font-medium">{animal.name}</p>
                   <p className="text-sm text-gray-500">
-                    {getCategoryDisplay(animal.category)} • {animal.breed || 'Unknown breed'}
+                    {getCategoryDisplay(animal.category, animal.species)} • {animal.breed || 'Unknown breed'}
                   </p>
                 </div>
                 <Plus className="h-5 w-5 text-gray-400" />

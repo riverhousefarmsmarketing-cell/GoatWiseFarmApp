@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { useAuth } from './useAuth';
+import { categoryIs } from '@/lib/animalVocab';
 import type { Herd, Animal, FeedSchedule as DBFeedSchedule, FeedInventoryRecord, FeedType } from '@/types/database';
 
 // Type aliases for convenience
@@ -71,8 +72,8 @@ export function useHerdsWithStats() {
         return {
           ...herd,
           animalCount: herdAnimals.length,
-          milkingCount: herdAnimals.filter((a) => a.category === 'milking_doe').length,
-          buckCount: herdAnimals.filter((a) => a.category === 'buck').length,
+          milkingCount: herdAnimals.filter((a) => categoryIs(a, 'milking_female')).length,
+          buckCount: herdAnimals.filter((a) => categoryIs(a, 'male')).length,
         };
       });
 
@@ -90,8 +91,8 @@ export function useHerdsWithStats() {
           created_at: '',
           updated_at: '',
           animalCount: unassignedAnimals.length,
-          milkingCount: unassignedAnimals.filter((a) => a.category === 'milking_doe').length,
-          buckCount: unassignedAnimals.filter((a) => a.category === 'buck').length,
+          milkingCount: unassignedAnimals.filter((a) => categoryIs(a, 'milking_female')).length,
+          buckCount: unassignedAnimals.filter((a) => categoryIs(a, 'male')).length,
         });
       }
 
