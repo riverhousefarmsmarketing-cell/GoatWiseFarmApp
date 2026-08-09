@@ -174,6 +174,24 @@ export function useCreateMilkRecord() {
   });
 }
 
+export function useUpdateMilkRecord() {
+  const queryClient = useQueryClient();
+  const supabase = getSupabaseClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<MilkRecordInsert> & { id: string }) => {
+      const { error } = await mutationFrom('milk_records')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: milkKeys.all });
+    },
+  });
+}
+
 export function useDeleteMilkRecord() {
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();

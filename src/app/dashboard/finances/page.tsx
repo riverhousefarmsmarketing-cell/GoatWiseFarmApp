@@ -26,6 +26,8 @@ import {
   Filter,
   Download,
   FileText,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -85,6 +87,7 @@ export default function FinancesPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [dateRange, setDateRange] = useState('year');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
 
   const [newTransaction, setNewTransaction] = useState({
     type: 'expense' as 'income' | 'expense',
@@ -144,6 +147,28 @@ export default function FinancesPage() {
          .single();
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+
+  // Update transaction mutation
+  const updateTransaction = useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { error } = await (supabase.from('transactions') as any).update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+
+  // Delete transaction mutation
+  const deleteTransaction = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -213,37 +238,50 @@ export default function FinancesPage() {
     }],
   };
 
-  const handleCreateTransaction = async () => {
+  const handleSaveTransaction = async () => {
     if (!newTransaction.category || !newTransaction.amount) return;
 
-    // The transactions table has no `vendor` column (only `vendor_id`), so
-    // sending `vendor` made PostgREST reject the entire insert -- and with no
-    // error handling the failure was invisible, so transactions silently never
-    // saved. Fold the vendor name into notes (as the import flow already does)
-    // and never send a `vendor` key.
-    const notesWithVendor = [
-      newTransaction.vendor ? `Vendor: ${newTransaction.vendor}` : null,
-      newTransaction.notes || null,
-    ].filter(Boolean).join('\n') || null;
+    // Shared fields for both create and update. The transactions table has no
+    // `vendor` column (only `vendor_id`), so we never send a `vendor` key.
+    const baseFields = {
+      type: newTransaction.type,
+      category: newTransaction.category,
+      amount: parseFloat(newTransaction.amount),
+      date: newTransaction.date,
+      description: newTransaction.description || null,
+      payment_method: newTransaction.payment_method,
+      tax_deductible: newTransaction.tax_deductible,
+    };
 
     try {
       setSaveError(null);
-      await createTransaction.mutateAsync({
-        type: newTransaction.type,
-        category: newTransaction.category,
-        amount: parseFloat(newTransaction.amount),
-        date: newTransaction.date,
-        description: newTransaction.description || null,
-        payment_method: newTransaction.payment_method,
-        tax_deductible: newTransaction.tax_deductible,
-        notes: notesWithVendor,
-      });
+      if (editingTransactionId) {
+        // Editing: send notes exactly as typed -- do NOT re-fold a Vendor line,
+        // since the stored notes were prefilled verbatim (vendor field is empty).
+        await updateTransaction.mutateAsync({
+          id: editingTransactionId,
+          ...baseFields,
+          notes: newTransaction.notes || null,
+        });
+      } else {
+        // Creating: fold the vendor name into notes (as the import flow does).
+        const notesWithVendor = [
+          newTransaction.vendor ? `Vendor: ${newTransaction.vendor}` : null,
+          newTransaction.notes || null,
+        ].filter(Boolean).join('\n') || null;
+
+        await createTransaction.mutateAsync({
+          ...baseFields,
+          notes: notesWithVendor,
+        });
+      }
     } catch (err: any) {
       setSaveError(err?.message || 'Could not save the transaction. Please try again.');
       return;
     }
 
     setShowAddModal(false);
+    setEditingTransactionId(null);
     setNewTransaction({
       type: 'expense',
       category: '',
@@ -255,6 +293,46 @@ export default function FinancesPage() {
       tax_deductible: true,
       notes: '',
     });
+  };
+
+  const openCreateTransaction = () => {
+    setEditingTransactionId(null);
+    setSaveError(null);
+    setNewTransaction({
+      type: 'expense',
+      category: '',
+      amount: '',
+      date: format(new Date(), 'yyyy-MM-dd'),
+      description: '',
+      vendor: '',
+      payment_method: 'cash',
+      tax_deductible: true,
+      notes: '',
+    });
+    setShowAddModal(true);
+  };
+
+  const openEditTransaction = (t: any) => {
+    setEditingTransactionId(t.id);
+    setSaveError(null);
+    setNewTransaction({
+      type: t.type,
+      category: t.category,
+      amount: String(t.amount),
+      date: t.date,
+      description: t.description || '',
+      vendor: '',
+      payment_method: t.payment_method || 'cash',
+      tax_deductible: t.tax_deductible,
+      notes: t.notes || '',
+    });
+    setShowAddModal(true);
+  };
+
+  const closeTransactionModal = () => {
+    setShowAddModal(false);
+    setEditingTransactionId(null);
+    setSaveError(null);
   };
 
   const getCategoryLabel = (type: string, category: string) => {
@@ -270,7 +348,7 @@ export default function FinancesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Financial Tracking</h1>
           <p className="text-gray-500">Track income, expenses, and generate reports</p>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => { setSaveError(null); setShowAddModal(true); }}>
+        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openCreateTransaction}>
           Add Transaction
         </Button>
       </div>
@@ -454,7 +532,7 @@ export default function FinancesPage() {
                 icon={<Receipt className="h-12 w-12" />}
                 title="No transactions"
                 description="Start tracking your farm finances"
-                action={<Button onClick={() => setShowAddModal(true)}>Add Transaction</Button>}
+                action={<Button onClick={openCreateTransaction}>Add Transaction</Button>}
               />
             ) : (
               <div className="overflow-x-auto">
@@ -466,6 +544,7 @@ export default function FinancesPage() {
                       <th className="px-4 py-3 font-medium">Category</th>
                       <th className="px-4 py-3 font-medium">Description</th>
                       <th className="px-4 py-3 font-medium text-right">Amount</th>
+                      <th className="px-4 py-3 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -487,6 +566,24 @@ export default function FinancesPage() {
                           t.type === 'income' ? 'text-green-600' : 'text-red-600'
                         }`}>
                           {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            <button
+                              onClick={() => openEditTransaction(t)}
+                              className="text-gray-400 hover:text-gray-600"
+                              aria-label="Edit transaction"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => { if (confirm('Delete this transaction?')) deleteTransaction.mutate(t.id); }}
+                              className="text-gray-400 hover:text-red-600"
+                              aria-label="Delete transaction"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -565,15 +662,15 @@ export default function FinancesPage() {
       {/* Add Transaction Modal */}
       <Modal
         open={showAddModal}
-        onClose={() => { setShowAddModal(false); setSaveError(null); }}
-        title="Add Transaction"
+        onClose={closeTransactionModal}
+        title={editingTransactionId ? 'Edit Transaction' : 'Add Transaction'}
         footer={
           <>
-            <Button variant="ghost" onClick={() => { setShowAddModal(false); setSaveError(null); }}>
+            <Button variant="ghost" onClick={closeTransactionModal}>
               Cancel
             </Button>
-            <Button onClick={handleCreateTransaction} loading={createTransaction.isPending}>
-              Save Transaction
+            <Button onClick={handleSaveTransaction} loading={editingTransactionId ? updateTransaction.isPending : createTransaction.isPending}>
+              {editingTransactionId ? 'Save Changes' : 'Add Transaction'}
             </Button>
           </>
         }
