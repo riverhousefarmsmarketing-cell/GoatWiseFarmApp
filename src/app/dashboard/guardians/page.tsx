@@ -9,7 +9,7 @@ import {
   Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, LoadingSpinner,
 } from '@/components/ui';
 import { formatDate, calculateAge } from '@/lib/utils';
-import { Shield, Plus, Star, AlertTriangle, Heart, Syringe, ChevronRight, Camera, X } from 'lucide-react';
+import { Shield, Plus, Star, AlertTriangle, Heart, Syringe, ChevronRight, Camera, X, Pencil, Trash2 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 
 const PREDATION_PHOTO_CATEGORIES = [
@@ -109,6 +109,11 @@ export default function GuardiansPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [editingGuardianId, setEditingGuardianId] = useState<string | null>(null);
+  const [editingHealthRecordId, setEditingHealthRecordId] = useState<string | null>(null);
+  const [editingVaccineId, setEditingVaccineId] = useState<string | null>(null);
+  const [editingPredationId, setEditingPredationId] = useState<string | null>(null);
+
   const [predationPhotos, setPredationPhotos] = useState<File[]>([]);
   const [predationPhotoCategory, setPredationPhotoCategory] = useState('injury');
   const [guardianPhotos, setGuardianPhotos] = useState<File[]>([]);
@@ -189,11 +194,47 @@ export default function GuardiansPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardians'] }),
   });
 
+  const updateGuardian = useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { error } = await (supabase.from('guardians') as any).update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardians'] }),
+  });
+
+  const deleteGuardian = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('guardians').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guardians'] });
+      queryClient.invalidateQueries({ queryKey: ['guardian_health_records'] });
+      queryClient.invalidateQueries({ queryKey: ['guardian_vaccinations'] });
+    },
+  });
+
   const createHealthRecord = useMutation({
     mutationFn: async (r: any) => {
       const { data, error } = await (supabase.from('guardian_health_records') as any).insert([{ ...r, user_id: user?.id }]).select().single();
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_health_records'] }),
+  });
+
+  const updateHealthRecord = useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { error } = await (supabase.from('guardian_health_records') as any).update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_health_records'] }),
+  });
+
+  const deleteHealthRecord = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('guardian_health_records').delete().eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_health_records'] }),
   });
@@ -207,11 +248,43 @@ export default function GuardiansPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_vaccinations'] }),
   });
 
+  const updateVaccination = useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { error } = await (supabase.from('guardian_vaccinations') as any).update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_vaccinations'] }),
+  });
+
+  const deleteVaccination = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('guardian_vaccinations').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_vaccinations'] }),
+  });
+
   const createPredation = useMutation({
     mutationFn: async (e: any) => {
       const { data, error } = await (supabase.from('predation_events') as any).insert([{ ...e, user_id: user?.id }]).select().single();
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['predation_events'] }),
+  });
+
+  const updatePredation = useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { error } = await (supabase.from('predation_events') as any).update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['predation_events'] }),
+  });
+
+  const deletePredation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('predation_events').delete().eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['predation_events'] }),
   });
@@ -329,49 +402,158 @@ export default function GuardiansPage() {
     queryClient.invalidateQueries({ queryKey: ['photos'] });
   };
 
+  const openCreateGuardian = () => {
+    setEditingGuardianId(null);
+    setNewGuardian({
+      name: '', type: 'lgd', breed: '', sex: 'male', birth_date: '',
+      acquired_date: format(new Date(), 'yyyy-MM-dd'), effectiveness_rating: 3,
+      training_status: 'in_training', status: 'active', herd_id: '', weight: '', notes: '',
+    });
+    setShowAddModal(true);
+  };
+
+  const openEditGuardian = (g: any) => {
+    setEditingGuardianId(g.id);
+    setNewGuardian({
+      name: g.name || '', type: g.type || 'lgd', breed: g.breed || '', sex: g.sex || 'male',
+      birth_date: g.birth_date ? String(g.birth_date).slice(0, 10) : '',
+      acquired_date: g.acquired_date ? String(g.acquired_date).slice(0, 10) : format(new Date(), 'yyyy-MM-dd'),
+      effectiveness_rating: g.effectiveness_rating ?? 3,
+      training_status: g.training_status || 'in_training', status: g.status || 'active',
+      herd_id: g.herd_id || '', weight: g.weight != null ? String(g.weight) : '', notes: g.notes || '',
+    });
+    setShowAddModal(true);
+  };
+
   const handleCreateGuardian = async () => {
     if (!newGuardian.name) return;
-    await createGuardian.mutateAsync({
+    const fields = {
       ...newGuardian, birth_date: newGuardian.birth_date || null, herd_id: newGuardian.herd_id || null,
       weight: newGuardian.weight ? parseFloat(newGuardian.weight) : null, notes: newGuardian.notes || null,
-    });
+    };
+    if (editingGuardianId) {
+      await updateGuardian.mutateAsync({ id: editingGuardianId, ...fields });
+    } else {
+      await createGuardian.mutateAsync(fields);
+    }
+    setEditingGuardianId(null);
     setShowAddModal(false);
+  };
+
+  const openCreateHealthRecord = () => {
+    setEditingHealthRecordId(null);
+    setNewHealthRecord({
+      guardian_id: '', type: 'vaccination', date: format(new Date(), 'yyyy-MM-dd'),
+      description: '', medication: '', dosage: '', vet_name: '', follow_up_date: '', cost: '', notes: '',
+    });
+    setShowHealthModal(true);
+  };
+
+  const openEditHealthRecord = (r: any) => {
+    setEditingHealthRecordId(r.id);
+    setNewHealthRecord({
+      guardian_id: r.guardian_id || r.guardian?.id || '', type: r.type || 'vaccination',
+      date: r.date ? String(r.date).slice(0, 10) : format(new Date(), 'yyyy-MM-dd'),
+      description: r.description || '', medication: r.medication || '',
+      dosage: r.dosage != null ? String(r.dosage) : '', vet_name: r.vet_name || '',
+      follow_up_date: r.follow_up_date ? String(r.follow_up_date).slice(0, 10) : '',
+      cost: r.cost != null ? String(r.cost) : '', notes: r.notes || '',
+    });
+    setShowHealthModal(true);
   };
 
   const handleCreateHealthRecord = async () => {
     if (!newHealthRecord.guardian_id) return;
-    await createHealthRecord.mutateAsync({
+    const fields = {
       ...newHealthRecord, dosage: newHealthRecord.dosage ? parseFloat(newHealthRecord.dosage) : null,
       cost: newHealthRecord.cost ? parseFloat(newHealthRecord.cost) : null,
       follow_up_date: newHealthRecord.follow_up_date || null,
-    });
+    };
+    if (editingHealthRecordId) {
+      await updateHealthRecord.mutateAsync({ id: editingHealthRecordId, ...fields });
+    } else {
+      await createHealthRecord.mutateAsync(fields);
+    }
+    setEditingHealthRecordId(null);
     setShowHealthModal(false);
+  };
+
+  const openCreateVaccination = () => {
+    setEditingVaccineId(null);
+    setNewVaccine({
+      guardian_id: '', vaccine_name: '', date_given: format(new Date(), 'yyyy-MM-dd'),
+      next_due_date: '', administered_by: '', notes: '',
+    });
+    setShowVaccineModal(true);
+  };
+
+  const openEditVaccination = (v: any) => {
+    setEditingVaccineId(v.id);
+    setNewVaccine({
+      guardian_id: v.guardian_id || v.guardian?.id || '', vaccine_name: v.vaccine_name || '',
+      date_given: v.date_given ? String(v.date_given).slice(0, 10) : format(new Date(), 'yyyy-MM-dd'),
+      next_due_date: v.next_due_date ? String(v.next_due_date).slice(0, 10) : '',
+      administered_by: v.administered_by || '', notes: v.notes || '',
+    });
+    setShowVaccineModal(true);
   };
 
   const handleCreateVaccination = async () => {
     if (!newVaccine.guardian_id || !newVaccine.vaccine_name) return;
-    await createVaccination.mutateAsync({ ...newVaccine, next_due_date: newVaccine.next_due_date || null });
+    const fields = { ...newVaccine, next_due_date: newVaccine.next_due_date || null };
+    if (editingVaccineId) {
+      await updateVaccination.mutateAsync({ id: editingVaccineId, ...fields });
+    } else {
+      await createVaccination.mutateAsync(fields);
+    }
+    setEditingVaccineId(null);
     setShowVaccineModal(false);
+  };
+
+  const openCreatePredation = () => {
+    setEditingPredationId(null);
+    resetPredationForm();
+    setShowPredationModal(true);
+  };
+
+  const openEditPredation = (e: any) => {
+    setEditingPredationId(e.id);
+    setNewPredation({
+      date: e.date ? String(e.date).slice(0, 10) : format(new Date(), 'yyyy-MM-dd'),
+      predator_type: e.predator_type || '', outcome: e.outcome || 'deterred',
+      location: e.location || '', description: e.description || '',
+      animals_lost: e.animals_lost != null ? String(e.animals_lost) : '0',
+      animals_injured: e.animals_injured != null ? String(e.animals_injured) : '0',
+    });
+    setPredationPhotos([]);
+    setPredationPhotoCategory('injury');
+    setShowPredationModal(true);
   };
 
   const handleCreatePredation = async () => {
     if (!newPredation.predator_type) return;
 
+    const fields = {
+      ...newPredation, animals_lost: parseInt(newPredation.animals_lost) || 0,
+      animals_injured: parseInt(newPredation.animals_injured) || 0,
+    };
+
     setIsSubmitting(true);
     try {
-      const result = await createPredation.mutateAsync({
-        ...newPredation, animals_lost: parseInt(newPredation.animals_lost) || 0,
-        animals_injured: parseInt(newPredation.animals_injured) || 0,
-      });
-
-      if (predationPhotos.length > 0 && result?.id) {
-        await uploadPredationPhotos(result.id);
+      if (editingPredationId) {
+        await updatePredation.mutateAsync({ id: editingPredationId, ...fields });
+      } else {
+        const result = await createPredation.mutateAsync(fields);
+        if (predationPhotos.length > 0 && result?.id) {
+          await uploadPredationPhotos(result.id);
+        }
       }
 
+      setEditingPredationId(null);
       setShowPredationModal(false);
       resetPredationForm();
     } catch (error) {
-      console.error('Error creating predation event:', error);
+      console.error('Error saving predation event:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -403,14 +585,14 @@ export default function GuardiansPage() {
           <p className="text-gray-500">Manage LGDs, llamas, donkeys and track activity</p>
         </div>
         <div className="flex gap-2">
-          {activeTab === 'guardians' && <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>Add Guardian</Button>}
+          {activeTab === 'guardians' && <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openCreateGuardian}>Add Guardian</Button>}
           {activeTab === 'health' && (
             <>
-              <Button variant="secondary" leftIcon={<Syringe className="h-4 w-4" />} onClick={() => setShowVaccineModal(true)}>Add Vaccine</Button>
-              <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowHealthModal(true)}>Add Record</Button>
+              <Button variant="secondary" leftIcon={<Syringe className="h-4 w-4" />} onClick={openCreateVaccination}>Add Vaccine</Button>
+              <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openCreateHealthRecord}>Add Record</Button>
             </>
           )}
-          {activeTab === 'incidents' && <Button variant="secondary" leftIcon={<AlertTriangle className="h-4 w-4" />} onClick={() => setShowPredationModal(true)}>Log Incident</Button>}
+          {activeTab === 'incidents' && <Button variant="secondary" leftIcon={<AlertTriangle className="h-4 w-4" />} onClick={openCreatePredation}>Log Incident</Button>}
         </div>
       </div>
 
@@ -432,7 +614,7 @@ export default function GuardiansPage() {
       {activeTab === 'guardians' && (
         <Card padding="none">
          {isLoading ? <div className="flex justify-center py-12"><LoadingSpinner className="h-8 w-8" /></div> :
-           !guardians?.length ? <EmptyState icon={<Shield className="h-12 w-12" />} title="No guardians" action={<Button onClick={() => setShowAddModal(true)}>Add Guardian</Button>} /> : (
+           !guardians?.length ? <EmptyState icon={<Shield className="h-12 w-12" />} title="No guardians" action={<Button onClick={openCreateGuardian}>Add Guardian</Button>} /> : (
             <div className="divide-y">
               {guardians.map((g: any) => (
                 <div key={g.id} className="p-4 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
@@ -450,6 +632,12 @@ export default function GuardiansPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <RatingStars rating={g.effectiveness_rating || 0} />
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded"
+                        onClick={(e) => { e.stopPropagation(); openEditGuardian(g); }}><Pencil className="h-4 w-4" /></button>
+                      <button type="button" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded"
+                        onClick={(e) => { e.stopPropagation(); if (confirm('Delete this guardian? This cannot be undone.')) deleteGuardian.mutate(g.id); }}><Trash2 className="h-4 w-4" /></button>
+                    </div>
                     <ChevronRight className="h-5 w-5 text-gray-400" />
                   </div>
                 </div>
@@ -461,7 +649,7 @@ export default function GuardiansPage() {
 
       {activeTab === 'health' && (
         <Card padding="none">
-          {!healthRecords?.length ? <EmptyState icon={<Heart className="h-8 w-8" />} title="No health records" action={<Button onClick={() => setShowHealthModal(true)}>Add Record</Button>} /> : (
+          {!healthRecords?.length ? <EmptyState icon={<Heart className="h-8 w-8" />} title="No health records" action={<Button onClick={openCreateHealthRecord}>Add Record</Button>} /> : (
             <div className="divide-y">
               {healthRecords.map((r: any) => (
                 <div key={r.id} className="p-4 flex items-center justify-between">
@@ -474,7 +662,15 @@ export default function GuardiansPage() {
                       <p className="text-sm text-gray-500">{healthRecordTypes.find(t => t.value === r.type)?.label}{r.description && ` - ${r.description}`}</p>
                     </div>
                   </div>
-                  <p className="text-sm">{formatDate(r.date)}</p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm">{formatDate(r.date)}</p>
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded"
+                        onClick={() => openEditHealthRecord(r)}><Pencil className="h-4 w-4" /></button>
+                      <button type="button" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded"
+                        onClick={() => { if (confirm('Delete this health record?')) deleteHealthRecord.mutate(r.id); }}><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -484,13 +680,21 @@ export default function GuardiansPage() {
 
       {activeTab === 'incidents' && (
         <Card padding="none">
-          {!predationEvents?.length ? <EmptyState icon={<AlertTriangle className="h-8 w-8" />} title="No incidents" action={<Button onClick={() => setShowPredationModal(true)}>Log Incident</Button>} /> : (
+          {!predationEvents?.length ? <EmptyState icon={<AlertTriangle className="h-8 w-8" />} title="No incidents" action={<Button onClick={openCreatePredation}>Log Incident</Button>} /> : (
             <div className="divide-y">
               {predationEvents.map((e: any) => (
                 <div key={e.id} className="p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge className={e.outcome === 'deterred' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>{e.outcome}</Badge>
-                    <span className="text-sm text-gray-500">{formatDate(e.date)}</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <Badge className={e.outcome === 'deterred' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>{e.outcome}</Badge>
+                      <span className="text-sm text-gray-500">{formatDate(e.date)}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded"
+                        onClick={() => openEditPredation(e)}><Pencil className="h-4 w-4" /></button>
+                      <button type="button" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded"
+                        onClick={() => { if (confirm('Delete this incident?')) deletePredation.mutate(e.id); }}><Trash2 className="h-4 w-4" /></button>
+                    </div>
                   </div>
                   <p className="font-medium">{predatorTypes.find(p => p.value === e.predator_type)?.label}</p>
                   <p className="text-sm text-gray-600">{e.description}</p>
@@ -502,8 +706,8 @@ export default function GuardiansPage() {
       )}
 
       {/* Add Guardian Modal */}
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Guardian"
-        footer={<><Button variant="ghost" onClick={() => setShowAddModal(false)}>Cancel</Button><Button onClick={handleCreateGuardian} loading={createGuardian.isPending}>Add</Button></>}>
+      <Modal open={showAddModal} onClose={() => { setShowAddModal(false); setEditingGuardianId(null); }} title={editingGuardianId ? 'Edit Guardian' : 'Add Guardian'}
+        footer={<><Button variant="ghost" onClick={() => { setShowAddModal(false); setEditingGuardianId(null); }}>Cancel</Button><Button onClick={handleCreateGuardian} loading={editingGuardianId ? updateGuardian.isPending : createGuardian.isPending}>{editingGuardianId ? 'Save Changes' : 'Add'}</Button></>}>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto">
           <Input label="Name" value={newGuardian.name} onChange={e => setNewGuardian({...newGuardian, name: e.target.value})} required />
           <div className="grid grid-cols-2 gap-4">
@@ -526,8 +730,8 @@ export default function GuardiansPage() {
       </Modal>
 
       {/* Health Record Modal */}
-      <Modal open={showHealthModal} onClose={() => setShowHealthModal(false)} title="Add Health Record"
-        footer={<><Button variant="ghost" onClick={() => setShowHealthModal(false)}>Cancel</Button><Button onClick={handleCreateHealthRecord} loading={createHealthRecord.isPending}>Save</Button></>}>
+      <Modal open={showHealthModal} onClose={() => { setShowHealthModal(false); setEditingHealthRecordId(null); }} title={editingHealthRecordId ? 'Edit Health Record' : 'Add Health Record'}
+        footer={<><Button variant="ghost" onClick={() => { setShowHealthModal(false); setEditingHealthRecordId(null); }}>Cancel</Button><Button onClick={handleCreateHealthRecord} loading={editingHealthRecordId ? updateHealthRecord.isPending : createHealthRecord.isPending}>{editingHealthRecordId ? 'Save Changes' : 'Save'}</Button></>}>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto">
           <Select label="Guardian" options={[{value:'',label:'Select...'},...(guardians?.map((g: any)=>({value:g.id,label:g.name}))||[])]} value={newHealthRecord.guardian_id} onChange={e => setNewHealthRecord({...newHealthRecord, guardian_id: e.target.value})} required />
           <div className="grid grid-cols-2 gap-4">
@@ -549,8 +753,8 @@ export default function GuardiansPage() {
       </Modal>
 
       {/* Vaccine Modal */}
-      <Modal open={showVaccineModal} onClose={() => setShowVaccineModal(false)} title="Add Vaccination"
-        footer={<><Button variant="ghost" onClick={() => setShowVaccineModal(false)}>Cancel</Button><Button onClick={handleCreateVaccination} loading={createVaccination.isPending}>Save</Button></>}>
+      <Modal open={showVaccineModal} onClose={() => { setShowVaccineModal(false); setEditingVaccineId(null); }} title={editingVaccineId ? 'Edit Vaccination' : 'Add Vaccination'}
+        footer={<><Button variant="ghost" onClick={() => { setShowVaccineModal(false); setEditingVaccineId(null); }}>Cancel</Button><Button onClick={handleCreateVaccination} loading={editingVaccineId ? updateVaccination.isPending : createVaccination.isPending}>{editingVaccineId ? 'Save Changes' : 'Save'}</Button></>}>
         <div className="space-y-4">
           <Select label="Guardian" options={[{value:'',label:'Select...'},...(guardians?.map((g: any)=>({value:g.id,label:g.name}))||[])]} value={newVaccine.guardian_id} onChange={e => setNewVaccine({...newVaccine, guardian_id: e.target.value})} required />
           <Select label="Vaccine" options={[{value:'',label:'Select...'},...commonVaccines]} value={newVaccine.vaccine_name} onChange={e => setNewVaccine({...newVaccine, vaccine_name: e.target.value})} required />
@@ -563,8 +767,8 @@ export default function GuardiansPage() {
       </Modal>
 
       {/* Predation Modal - WITH PHOTO UPLOAD */}
-      <Modal open={showPredationModal} onClose={() => { setShowPredationModal(false); resetPredationForm(); }} title="Log Predation Incident"
-        footer={<><Button variant="ghost" onClick={() => { setShowPredationModal(false); resetPredationForm(); }}>Cancel</Button><Button onClick={handleCreatePredation} loading={isSubmitting || createPredation.isPending}>Save</Button></>}>
+      <Modal open={showPredationModal} onClose={() => { setShowPredationModal(false); setEditingPredationId(null); resetPredationForm(); }} title={editingPredationId ? 'Edit Predation Incident' : 'Log Predation Incident'}
+        footer={<><Button variant="ghost" onClick={() => { setShowPredationModal(false); setEditingPredationId(null); resetPredationForm(); }}>Cancel</Button><Button onClick={handleCreatePredation} loading={isSubmitting || (editingPredationId ? updatePredation.isPending : createPredation.isPending)}>{editingPredationId ? 'Save Changes' : 'Save'}</Button></>}>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto">
           <div className="grid grid-cols-2 gap-4">
             <Input label="Date" type="date" value={newPredation.date} onChange={e => setNewPredation({...newPredation, date: e.target.value})} />
@@ -709,9 +913,32 @@ export default function GuardiansPage() {
               )}
             </div>
 
+            {/* Vaccinations Section */}
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3"><Syringe className="h-4 w-4" /> Vaccinations</h3>
+              {vaccinations?.filter((v: any) => (v.guardian_id || v.guardian?.id) === selectedGuardian.id).length ? (
+                <div className="divide-y">
+                  {vaccinations.filter((v: any) => (v.guardian_id || v.guardian?.id) === selectedGuardian.id).map((v: any) => (
+                    <div key={v.id} className="py-2 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{commonVaccines.find(c => c.value === v.vaccine_name)?.label || v.vaccine_name}</p>
+                        <p className="text-xs text-gray-500">Given {formatDate(v.date_given)}{v.next_due_date && ` • Due ${formatDate(v.next_due_date)}`}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button type="button" className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded"
+                          onClick={() => { setShowDetailModal(false); openEditVaccination(v); }}><Pencil className="h-4 w-4" /></button>
+                        <button type="button" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded"
+                          onClick={() => { if (confirm('Delete this vaccination record?')) deleteVaccination.mutate(v.id); }}><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="text-sm text-gray-500">No vaccinations recorded.</p>}
+            </div>
+
             <div className="flex gap-2 pt-4 border-t">
-              <Button variant="secondary" className="flex-1" onClick={() => { setNewHealthRecord({...newHealthRecord, guardian_id: selectedGuardian.id}); setShowDetailModal(false); setShowHealthModal(true); }}><Plus className="h-4 w-4 mr-2" />Add Health Record</Button>
-              <Button variant="secondary" className="flex-1" onClick={() => { setNewVaccine({...newVaccine, guardian_id: selectedGuardian.id}); setShowDetailModal(false); setShowVaccineModal(true); }}><Syringe className="h-4 w-4 mr-2" />Add Vaccine</Button>
+              <Button variant="secondary" className="flex-1" onClick={() => { setEditingHealthRecordId(null); setNewHealthRecord({...newHealthRecord, guardian_id: selectedGuardian.id}); setShowDetailModal(false); setShowHealthModal(true); }}><Plus className="h-4 w-4 mr-2" />Add Health Record</Button>
+              <Button variant="secondary" className="flex-1" onClick={() => { setEditingVaccineId(null); setNewVaccine({...newVaccine, guardian_id: selectedGuardian.id}); setShowDetailModal(false); setShowVaccineModal(true); }}><Syringe className="h-4 w-4 mr-2" />Add Vaccine</Button>
             </div>
           </div>
         )}
