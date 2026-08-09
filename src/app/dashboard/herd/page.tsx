@@ -87,15 +87,20 @@ export default function HerdPage() {
 
   const handleAddAnimal = async () => {
     if (!newAnimal.name) return;
-    await createAnimal.mutateAsync({
-      name: newAnimal.name,
-      breed: newAnimal.breed || null,
-      sex: newAnimal.sex,
-      category: newAnimal.category,
-      date_of_birth: newAnimal.date_of_birth || null,
-      status: 'active',
-      species: speciesFilter === 'all' ? 'goat' : speciesFilter,
-    });
+    try {
+      await createAnimal.mutateAsync({
+        name: newAnimal.name,
+        breed: newAnimal.breed || null,
+        sex: newAnimal.sex,
+        category: newAnimal.category,
+        date_of_birth: newAnimal.date_of_birth || null,
+        status: 'active',
+        species: speciesFilter === 'all' ? 'goat' : speciesFilter,
+      });
+    } catch (e: any) {
+      alert(`Could not add the animal: ${e?.message || 'please try again.'}`);
+      return;
+    }
     setShowAddModal(false);
     setNewAnimal({ name: '', breed: '', sex: 'female', category: 'milking_female', date_of_birth: '' });
   };

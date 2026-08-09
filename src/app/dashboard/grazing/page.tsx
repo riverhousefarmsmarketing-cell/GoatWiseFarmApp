@@ -125,37 +125,52 @@ export default function GrazingPage() {
   // Handlers
   const handleCreatePaddock = async () => {
     if (!newPaddock.name) return;
-    await createPaddock.mutateAsync({
-      name: newPaddock.name,
-      acres: newPaddock.acres ? parseFloat(newPaddock.acres) : null,
-      notes: newPaddock.notes || null,
-    });
+    try {
+      await createPaddock.mutateAsync({
+        name: newPaddock.name,
+        acres: newPaddock.acres ? parseFloat(newPaddock.acres) : null,
+        notes: newPaddock.notes || null,
+      });
+    } catch (e: any) {
+      alert(`Could not save the paddock: ${e?.message || 'please try again.'}`);
+      return;
+    }
     setShowAddPaddock(false);
     setNewPaddock({ name: '', acres: '', notes: '' });
   };
 
   const handleAssign = async () => {
     if (!assignForm.group_id || !assignForm.paddock_id) return;
-    await createMove.mutateAsync({
-      group_id: assignForm.group_id,
-      paddock_id: assignForm.paddock_id,
-      moved_in_at: assignForm.moved_in_at,
-      notes: assignForm.notes || null,
-    });
+    try {
+      await createMove.mutateAsync({
+        group_id: assignForm.group_id,
+        paddock_id: assignForm.paddock_id,
+        moved_in_at: assignForm.moved_in_at,
+        notes: assignForm.notes || null,
+      });
+    } catch (e: any) {
+      alert(`Could not record the move: ${e?.message || 'please try again.'}`);
+      return;
+    }
     setShowAssign(false);
     setAssignForm({ group_id: '', paddock_id: '', moved_in_at: new Date().toISOString().split('T')[0], notes: '' });
   };
 
   const handleMoveOut = async () => {
     if (!selectedMove) return;
-    await recordMoveOut.mutateAsync({
-      moveId: selectedMove.id,
-      movedOutAt: moveOutForm.moved_out_at,
-      nextPaddockId: moveOutForm.next_paddock_id || null,
-      groupId: selectedMove.group_id,
-      userId: user?.id,
-      notes: moveOutForm.notes || null,
-    });
+    try {
+      await recordMoveOut.mutateAsync({
+        moveId: selectedMove.id,
+        movedOutAt: moveOutForm.moved_out_at,
+        nextPaddockId: moveOutForm.next_paddock_id || null,
+        groupId: selectedMove.group_id,
+        userId: user?.id,
+        notes: moveOutForm.notes || null,
+      });
+    } catch (e: any) {
+      alert(`Could not record the move-out: ${e?.message || 'please try again.'}`);
+      return;
+    }
     setShowMoveOut(false);
     setSelectedMove(null);
     setMoveOutForm({ moved_out_at: new Date().toISOString().split('T')[0], next_paddock_id: '', notes: '' });

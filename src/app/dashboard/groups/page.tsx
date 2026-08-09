@@ -148,12 +148,17 @@ export default function GroupsPage() {
   const handleCreateGroup = async () => {
     if (!newGroup.name) return;
 
-    await createGroup.mutateAsync({
-      name: newGroup.name,
-      type: newGroup.type,
-      description: newGroup.description || null,
-      color: newGroup.color,
-    });
+    try {
+      await createGroup.mutateAsync({
+        name: newGroup.name,
+        type: newGroup.type,
+        description: newGroup.description || null,
+        color: newGroup.color,
+      });
+    } catch (e: any) {
+      alert(`Could not create the group: ${e?.message || 'please try again.'}`);
+      return;
+    }
 
     setShowAddModal(false);
     setNewGroup({
@@ -176,10 +181,15 @@ export default function GroupsPage() {
   const handleAssignAnimals = async () => {
     if (!selectedGroup) return;
 
-    await assignAnimals.mutateAsync({
-      groupId: selectedGroup.id,
-      animalIds: selectedAnimals,
-    });
+    try {
+      await assignAnimals.mutateAsync({
+        groupId: selectedGroup.id,
+        animalIds: selectedAnimals,
+      });
+    } catch (e: any) {
+      alert(`Could not assign animals: ${e?.message || 'please try again.'}`);
+      return;
+    }
 
     setShowAssignModal(false);
     setSelectedGroup(null);

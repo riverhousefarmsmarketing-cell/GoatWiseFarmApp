@@ -111,15 +111,25 @@ export default function HerdDetailPage() {
 
   const handleSaveEdit = async () => {
     if (!editForm || herdId === 'unassigned') return;
-    await updateHerd.mutateAsync({ id: herdId, updates: editForm });
+    try {
+      await updateHerd.mutateAsync({ id: herdId, updates: editForm });
+    } catch (e: any) {
+      alert(`Could not save the herd: ${e?.message || 'please try again.'}`);
+      return;
+    }
     setShowEditModal(false);
   };
 
   const handleAddAnimal = async (animalId: string) => {
-    await assignAnimal.mutateAsync({ 
-      animalId, 
-      herdId: herdId === 'unassigned' ? null : herdId 
-    });
+    try {
+      await assignAnimal.mutateAsync({
+        animalId,
+        herdId: herdId === 'unassigned' ? null : herdId
+      });
+    } catch (e: any) {
+      alert(`Could not add the animal: ${e?.message || 'please try again.'}`);
+      return;
+    }
     setShowAddAnimalModal(false);
   };
 
@@ -130,10 +140,15 @@ export default function HerdDetailPage() {
 
   const handleTransfer = async () => {
     if (!selectedAnimalId || !transferToHerdId) return;
-    await assignAnimal.mutateAsync({ 
-      animalId: selectedAnimalId, 
-      herdId: transferToHerdId 
-    });
+    try {
+      await assignAnimal.mutateAsync({
+        animalId: selectedAnimalId,
+        herdId: transferToHerdId
+      });
+    } catch (e: any) {
+      alert(`Could not transfer the animal: ${e?.message || 'please try again.'}`);
+      return;
+    }
     setShowTransferModal(false);
     setSelectedAnimalId('');
     setTransferToHerdId('');
