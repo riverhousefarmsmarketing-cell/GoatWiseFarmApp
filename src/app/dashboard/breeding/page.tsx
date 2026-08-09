@@ -99,7 +99,7 @@ export default function BreedingPage() {
   const [kiddingForm, setKiddingForm] = useState({
     kidding_date: format(new Date(), 'yyyy-MM-dd'),
     kids: [
-      { name: '', sex: 'doe', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' },
+      { name: '', sex: 'female', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' },
     ] as Array<{ name: string; sex: string; status: string; birth_weight: string; vigor: string; notes: string }>,
     labor_ease: 'normal',
     assistance_required: false,
@@ -142,9 +142,8 @@ export default function BreedingPage() {
   });
 
   // Accept both the goat and species-neutral vocabularies via the shared helper
-  // (src/lib/animalVocab.ts). The Add Animal form writes 'female'/'male' while
-  // older/kidding-created records use 'doe'/'buck'; filtering on only one left
-  // these dropdowns empty.
+  // (src/lib/animalVocab.ts). Current code writes 'female'/'male', but legacy
+  // rows still use 'doe'/'buck'; filtering on only one left these dropdowns empty.
   const does = useMemo(() =>
     (animals as any[])?.filter(isFemale) || [],
     [animals]
@@ -236,7 +235,7 @@ export default function BreedingPage() {
           user_id: user!.id,
           name: kidName,
           sex: kid.sex,
-          category: kid.sex === 'doe' ? 'doeling' : 'buckling',
+          category: kid.sex === 'female' ? 'young_female' : 'young_male',
           breed: damBreed || null,
           date_of_birth: birthDate,
           dam_id: damId,
@@ -296,7 +295,7 @@ export default function BreedingPage() {
     });
     setKiddingForm({
       kidding_date: format(new Date(), 'yyyy-MM-dd'),
-      kids: [{ name: '', sex: 'doe', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' }],
+      kids: [{ name: '', sex: 'female', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' }],
       labor_ease: 'normal',
       assistance_required: false,
       notes: '',
@@ -431,7 +430,7 @@ export default function BreedingPage() {
   const addKidRow = () => {
     setKiddingForm(prev => ({
       ...prev,
-      kids: [...prev.kids, { name: '', sex: 'doe', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' }],
+      kids: [...prev.kids, { name: '', sex: 'female', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' }],
     }));
   };
 
@@ -457,7 +456,7 @@ export default function BreedingPage() {
     setSelectedRecord(record);
     setKiddingForm({
       kidding_date: format(new Date(), 'yyyy-MM-dd'),
-      kids: [{ name: '', sex: 'doe', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' }],
+      kids: [{ name: '', sex: 'female', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' }],
       labor_ease: 'normal',
       assistance_required: false,
       notes: '',
@@ -1053,8 +1052,8 @@ export default function BreedingPage() {
                     />
                     <Select
                       options={[
-                        { value: 'doe', label: 'Doeling' },
-                        { value: 'buck', label: 'Buckling' },
+                        { value: 'female', label: 'Doeling' },
+                        { value: 'male', label: 'Buckling' },
                       ]}
                       value={kid.sex}
                       onChange={(e) => updateKid(index, 'sex', e.target.value)}

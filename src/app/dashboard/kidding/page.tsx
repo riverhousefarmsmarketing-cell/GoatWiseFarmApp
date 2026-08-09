@@ -108,7 +108,7 @@ export default function KiddingPage() {
   // Kid form state
   const [kidForm, setKidForm] = useState({
     name: '',
-    sex: 'doe',
+    sex: 'female',
     birth_weight: '',
     birth_weight_unit: 'lbs',
     birth_order: 1,
@@ -218,7 +218,7 @@ export default function KiddingPage() {
             user_id: user!.id,
             name: data.kidForm.name,
             sex: data.kidForm.sex,
-            category: data.kidForm.sex === 'doe' ? 'doeling' : 'buckling',
+            category: data.kidForm.sex === 'female' ? 'young_female' : 'young_male',
             breed: dam?.breed || null,
             date_of_birth: selectedBreeding?.kidding_date || new Date().toISOString().split('T')[0],
             dam_id: data.dam_id,
@@ -267,7 +267,7 @@ export default function KiddingPage() {
   const resetKidForm = () => {
     setKidForm({
       name: '',
-      sex: 'doe',
+      sex: 'female',
       birth_weight: '',
       birth_weight_unit: 'lbs',
       birth_order: (kidRecords?.filter(k => k.breeding_record_id === selectedBreeding?.id).length || 0) + 1,
@@ -782,8 +782,8 @@ export default function KiddingPage() {
           <Select
             label="Sex"
             options={[
-              { value: 'doe', label: 'Doe (Doeling)' },
-              { value: 'buck', label: 'Buck (Buckling)' },
+              { value: 'female', label: 'Doe (Doeling)' },
+              { value: 'male', label: 'Buck (Buckling)' },
             ]}
             value={kidForm.sex}
             onChange={(e) => setKidForm({ ...kidForm, sex: e.target.value })}
