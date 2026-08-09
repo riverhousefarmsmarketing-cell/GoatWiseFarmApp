@@ -31,6 +31,7 @@ import {
   ZoomIn,
   Download,
   Filter,
+  Pencil,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -82,6 +83,10 @@ export default function PhotoGalleryPage() {
     date_taken: new Date().toISOString().split('T')[0],
     files: [] as File[],
   });
+
+  // Edit photo state
+  const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
+  const [editForm, setEditForm] = useState({ caption: '', category: '' });
 
   // Fetch animals
   const { data: animals } = useQuery({
@@ -171,6 +176,19 @@ export default function PhotoGalleryPage() {
         .eq('id', photo.id);
 
       if (dbError) throw dbError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['photos'] });
+    },
+  });
+
+  // Update photo metadata mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, caption, category }: { id: string; caption: string | null; category: string }) => {
+      const { error } = await (supabase.from('photos') as any)
+        .update({ caption, category })
+        .eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['photos'] });
@@ -285,6 +303,28 @@ export default function PhotoGalleryPage() {
 
   const prevPhoto = () => {
     setLightboxIndex((prev) => (prev - 1 + filteredPhotos.length) % filteredPhotos.length);
+  };
+
+  // Open edit modal for a photo
+  const openEditPhoto = (photo: Photo) => {
+    setEditingPhoto(photo);
+    setEditForm({ caption: photo.caption || '', category: photo.category });
+  };
+
+  // Save edited photo metadata
+  const handleSaveEdit = async () => {
+    if (!editingPhoto) return;
+    try {
+      await updateMutation.mutateAsync({
+        id: editingPhoto.id,
+        caption: editForm.caption || null,
+        category: editForm.category,
+      });
+      setEditingPhoto(null);
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Error saving changes. Please try again.');
+    }
   };
 
   // Get animal name
@@ -429,18 +469,31 @@ export default function PhotoGalleryPage() {
                 </Badge>
               </div>
 
-              {/* Delete button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm('Delete this photo?')) {
-                    deleteMutation.mutate(photo);
-                  }
-                }}
-                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
+              {/* Action buttons */}
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditPhoto(photo);
+                  }}
+                  className="p-1.5 bg-primary-600 text-white rounded-full hover:bg-primary-700"
+                  title="Edit caption and category"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm('Delete this photo?')) {
+                      deleteMutation.mutate(photo);
+                    }
+                  }}
+                  className="p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  title="Delete photo"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -554,6 +607,58 @@ export default function PhotoGalleryPage() {
         </form>
       </Modal>
 
+      {/* Edit Photo Modal */}
+      <Modal
+        open={!!editingPhoto}
+        onClose={() => !updateMutation.isPending && setEditingPhoto(null)}
+        title="Edit Photo"
+      >
+        {editingPhoto && (
+          <div className="space-y-4">
+            <div className="rounded-lg overflow-hidden bg-gray-100">
+              <img
+                src={editingPhoto.url}
+                alt={editForm.caption || 'Photo'}
+                className="w-full max-h-64 object-contain"
+              />
+            </div>
+
+            <Select
+              label="Category"
+              options={PHOTO_CATEGORIES}
+              value={editForm.category}
+              onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
+            />
+
+            <Input
+              label="Caption (optional)"
+              value={editForm.caption}
+              onChange={(e) => setEditForm(prev => ({ ...prev, caption: e.target.value }))}
+              placeholder="Add a description..."
+            />
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingPhoto(null)}
+                disabled={updateMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={updateMutation.isPending}
+                leftIcon={updateMutation.isPending ? <LoadingSpinner className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+              >
+                {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Lightbox */}
       {showLightbox && filteredPhotos.length > 0 && (
         <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
@@ -615,6 +720,14 @@ export default function PhotoGalleryPage() {
                 <Badge variant="default" className="bg-white/20">
                   {PHOTO_CATEGORIES.find(c => c.value === filteredPhotos[lightboxIndex].category)?.label}
                 </Badge>
+                <button
+                  onClick={() => openEditPhoto(filteredPhotos[lightboxIndex])}
+                  className="flex items-center gap-1 text-white hover:text-primary-400"
+                  title="Edit caption and category"
+                >
+                  <Pencil className="h-4 w-4" />
+                  <span>Edit</span>
+                </button>
                 <span>{lightboxIndex + 1} / {filteredPhotos.length}</span>
               </div>
             </div>

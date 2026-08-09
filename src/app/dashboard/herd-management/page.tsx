@@ -13,6 +13,7 @@ import {
   useDeleteFeedInventory,
   useFeedTypes,
   useCreateFeedType,
+  useUpdateFeedType,
   useDeleteFeedType,
   useFeedSchedules,
   useCreateFeedSchedule,
@@ -231,6 +232,8 @@ export default function HerdManagementPage() {
   });
   // When set, the schedule modal is editing this existing schedule instead of creating.
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  // When set, the feed modal is editing this existing feed item instead of creating.
+  const [editingFeedId, setEditingFeedId] = useState<string | null>(null);
 
   // Data hooks
   const { data: herds, isLoading: herdsLoading, error: herdsError } = useHerdsWithStats();
@@ -244,6 +247,7 @@ export default function HerdManagementPage() {
   const deleteHerd = useDeleteHerd();
   const completeTransfer = useCompleteHerdTransfer();
   const createFeedItem = useCreateFeedType();
+  const updateFeedItem = useUpdateFeedType();
   const deleteFeedItem = useDeleteFeedType();
   const createSchedule = useCreateFeedSchedule();
   const updateSchedule = useUpdateFeedSchedule();
@@ -272,27 +276,66 @@ export default function HerdManagementPage() {
     }
   };
 
+  const resetFeedForm = () => {
+    setEditingFeedId(null);
+    setNewFeed({ feed_type: '', brand: '', quantity_on_hand: '', unit: 'lbs', unit_cost: '', low_stock_threshold: '', supplier: '', storage_location: '' });
+  };
+
+  const closeFeedModal = () => {
+    setShowAddFeedModal(false);
+    resetFeedForm();
+  };
+
+  const openEditFeed = (item: any) => {
+    setEditingFeedId(item.id);
+    // Map the stored feed_types columns back onto the form. The create path
+    // writes cost_per_unit / reorder_point (not unit_cost / low_stock_threshold)
+    // and folds the brand into notes as "Brand: X" -- read them back the same
+    // way so editing round-trips instead of blanking (and nulling) these values.
+    const brandFromNotes = typeof item.notes === 'string' && item.notes.startsWith('Brand: ')
+      ? item.notes.slice('Brand: '.length)
+      : '';
+    setNewFeed({
+      feed_type: item.name || '',
+      brand: brandFromNotes,
+      quantity_on_hand: item.quantity_on_hand != null ? String(item.quantity_on_hand) : '',
+      unit: item.unit || 'lbs',
+      unit_cost: item.cost_per_unit != null ? String(item.cost_per_unit) : '',
+      low_stock_threshold: item.reorder_point != null ? String(item.reorder_point) : '',
+      supplier: item.supplier || '',
+      storage_location: item.storage_location || '',
+    });
+    setShowAddFeedModal(true);
+  };
+
   const handleCreateFeed = async () => {
     if (!newFeed.feed_type) {
       alert('Please enter a feed name');
       return;
     }
-    
+
+    const fields = {
+      name: newFeed.feed_type,
+      category: 'other',
+      unit: newFeed.unit,
+      cost_per_unit: newFeed.unit_cost ? parseFloat(newFeed.unit_cost) : null,
+      reorder_point: newFeed.low_stock_threshold ? parseFloat(newFeed.low_stock_threshold) : null,
+      supplier: newFeed.supplier || null,
+      notes: newFeed.brand ? `Brand: ${newFeed.brand}` : null,
+    };
+
     try {
-      await createFeedItem.mutateAsync({
-        name: newFeed.feed_type,
-        category: 'other',
-        unit: newFeed.unit,
-        cost_per_unit: newFeed.unit_cost ? parseFloat(newFeed.unit_cost) : null,
-        reorder_point: newFeed.low_stock_threshold ? parseFloat(newFeed.low_stock_threshold) : null,
-        supplier: newFeed.supplier || null,
-        notes: newFeed.brand ? `Brand: ${newFeed.brand}` : null,
-      });
+      if (editingFeedId) {
+        await updateFeedItem.mutateAsync({ id: editingFeedId, ...fields });
+      } else {
+        await createFeedItem.mutateAsync(fields);
+      }
       setShowAddFeedModal(false);
       setNewFeed({ feed_type: '', brand: '', quantity_on_hand: '', unit: 'lbs', unit_cost: '', low_stock_threshold: '', supplier: '', storage_location: '' });
+      setEditingFeedId(null);
     } catch (error: any) {
-      console.error('Failed to create feed item:', error);
-      alert(`Failed to create feed item: ${error?.message || JSON.stringify(error)}`);
+      console.error('Failed to save feed item:', error);
+      alert(`Failed to save feed item: ${error?.message || JSON.stringify(error)}`);
     }
   };
 
@@ -391,7 +434,7 @@ export default function HerdManagementPage() {
             <Button variant="secondary" leftIcon={<Calendar className="h-4 w-4" />} onClick={() => { resetScheduleForm(); setShowScheduleModal(true); }}>
               Add Schedule
             </Button>
-            <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddFeedModal(true)}>
+            <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => { resetFeedForm(); setShowAddFeedModal(true); }}>
               Add Feed Item
             </Button>
           </div>
@@ -635,7 +678,7 @@ export default function HerdManagementPage() {
                   icon={<Package className="h-8 w-8" />}
                   title="No feed inventory"
                   description="Track your feed supplies"
-                  action={<Button onClick={() => setShowAddFeedModal(true)}>Add Feed Item</Button>}
+                  action={<Button onClick={() => { resetFeedForm(); setShowAddFeedModal(true); }}>Add Feed Item</Button>}
                 />
               ) : (
                 <div className="divide-y">
@@ -666,6 +709,12 @@ export default function HerdManagementPage() {
                               <p className="text-xs text-amber-600">Low stock!</p>
                             )}
                           </div>
+                          <button
+                            onClick={() => openEditFeed(item)}
+                            className="p-2 text-gray-400 hover:text-primary-600"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() => {
                               if (confirm('Delete this feed item?')) {
@@ -908,12 +957,14 @@ export default function HerdManagementPage() {
       {/* Add Feed Modal */}
       <Modal
         open={showAddFeedModal}
-        onClose={() => setShowAddFeedModal(false)}
-        title="Add Feed Item"
+        onClose={closeFeedModal}
+        title={editingFeedId ? 'Edit Feed Item' : 'Add Feed Item'}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowAddFeedModal(false)}>Cancel</Button>
-            <Button onClick={handleCreateFeed} loading={createFeedItem.isPending}>Add Item</Button>
+            <Button variant="ghost" onClick={closeFeedModal}>Cancel</Button>
+            <Button onClick={handleCreateFeed} loading={editingFeedId ? updateFeedItem.isPending : createFeedItem.isPending}>
+              {editingFeedId ? 'Save Changes' : 'Add Item'}
+            </Button>
           </>
         }
       >
