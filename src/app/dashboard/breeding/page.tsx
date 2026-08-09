@@ -278,6 +278,7 @@ export default function BreedingPage() {
   };
 
   const resetForms = () => {
+    setEditingRecord(null);
     setBreedingForm({
       doe_id: '',
       buck_id: '',
@@ -350,13 +351,48 @@ export default function BreedingPage() {
   }, [breedingRecords, pregnantDoes, plannedBreedings]);
 
   // Handlers
+  const openEditBreeding = (record: BreedingRecord) => {
+    setEditingRecord(record);
+    const breedingDate = record.breeding_date
+      ? record.breeding_date.slice(0, 10)
+      : format(new Date(), 'yyyy-MM-dd');
+    const gestationDays = record.due_date
+      ? String(Math.round(differenceInDays(parseISO(record.due_date.slice(0, 10)), parseISO(breedingDate))))
+      : '150';
+    setBreedingForm({
+      doe_id: record.doe_id,
+      buck_id: record.buck_id || '',
+      breeding_date: breedingDate,
+      breeding_method: record.breeding_method || 'natural',
+      gestation_days: gestationDays,
+      notes: record.notes || '',
+    });
+    setShowBreedingModal(true);
+  };
+
   const handleRecordBreeding = async () => {
     if (!breedingForm.doe_id) return;
-    
+
     const dueDate = format(
       addDays(parseISO(breedingForm.breeding_date), parseInt(breedingForm.gestation_days)),
       'yyyy-MM-dd'
     );
+
+    if (editingRecord) {
+      await updateBreeding.mutateAsync({
+        id: editingRecord.id,
+        doe_id: breedingForm.doe_id,
+        buck_id: breedingForm.buck_id || null,
+        breeding_date: breedingForm.breeding_date,
+        due_date: dueDate,
+        breeding_method: breedingForm.breeding_method,
+        notes: breedingForm.notes || null,
+      });
+      setShowBreedingModal(false);
+      setEditingRecord(null);
+      resetForms();
+      return;
+    }
 
     await createBreeding.mutateAsync({
       doe_id: breedingForm.doe_id,
@@ -574,7 +610,7 @@ export default function BreedingPage() {
                 icon={<Heart className="h-12 w-12" />}
                 title="No pregnant does"
                 description="Record a breeding to start tracking pregnancies"
-                action={<Button onClick={() => setShowBreedingModal(true)}>Record Breeding</Button>}
+                action={<Button onClick={() => { resetForms(); setShowBreedingModal(true); }}>Record Breeding</Button>}
               />
             </Card>
           ) : (
@@ -650,6 +686,13 @@ export default function BreedingPage() {
                                 onClick={() => updateBreeding.mutate({ id: record.id, status: 'open' })}
                               >
                                 Not Pregnant
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openEditBreeding(record)}
+                              >
+                                <Edit className="h-4 w-4" />
                               </Button>
                               <Button
                                 size="sm"
@@ -763,6 +806,13 @@ export default function BreedingPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                onClick={() => openEditBreeding(record)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
                                 onClick={() => {
                                   if (confirm('Delete this breeding plan?')) {
                                     deleteBreeding.mutate(record.id);
@@ -843,17 +893,26 @@ export default function BreedingPage() {
                         <td className="px-4 py-3 font-medium">{record.number_of_kids || '—'}</td>
                         <td className="px-4 py-3 text-sm text-gray-500 max-w-48 truncate">{record.kidding_notes || '—'}</td>
                         <td className="px-4 py-3 print:hidden">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              if (confirm('Delete this record?')) {
-                                deleteBreeding.mutate(record.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openEditBreeding(record)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                if (confirm('Delete this record?')) {
+                                  deleteBreeding.mutate(record.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -868,12 +927,14 @@ export default function BreedingPage() {
       {/* RECORD BREEDING MODAL */}
       <Modal
         open={showBreedingModal}
-        onClose={() => setShowBreedingModal(false)}
-        title="Record Breeding"
+        onClose={() => { setShowBreedingModal(false); setEditingRecord(null); }}
+        title={editingRecord ? 'Edit Breeding Record' : 'Record Breeding'}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowBreedingModal(false)}>Cancel</Button>
-            <Button onClick={handleRecordBreeding} loading={createBreeding.isPending}>Save</Button>
+            <Button variant="ghost" onClick={() => { setShowBreedingModal(false); setEditingRecord(null); }}>Cancel</Button>
+            <Button onClick={handleRecordBreeding} loading={createBreeding.isPending || updateBreeding.isPending}>
+              {editingRecord ? 'Save Changes' : 'Record Breeding'}
+            </Button>
           </>
         }
       >

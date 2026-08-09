@@ -94,6 +94,7 @@ export default function KiddingPage() {
   const [showKidModal, setShowKidModal] = useState(false);
   const [selectedBreeding, setSelectedBreeding] = useState<BreedingRecord | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [editingKidId, setEditingKidId] = useState<string | null>(null);
 
   // Kidding form state
   const [kiddingForm, setKiddingForm] = useState({
@@ -264,6 +265,39 @@ export default function KiddingPage() {
     },
   });
 
+  // Update an existing kid record (does not create an animal)
+  const updateKid = useMutation({
+    mutationFn: async (params: { id: string; updates: Record<string, any> }) => {
+      const { data, error } = await (supabase as any)
+        .from('kid_records')
+        .update(params.updates)
+        .eq('id', params.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kid_records'] });
+      setShowKidModal(false);
+      resetKidForm();
+    },
+  });
+
+  // Delete a kid record
+  const deleteKid = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('kid_records')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kid_records'] });
+    },
+  });
+
   const resetKidForm = () => {
     setKidForm({
       name: '',
@@ -293,8 +327,45 @@ export default function KiddingPage() {
     });
   };
 
+  const openEditKid = (kid: KidRecord) => {
+    setEditingKidId(kid.id);
+    setKidForm({
+      name: kid.name || '',
+      sex: kid.sex || 'female',
+      birth_weight: kid.birth_weight != null ? String(kid.birth_weight) : '',
+      birth_weight_unit: kid.birth_weight_unit || 'lbs',
+      birth_order: kid.birth_order ?? 1,
+      presentation: kid.presentation || 'normal',
+      vigor_score: kid.vigor_score ?? 5,
+      colostrum_time: kid.colostrum_time || '',
+      retained: !!kid.retained,
+      notes: kid.notes || '',
+      create_animal: false,
+    });
+    setShowKidModal(true);
+  };
+
   const handleAddKid = () => {
-    if (!selectedBreeding || !kidForm.name) return;
+    if (!kidForm.name) return;
+
+    if (editingKidId) {
+      const updates = {
+        name: kidForm.name,
+        sex: kidForm.sex,
+        birth_weight: kidForm.birth_weight ? parseFloat(kidForm.birth_weight) : null,
+        birth_weight_unit: kidForm.birth_weight_unit,
+        birth_order: kidForm.birth_order,
+        presentation: kidForm.presentation,
+        vigor_score: kidForm.vigor_score,
+        colostrum_time: kidForm.colostrum_time || null,
+        retained: kidForm.retained,
+        notes: kidForm.notes || null,
+      };
+      updateKid.mutateAsync({ id: editingKidId, updates });
+      return;
+    }
+
+    if (!selectedBreeding) return;
     createKid.mutate({
       breeding_record_id: selectedBreeding.id,
       dam_id: selectedBreeding.doe_id,
@@ -596,6 +667,7 @@ export default function KiddingPage() {
                         size="sm"
                         variant="secondary"
                         onClick={() => {
+                          setEditingKidId(null);
                           setSelectedBreeding(record);
                           resetKidForm();
                           setShowKidModal(true);
@@ -635,9 +707,29 @@ export default function KiddingPage() {
                       <h3 className="font-semibold text-gray-900">{kid.name}</h3>
                       <p className="text-sm text-gray-500 capitalize">{kid.sex}</p>
                     </div>
-                    <Badge className={kid.retained ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
-                      {kid.retained ? 'Retained' : 'Sold/Placed'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className={kid.retained ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
+                        {kid.retained ? 'Retained' : 'Sold/Placed'}
+                      </Badge>
+                      <button
+                        type="button"
+                        onClick={() => openEditKid(kid)}
+                        className="text-gray-400 hover:text-primary-600 transition-colors"
+                        aria-label="Edit kid record"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm('Delete this kid record?')) deleteKid.mutate(kid.id);
+                        }}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                        aria-label="Delete kid record"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2 text-sm">
                     {kid.birth_weight && (
@@ -758,15 +850,22 @@ export default function KiddingPage() {
         open={showKidModal}
         onClose={() => {
           setShowKidModal(false);
+          setEditingKidId(null);
         }}
-        title={`Add Kid - ${selectedBreeding?.doe?.name}`}
+        title={editingKidId ? 'Edit Kid' : `Add Kid - ${selectedBreeding?.doe?.name}`}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowKidModal(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowKidModal(false);
+                setEditingKidId(null);
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={handleAddKid} loading={createKid.isPending}>
-              Add Kid
+            <Button onClick={handleAddKid} loading={editingKidId ? updateKid.isPending : createKid.isPending}>
+              {editingKidId ? 'Save Changes' : 'Add Kid'}
             </Button>
           </>
         }
@@ -860,18 +959,20 @@ export default function KiddingPage() {
               Retained in Herd
             </label>
           </div>
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="create_animal"
-              checked={kidForm.create_animal}
-              onChange={(e) => setKidForm({ ...kidForm, create_animal: e.target.checked })}
-              className="rounded border-gray-300"
-            />
-            <label htmlFor="create_animal" className="text-sm font-medium text-gray-700">
-              Create Animal Record (with lineage)
-            </label>
-          </div>
+          {!editingKidId && (
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="create_animal"
+                checked={kidForm.create_animal}
+                onChange={(e) => setKidForm({ ...kidForm, create_animal: e.target.checked })}
+                className="rounded border-gray-300"
+              />
+              <label htmlFor="create_animal" className="text-sm font-medium text-gray-700">
+                Create Animal Record (with lineage)
+              </label>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
             <textarea

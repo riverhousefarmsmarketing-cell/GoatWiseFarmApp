@@ -26,6 +26,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  Pencil,
   CheckCircle,
   Clock,
   Target,
@@ -53,6 +54,7 @@ export default function BreedingPlannerPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   const [newPlan, setNewPlan] = useState({
     name: '',
@@ -172,26 +174,7 @@ export default function BreedingPlannerPage() {
     return dueDate >= new Date() && dueDate <= addDays(new Date(), 30);
   }).length || 0;
 
-  const handleCreatePlan = async () => {
-    if (!newPlan.doe_id || !newPlan.planned_breeding_date) return;
-
-    const doe = breedableDoes?.find(d => d.id === newPlan.doe_id);
-    const buck = bucks?.find(b => b.id === newPlan.buck_id);
-
-    // doe_name/buck_name are NOT columns on breeding_plans -- including them made
-    // PostgREST reject the whole insert, so no plan could ever be created. Names
-    // are read back via the doe:/buck: joins below, so we don't store them.
-    await createPlan.mutateAsync({
-      name: newPlan.name || `${doe?.name} x ${buck?.name || 'TBD'}`,
-      doe_id: newPlan.doe_id,
-      buck_id: newPlan.buck_id || null,
-      planned_breeding_date: newPlan.planned_breeding_date,
-      gestation_days: parseInt(newPlan.gestation_days),
-      notes: newPlan.notes || null,
-      status: 'planned',
-    });
-
-    setShowAddModal(false);
+  const resetNewPlan = () => {
     setNewPlan({
       name: '',
       doe_id: '',
@@ -200,6 +183,62 @@ export default function BreedingPlannerPage() {
       gestation_days: '150',
       notes: '',
     });
+  };
+
+  const openCreatePlan = () => {
+    setEditingPlanId(null);
+    resetNewPlan();
+    setShowAddModal(true);
+  };
+
+  const openEditPlan = (plan: any) => {
+    setEditingPlanId(plan.id);
+    setNewPlan({
+      name: plan.name || '',
+      doe_id: plan.doe_id,
+      buck_id: plan.buck_id || '',
+      planned_breeding_date: plan.planned_breeding_date
+        ? plan.planned_breeding_date.slice(0, 10)
+        : format(new Date(), 'yyyy-MM-dd'),
+      gestation_days: String(plan.gestation_days ?? '150'),
+      notes: plan.notes || '',
+    });
+    setShowAddModal(true);
+  };
+
+  const closePlanModal = () => {
+    setShowAddModal(false);
+    setEditingPlanId(null);
+  };
+
+  const handleSavePlan = async () => {
+    if (!newPlan.doe_id || !newPlan.planned_breeding_date) return;
+
+    const doe = breedableDoes?.find(d => d.id === newPlan.doe_id);
+    const buck = bucks?.find(b => b.id === newPlan.buck_id);
+
+    // doe_name/buck_name are NOT columns on breeding_plans -- including them made
+    // PostgREST reject the whole insert, so no plan could ever be created. Names
+    // are read back via the doe:/buck: joins below, so we don't store them.
+    const fields = {
+      name: newPlan.name || `${doe?.name} x ${buck?.name || 'TBD'}`,
+      doe_id: newPlan.doe_id,
+      buck_id: newPlan.buck_id || null,
+      planned_breeding_date: newPlan.planned_breeding_date,
+      gestation_days: parseInt(newPlan.gestation_days),
+      notes: newPlan.notes || null,
+    };
+
+    if (editingPlanId) {
+      // Omit status so the plan keeps its existing status.
+      await updatePlan.mutateAsync({ id: editingPlanId, updates: fields });
+    } else {
+      await createPlan.mutateAsync({ ...fields, status: 'planned' });
+    }
+
+    setShowAddModal(false);
+    setEditingPlanId(null);
+    resetNewPlan();
   };
 
   const handleMarkCompleted = async (planId: string) => {
@@ -254,7 +293,7 @@ export default function BreedingPlannerPage() {
               List
             </button>
           </div>
-          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
+          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openCreatePlan}>
             Plan Breeding
           </Button>
         </div>
@@ -392,7 +431,7 @@ export default function BreedingPlannerPage() {
               icon={<Calendar className="h-12 w-12" />}
               title="No breeding plans"
               description="Plan your future breedings to track expected due dates"
-              action={<Button onClick={() => setShowAddModal(true)}>Create Plan</Button>}
+              action={<Button onClick={openCreatePlan}>Create Plan</Button>}
             />
           ) : (
             <div className="divide-y">
@@ -448,6 +487,14 @@ export default function BreedingPlannerPage() {
                             </Button>
                           </>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditPlan(plan)}
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -533,15 +580,15 @@ export default function BreedingPlannerPage() {
       {/* Add Plan Modal */}
       <Modal
         open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Plan Breeding"
+        onClose={closePlanModal}
+        title={editingPlanId ? 'Edit Breeding Plan' : 'Plan Breeding'}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowAddModal(false)}>
+            <Button variant="ghost" onClick={closePlanModal}>
               Cancel
             </Button>
-            <Button onClick={handleCreatePlan} loading={createPlan.isPending}>
-              Create Plan
+            <Button onClick={handleSavePlan} loading={editingPlanId ? updatePlan.isPending : createPlan.isPending}>
+              {editingPlanId ? 'Save Changes' : 'Create Plan'}
             </Button>
           </>
         }
