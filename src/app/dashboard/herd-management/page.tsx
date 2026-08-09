@@ -16,6 +16,8 @@ import {
   useDeleteFeedType,
   useFeedSchedules,
   useCreateFeedSchedule,
+  useUpdateFeedSchedule,
+  useDeleteFeedSchedule,
 } from '@/hooks/useHerds';
 import { useAnimals } from '@/hooks/useAnimals';
 import {
@@ -227,6 +229,8 @@ export default function HerdManagementPage() {
     unit: 'lbs',
     feeding_times: ['07:00', '17:00'],
   });
+  // When set, the schedule modal is editing this existing schedule instead of creating.
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
 
   // Data hooks
   const { data: herds, isLoading: herdsLoading, error: herdsError } = useHerdsWithStats();
@@ -242,6 +246,8 @@ export default function HerdManagementPage() {
   const createFeedItem = useCreateFeedType();
   const deleteFeedItem = useDeleteFeedType();
   const createSchedule = useCreateFeedSchedule();
+  const updateSchedule = useUpdateFeedSchedule();
+  const deleteSchedule = useDeleteFeedSchedule();
 
   // Stats
   const totalAnimals = herds?.reduce((sum: number, h: any) => sum + h.animalCount, 0) || 0;
@@ -290,27 +296,67 @@ export default function HerdManagementPage() {
     }
   };
 
-  const handleCreateSchedule = async () => {
+  const resetScheduleForm = () => {
+    setEditingScheduleId(null);
+    setNewSchedule({ herd_id: '', feed_type: '', quantity_per_feeding: '', unit: 'lbs', feeding_times: ['07:00', '17:00'] });
+  };
+
+  const closeScheduleModal = () => {
+    setShowScheduleModal(false);
+    resetScheduleForm();
+  };
+
+  const openEditSchedule = (schedule: any) => {
+    setEditingScheduleId(schedule.id);
+    const times = Array.isArray(schedule.feeding_times) ? schedule.feeding_times : [];
+    setNewSchedule({
+      herd_id: schedule.herd_id || '',
+      feed_type: schedule.feed_type || '',
+      quantity_per_feeding: schedule.quantity_per_feeding?.toString() || '',
+      unit: schedule.unit || 'lbs',
+      feeding_times: [times[0] || '07:00', times[1] || '17:00'],
+    });
+    setShowScheduleModal(true);
+  };
+
+  const handleSaveSchedule = async () => {
     if (!newSchedule.herd_id || !newSchedule.feed_type || !newSchedule.quantity_per_feeding) {
       alert('Please fill in all required fields');
       return;
     }
-    
+
+    const payload = {
+      herd_id: newSchedule.herd_id,
+      feed_type: newSchedule.feed_type,
+      quantity_per_feeding: parseFloat(newSchedule.quantity_per_feeding),
+      unit: newSchedule.unit,
+      feeding_times: newSchedule.feeding_times as unknown as import('@/types/database').Json,
+    };
+
     try {
-      await createSchedule.mutateAsync({
-        herd_id: newSchedule.herd_id,
-        feed_type: newSchedule.feed_type,
-        quantity_per_feeding: parseFloat(newSchedule.quantity_per_feeding),
-        unit: newSchedule.unit,
-        feeding_times: newSchedule.feeding_times as unknown as import('@/types/database').Json,
-        start_date: format(new Date(), 'yyyy-MM-dd'),
-        status: 'active',
-      } as any);
-      setShowScheduleModal(false);
-      setNewSchedule({ herd_id: '', feed_type: '', quantity_per_feeding: '', unit: 'lbs', feeding_times: ['07:00', '17:00'] });
+      if (editingScheduleId) {
+        await updateSchedule.mutateAsync({ id: editingScheduleId, updates: payload as any });
+      } else {
+        await createSchedule.mutateAsync({
+          ...payload,
+          start_date: format(new Date(), 'yyyy-MM-dd'),
+          status: 'active',
+        } as any);
+      }
+      closeScheduleModal();
     } catch (error: any) {
-      console.error('Failed to create schedule:', error);
-      alert(`Failed to create schedule: ${error?.message || JSON.stringify(error)}`);
+      console.error('Failed to save schedule:', error);
+      alert(`Failed to save schedule: ${error?.message || JSON.stringify(error)}`);
+    }
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    if (!confirm('Delete this feeding schedule?')) return;
+    try {
+      await deleteSchedule.mutateAsync(id);
+    } catch (error: any) {
+      console.error('Failed to delete schedule:', error);
+      alert(`Failed to delete schedule: ${error?.message || JSON.stringify(error)}`);
     }
   };
 
@@ -342,7 +388,7 @@ export default function HerdManagementPage() {
         )}
         {activeTab === 'feed' && (
           <div className="flex gap-2">
-            <Button variant="secondary" leftIcon={<Calendar className="h-4 w-4" />} onClick={() => setShowScheduleModal(true)}>
+            <Button variant="secondary" leftIcon={<Calendar className="h-4 w-4" />} onClick={() => { resetScheduleForm(); setShowScheduleModal(true); }}>
               Add Schedule
             </Button>
             <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddFeedModal(true)}>
@@ -648,7 +694,7 @@ export default function HerdManagementPage() {
                   icon={<Calendar className="h-8 w-8" />}
                   title="No feeding schedules"
                   description="Set up feeding schedules for your herds"
-                  action={<Button onClick={() => setShowScheduleModal(true)}>Create Schedule</Button>}
+                  action={<Button onClick={() => { resetScheduleForm(); setShowScheduleModal(true); }}>Create Schedule</Button>}
                 />
               ) : (
                 <div className="divide-y">
@@ -669,13 +715,31 @@ export default function HerdManagementPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge variant={schedule.status === 'active' ? 'success' : 'default'}>
-                          {schedule.status}
-                        </Badge>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {schedule.feeding_times?.join(', ')}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <Badge variant={schedule.status === 'active' ? 'success' : 'default'}>
+                            {schedule.status}
+                          </Badge>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {schedule.feeding_times?.join(', ')}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => openEditSchedule(schedule)}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 rounded"
+                            title="Edit schedule"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSchedule(schedule.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded"
+                            title="Delete schedule"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -916,12 +980,14 @@ export default function HerdManagementPage() {
       {/* Feed Schedule Modal */}
       <Modal
         open={showScheduleModal}
-        onClose={() => setShowScheduleModal(false)}
-        title="Create Feeding Schedule"
+        onClose={closeScheduleModal}
+        title={editingScheduleId ? 'Edit Feeding Schedule' : 'Create Feeding Schedule'}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowScheduleModal(false)}>Cancel</Button>
-            <Button onClick={handleCreateSchedule} loading={createSchedule.isPending}>Create Schedule</Button>
+            <Button variant="ghost" onClick={closeScheduleModal}>Cancel</Button>
+            <Button onClick={handleSaveSchedule} loading={createSchedule.isPending || updateSchedule.isPending}>
+              {editingScheduleId ? 'Save Changes' : 'Create Schedule'}
+            </Button>
           </>
         }
       >
