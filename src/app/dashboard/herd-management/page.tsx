@@ -6,7 +6,9 @@ import {
   useCreateHerd, 
   useDeleteHerd,
   useHerdTransfers,
+  useCreateHerdTransfer,
   useCompleteHerdTransfer,
+  useCancelHerdTransfer,
   useFeedInventory,
   useCreateFeedInventory,
   useUpdateFeedInventory,
@@ -245,7 +247,9 @@ export default function HerdManagementPage() {
   // Mutations
   const createHerd = useCreateHerd();
   const deleteHerd = useDeleteHerd();
+  const createTransfer = useCreateHerdTransfer();
   const completeTransfer = useCompleteHerdTransfer();
+  const cancelTransfer = useCancelHerdTransfer();
   const createFeedItem = useCreateFeedType();
   const updateFeedItem = useUpdateFeedType();
   const deleteFeedItem = useDeleteFeedType();
@@ -650,13 +654,26 @@ export default function HerdManagementPage() {
                         {formatDate(transfer.requested_date)}
                       </div>
                       {transfer.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          onClick={() => completeTransfer.mutate(transfer.id)}
-                          loading={completeTransfer.isPending}
-                        >
-                          Complete
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              if (confirm('Cancel this transfer request?')) {
+                                cancelTransfer.mutate(transfer.id);
+                              }
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => completeTransfer.mutate(transfer.id)}
+                            loading={completeTransfer.isPending}
+                          >
+                            Complete
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -1108,12 +1125,24 @@ export default function HerdManagementPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setShowTransferModal(false)}>Cancel</Button>
-            <Button 
+            <Button
+              loading={createTransfer.isPending}
               onClick={async () => {
                 if (!newTransfer.animal_id || !newTransfer.to_herd_id) return;
                 const animal = animals?.find((a: any) => a.id === newTransfer.animal_id);
-                // Would need to implement createHerdTransfer mutation
+                try {
+                  await createTransfer.mutateAsync({
+                    animal_id: newTransfer.animal_id,
+                    to_herd_id: newTransfer.to_herd_id,
+                    from_herd_id: animal?.herd_id ?? null,
+                    reason: newTransfer.reason || null,
+                  });
+                } catch (e: any) {
+                  alert(`Could not request the transfer: ${e?.message || 'please try again.'}`);
+                  return;
+                }
                 setShowTransferModal(false);
+                setNewTransfer({ animal_id: '', to_herd_id: '', reason: '' });
               }}
             >
               Request Transfer
