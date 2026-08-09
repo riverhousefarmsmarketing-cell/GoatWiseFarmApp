@@ -220,7 +220,10 @@ export default function ReportsPage() {
     ).length;
     const aborted = records.filter((r: any) => r.status === 'aborted').length;
 
-    const successRate = total > 0 ? ((kidded / (kidded + open + aborted)) * 100) : 0;
+    // Denominator is the RESOLVED records (not `total`); guarding on total left
+    // NaN% when records exist but none are kidded/open/aborted (all still pregnant).
+    const resolved = kidded + open + aborted;
+    const successRate = resolved > 0 ? ((kidded / resolved) * 100) : 0;
 
     const totalKids = records
       .filter((r: any) => r.status === 'kidded')

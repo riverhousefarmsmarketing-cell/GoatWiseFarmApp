@@ -33,7 +33,7 @@ import {
   CheckCircle,
   X,
 } from 'lucide-react';
-import { addDays, subDays, format, differenceInDays } from 'date-fns';
+import { addDays, subDays, format, differenceInDays, parseISO } from 'date-fns';
 import Link from 'next/link';
 
 const GESTATION_DAYS_STANDARD = 150;
@@ -354,7 +354,7 @@ export default function BreedingPage() {
     if (!breedingForm.doe_id) return;
     
     const dueDate = format(
-      addDays(new Date(breedingForm.breeding_date), parseInt(breedingForm.gestation_days)),
+      addDays(parseISO(breedingForm.breeding_date), parseInt(breedingForm.gestation_days)),
       'yyyy-MM-dd'
     );
 
@@ -373,7 +373,7 @@ export default function BreedingPage() {
     if (!planForm.doe_id || !planForm.target_kidding_date) return;
     
     const breedingDate = format(
-      subDays(new Date(planForm.target_kidding_date), parseInt(planForm.gestation_days)),
+      subDays(parseISO(planForm.target_kidding_date), parseInt(planForm.gestation_days)),
       'yyyy-MM-dd'
     );
 
@@ -900,7 +900,7 @@ export default function BreedingPage() {
             <div className="p-3 bg-blue-50 rounded-lg text-sm">
               <span className="font-medium text-blue-800">Due Date: </span>
               <span className="text-blue-700">
-                {format(addDays(new Date(breedingForm.breeding_date), parseInt(breedingForm.gestation_days)), 'MMMM d, yyyy')}
+                {format(addDays(parseISO(breedingForm.breeding_date), parseInt(breedingForm.gestation_days)), 'MMMM d, yyyy')}
               </span>
             </div>
           )}
@@ -959,7 +959,7 @@ export default function BreedingPage() {
             <div className="p-3 bg-green-50 rounded-lg text-sm">
               <span className="font-medium text-green-800">Breed By: </span>
               <span className="text-green-700">
-                {format(subDays(new Date(planForm.target_kidding_date), parseInt(planForm.gestation_days)), 'MMMM d, yyyy')}
+                {format(subDays(parseISO(planForm.target_kidding_date), parseInt(planForm.gestation_days)), 'MMMM d, yyyy')}
               </span>
             </div>
           )}

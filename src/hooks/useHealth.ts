@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
-import { format, subDays, addDays } from 'date-fns';
+import { format, subDays, addDays, parseISO } from 'date-fns';
 import type { HealthRecord, HealthRecordInsert, Inspection, InspectionInsert } from '@/types/database';
 
 // ==========================================
@@ -94,12 +94,12 @@ export function useActiveWithdrawals() {
       // Filter to active withdrawals
       return (data as HealthRecord[]).filter((record) => {
         if (!record.withdrawal_days) return false;
-        const endDate = addDays(new Date(record.date), record.withdrawal_days);
+        const endDate = addDays(parseISO(record.date), record.withdrawal_days);
         return endDate >= new Date();
       }).map((record) => ({
         ...record,
         withdrawalEndDate: format(
-          addDays(new Date(record.date), record.withdrawal_days!),
+          addDays(parseISO(record.date), record.withdrawal_days!),
           'yyyy-MM-dd'
         ),
       }));

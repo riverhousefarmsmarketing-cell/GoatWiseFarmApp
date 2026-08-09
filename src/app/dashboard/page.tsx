@@ -511,21 +511,26 @@ export default function DashboardPage() {
       b.status === 'confirmed_pregnant' || b.status === 'bred'
     ).length;
 
-    // Upcoming due dates (next 30 days)
-    const today = new Date();
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(today.getDate() + 30);
-    
+    // Upcoming due dates (next 30 days). Compare on date STRINGS ('YYYY-MM-DD',
+    // where lexicographic order == chronological) so a doe due TODAY isn't misfiled
+    // as overdue by the current time-of-day: new Date(due_date) is UTC midnight, and
+    // comparing it to a local `now` that carries a time made "due today" read < now.
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const d0 = new Date();
+    const todayStr = `${d0.getFullYear()}-${pad(d0.getMonth() + 1)}-${pad(d0.getDate())}`;
+    const d30 = new Date();
+    d30.setDate(d0.getDate() + 30);
+    const in30Str = `${d30.getFullYear()}-${pad(d30.getMonth() + 1)}-${pad(d30.getDate())}`;
+
     const upcomingDues = breedingList.filter((b: any) => {
       if (!b.due_date || (b.status !== 'confirmed_pregnant' && b.status !== 'bred')) return false;
-      const dueDate = new Date(b.due_date);
-      return dueDate >= today && dueDate <= thirtyDaysFromNow;
-    }).sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+      return b.due_date >= todayStr && b.due_date <= in30Str;
+    }).sort((a: any, b: any) => (a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0));
 
     // Overdue does
     const overdueDoes = breedingList.filter((b: any) => {
       if (!b.due_date || (b.status !== 'confirmed_pregnant' && b.status !== 'bred')) return false;
-      return new Date(b.due_date) < today;
+      return b.due_date < todayStr;
     });
 
     // Milk production this week
