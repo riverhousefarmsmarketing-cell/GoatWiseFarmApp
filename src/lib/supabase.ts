@@ -47,7 +47,6 @@ export function getSupabaseClient() {
  * on read operations. Replace this with proper CLI-generated types when
  * available: npx supabase gen types typescript --project-id <id>
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mutationFrom(table: string): any {
   return getSupabaseClient().from(table) as any;
 }

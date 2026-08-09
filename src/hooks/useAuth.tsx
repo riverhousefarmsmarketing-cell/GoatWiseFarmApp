@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -51,7 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, farmName?: string) => {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.auth.signUp({
+    // The profile row is created by the handle_new_user() trigger, which reads
+    // farm_name straight out of this metadata (see migration 011). Inserting it
+    // from here as well collided with the trigger's row and silently failed.
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -60,15 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       },
     });
-
-    // Create profile if signup successful
-    if (!error && data.user) {
-      await mutationFrom('profiles').insert({
-        id: data.user.id,
-        email: data.user.email!,
-        farm_name: farmName,
-      });
-    }
 
     return { error };
   };

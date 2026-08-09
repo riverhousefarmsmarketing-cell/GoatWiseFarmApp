@@ -26,11 +26,9 @@ jobs:
 
       - name: ESLint
         run: npm run lint
-        continue-on-error: true  # Remove once lint warnings are resolved
 
       - name: TypeScript typecheck
         run: npm run typecheck
-        continue-on-error: true  # Remove once as-any casts are fixed
 
       - name: Next.js build
         run: npm run build
