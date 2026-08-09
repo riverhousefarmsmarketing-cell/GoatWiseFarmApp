@@ -252,39 +252,118 @@ export function useAssignAnimalToHerd() {
 // ==========================================
 // HERD TRANSFERS
 // ==========================================
-// NOTE: These are stubs until herd_transfers table is created.
-// After running migration 002_add_herd_transfers.sql, replace
-// these stubs with real Supabase queries.
+// Backed by the herd_transfers table. A transfer is a pending request to move
+// an animal from one herd to another; completing it actually reassigns the
+// animal's herd_id and stamps the completion date.
 
 export function useHerdTransfers(filter?: string) {
+  const supabase = getSupabaseClient();
+
   return useQuery({
     queryKey: ['herd_transfers', filter],
     queryFn: async () => {
-      // Stub: return empty array until table exists
-      return [] as Array<{
-        id: string;
-        animal_id: string;
-        from_herd_id: string | null;
-        to_herd_id: string;
-        reason?: string;
-        status: string;
-        requested_date: string;
-        completed_date?: string;
-        animals?: { name: string };
-        from_herd?: { name: string };
-        to_herd?: { name: string };
-      }>;
+      // Two FKs point at herds (from_herd_id, to_herd_id), so each embed is
+      // disambiguated with its FK column as the hint. The page reads
+      // transfer.animal / transfer.from_herd / transfer.to_herd.
+      let query = supabase
+        .from('herd_transfers')
+        .select(
+          '*, animal:animals!animal_id(id,name), from_herd:herds!from_herd_id(id,name,color), to_herd:herds!to_herd_id(id,name,color)'
+        )
+        .order('requested_date', { ascending: false });
+
+      if (filter && filter !== 'all') {
+        query = query.eq('status', filter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+}
+
+export function useCreateHerdTransfer() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      animal_id: string;
+      to_herd_id: string;
+      from_herd_id: string | null;
+      reason?: string | null;
+    }) => {
+      const { data, error } = await mutationFrom('herd_transfers')
+        .insert([
+          {
+            user_id: user?.id,
+            animal_id: input.animal_id,
+            to_herd_id: input.to_herd_id,
+            from_herd_id: input.from_herd_id,
+            reason: input.reason || null,
+            status: 'pending',
+            requested_date: new Date().toISOString(),
+          },
+        ])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['herd_transfers'] });
     },
   });
 }
 
 export function useCompleteHerdTransfer() {
   const queryClient = useQueryClient();
+  const supabase = getSupabaseClient();
+
   return useMutation({
     mutationFn: async (transferId: string) => {
-      // Stub: no-op until table exists
-      console.warn('herd_transfers table not yet created. Run migration 002.');
-      return null;
+      // Look up which animal moves where, so completing the transfer actually
+      // reassigns the animal's herd rather than just flipping a status flag.
+      const { data, error: fetchError } = await supabase
+        .from('herd_transfers')
+        .select('id, animal_id, to_herd_id')
+        .eq('id', transferId)
+        .single();
+      if (fetchError) throw fetchError;
+      const transfer = data as { id: string; animal_id: string; to_herd_id: string };
+
+      // Move the animal into the destination herd.
+      const { error: animalError } = await mutationFrom('animals')
+        .update({ herd_id: transfer.to_herd_id })
+        .eq('id', transfer.animal_id);
+      if (animalError) throw animalError;
+
+      // Stamp the transfer completed.
+      const { error: transferError } = await mutationFrom('herd_transfers')
+        .update({ status: 'completed', completed_date: new Date().toISOString() })
+        .eq('id', transferId);
+      if (transferError) throw transferError;
+
+      return transfer;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['herd_transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['herds'] });
+      queryClient.invalidateQueries({ queryKey: ['animals'] });
+    },
+  });
+}
+
+export function useCancelHerdTransfer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (transferId: string) => {
+      const { error } = await mutationFrom('herd_transfers')
+        .update({ status: 'cancelled' })
+        .eq('id', transferId);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['herd_transfers'] });
