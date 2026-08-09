@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -828,8 +828,10 @@ export default function SettingsPage() {
     enabled: !!user,
   });
 
-  // Update state when data loads
-  useState(() => {
+  // Load saved settings into the form once the query resolves. This was a
+  // useState initializer, which runs once at mount while `settings` is still
+  // undefined and never re-runs -- so saved values never appeared in the form.
+  useEffect(() => {
     if (settings) {
       setFarmSettings({
         farm_name: settings.farm_name || '',
@@ -839,16 +841,20 @@ export default function SettingsPage() {
         temperature_unit: settings.temperature_unit || 'F',
       });
     }
-  });
+  }, [settings]);
 
   const saveSettings = useMutation({
     mutationFn: async () => {
+      // user_settings has UNIQUE(user_id) separate from its primary key. Without
+      // onConflict, upsert resolves on the PK (a fresh id each call), so after
+      // the first row exists every save became an INSERT that hit the user_id
+      // unique constraint and threw -- swallowed here, so saves silently failed.
       const { error } = await (supabase.from('user_settings') as any)
         .upsert({
           user_id: user?.id,
           ...farmSettings,
           updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'user_id' });
       if (error) throw error;
     },
     onSuccess: () => {

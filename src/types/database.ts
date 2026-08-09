@@ -263,9 +263,9 @@ export interface Database {
         Update: { herd_id?: string; feed_type?: string; quantity_per_feeding?: number; unit?: string; feeding_times?: Json; start_date?: string; end_date?: string | null; status?: string; notes?: string | null; updated_at?: string; };
       };
       breeding_plans: {
-        Row: { id: string; user_id: string; name: string | null; doe_id: string; buck_id: string | null; planned_breeding_date: string | null; gestation_days: number; notes: string | null; created_at: string; updated_at: string; };
-        Insert: { id?: string; user_id: string; name?: string | null; doe_id: string; buck_id?: string | null; planned_breeding_date?: string | null; gestation_days?: number; notes?: string | null; created_at?: string; updated_at?: string; };
-        Update: { name?: string | null; doe_id?: string; buck_id?: string | null; planned_breeding_date?: string | null; gestation_days?: number; notes?: string | null; updated_at?: string; };
+        Row: { id: string; user_id: string; name: string | null; doe_id: string; buck_id: string | null; planned_breeding_date: string | null; gestation_days: number; status: string; notes: string | null; created_at: string; updated_at: string; };
+        Insert: { id?: string; user_id: string; name?: string | null; doe_id: string; buck_id?: string | null; planned_breeding_date?: string | null; gestation_days?: number; status?: string; notes?: string | null; created_at?: string; updated_at?: string; };
+        Update: { name?: string | null; doe_id?: string; buck_id?: string | null; planned_breeding_date?: string | null; gestation_days?: number; status?: string; notes?: string | null; updated_at?: string; };
       };
       guardians: {
         Row: { id: string; user_id: string; name: string; type: string; breed: string | null; sex: string; birth_date: string | null; acquired_date: string | null; status: string; training_status: string; herd_id: string | null; weight: number | null; effectiveness_rating: number | null; notes: string | null; photo_url: string | null; created_at: string; updated_at: string; };
@@ -288,9 +288,9 @@ export interface Database {
         Update: { date?: string; predator_type?: string | null; outcome?: string; location?: string | null; description?: string | null; animals_lost?: number; animals_injured?: number; guardian_id?: string | null; notes?: string | null; };
       };
       photos: {
-        Row: { id: string; user_id: string; animal_id: string | null; guardian_id: string | null; health_record_id: string | null; inspection_id: string | null; category: string; filename: string; url: string; caption: string | null; date_taken: string; created_at: string; };
-        Insert: { id?: string; user_id: string; animal_id?: string | null; guardian_id?: string | null; health_record_id?: string | null; inspection_id?: string | null; category?: string; filename: string; url: string; caption?: string | null; date_taken?: string; created_at?: string; };
-        Update: { animal_id?: string | null; guardian_id?: string | null; health_record_id?: string | null; inspection_id?: string | null; category?: string; filename?: string; url?: string; caption?: string | null; date_taken?: string; };
+        Row: { id: string; user_id: string; animal_id: string | null; guardian_id: string | null; health_record_id: string | null; inspection_id: string | null; predation_event_id: string | null; category: string; filename: string; url: string; caption: string | null; date_taken: string; created_at: string; };
+        Insert: { id?: string; user_id: string; animal_id?: string | null; guardian_id?: string | null; health_record_id?: string | null; inspection_id?: string | null; predation_event_id?: string | null; category?: string; filename: string; url: string; caption?: string | null; date_taken?: string; created_at?: string; };
+        Update: { animal_id?: string | null; guardian_id?: string | null; health_record_id?: string | null; inspection_id?: string | null; predation_event_id?: string | null; category?: string; filename?: string; url?: string; caption?: string | null; date_taken?: string; };
       };
     };
   };

@@ -179,12 +179,13 @@ export default function BreedingPlannerPage() {
     const doe = breedableDoes?.find(d => d.id === newPlan.doe_id);
     const buck = bucks?.find(b => b.id === newPlan.buck_id);
 
+    // doe_name/buck_name are NOT columns on breeding_plans -- including them made
+    // PostgREST reject the whole insert, so no plan could ever be created. Names
+    // are read back via the doe:/buck: joins below, so we don't store them.
     await createPlan.mutateAsync({
       name: newPlan.name || `${doe?.name} x ${buck?.name || 'TBD'}`,
       doe_id: newPlan.doe_id,
-      doe_name: doe?.name,
       buck_id: newPlan.buck_id || null,
-      buck_name: buck?.name || null,
       planned_breeding_date: newPlan.planned_breeding_date,
       gestation_days: parseInt(newPlan.gestation_days),
       notes: newPlan.notes || null,
