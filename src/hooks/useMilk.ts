@@ -42,7 +42,9 @@ export function useTodaysMilk() {
 
 export function useMilkStats(days: number = 7) {
   const supabase = getSupabaseClient();
-  const startDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
+  // days-1: an inclusive `.gte` window is `days` calendar days counting today
+  // (subDays(now, days) spanned days+1, so a "7-day" stat covered 8 days).
+  const startDate = format(subDays(new Date(), days - 1), 'yyyy-MM-dd');
 
   return useQuery({
     queryKey: milkKeys.stats(days),
@@ -93,7 +95,9 @@ export function useMilkStats(days: number = 7) {
 
 export function useMilkByAnimal(animalId: string, days: number = 30) {
   const supabase = getSupabaseClient();
-  const startDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
+  // days-1: an inclusive `.gte` window is `days` calendar days counting today
+  // (subDays(now, days) spanned days+1, so a "7-day" stat covered 8 days).
+  const startDate = format(subDays(new Date(), days - 1), 'yyyy-MM-dd');
 
   return useQuery({
     queryKey: [...milkKeys.byAnimal(animalId), days],
@@ -113,7 +117,9 @@ export function useMilkByAnimal(animalId: string, days: number = 30) {
 
 export function useTopProducers(days: number = 7) {
   const supabase = getSupabaseClient();
-  const startDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
+  // days-1: an inclusive `.gte` window is `days` calendar days counting today
+  // (subDays(now, days) spanned days+1, so a "7-day" stat covered 8 days).
+  const startDate = format(subDays(new Date(), days - 1), 'yyyy-MM-dd');
 
   return useQuery({
     queryKey: ['milk', 'top-producers', days],

@@ -38,7 +38,7 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { format, parseISO, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -170,25 +170,30 @@ export default function FinancesPage() {
       return acc;
     }, {}) || {};
 
-  // Monthly data for bar chart
+  // Monthly data for bar chart. Bucket by the 'YYYY-MM' prefix of the date string
+  // (not format(new Date(t.date))) so a transaction on the 1st isn't pushed into the
+  // previous month by the UTC-midnight shift, months from different years don't merge,
+  // and bars sort chronologically.
   const monthlyData = transactions?.reduce((acc: Record<string, { income: number; expense: number }>, t: any) => {
-    const month = format(new Date(t.date), 'MMM');
+    const month = (t.date as string).substring(0, 7);
     if (!acc[month]) acc[month] = { income: 0, expense: 0 };
     (acc[month] as any)[t.type] += t.amount;
     return acc;
   }, {}) || {};
 
+  const sortedMonths = Object.keys(monthlyData).sort();
+
   const barChartData = {
-    labels: Object.keys(monthlyData),
+    labels: sortedMonths.map((m) => format(parseISO(`${m}-01`), 'MMM yyyy')),
     datasets: [
       {
         label: 'Income',
-        data: Object.values(monthlyData).map((d: any) => d.income),
+        data: sortedMonths.map((m) => monthlyData[m].income),
         backgroundColor: 'rgba(34, 197, 94, 0.7)',
       },
       {
         label: 'Expenses',
-        data: Object.values(monthlyData).map((d: any) => d.expense),
+        data: sortedMonths.map((m) => monthlyData[m].expense),
         backgroundColor: 'rgba(239, 68, 68, 0.7)',
       },
     ],

@@ -588,7 +588,7 @@ export default function HealthPage() {
           </Button>
           <Button
             leftIcon={<Plus className="h-4 w-4" />}
-            onClick={() => setShowAddRecordModal(true)}
+            onClick={() => { setEditingRecord(null); resetRecordForm(); setShowAddRecordModal(true); }}
           >
             Add Record
           </Button>
@@ -865,7 +865,7 @@ export default function HealthPage() {
                 icon={<Heart className="h-12 w-12" />}
                 title={searchQuery || animalFilter !== 'all' || typeFilter !== 'all' ? "No matching records" : "No health records"}
                 description={searchQuery || animalFilter !== 'all' || typeFilter !== 'all' ? "Try adjusting your filters" : "Start tracking your herd's health"}
-                action={<Button onClick={() => setShowAddRecordModal(true)}>Add Record</Button>}
+                action={<Button onClick={() => { setEditingRecord(null); resetRecordForm(); setShowAddRecordModal(true); }}>Add Record</Button>}
               />
             ) : (
               <div className="overflow-x-auto">

@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { format, formatDistanceToNow, differenceInDays, differenceInYears, differenceInMonths } from 'date-fns';
+import { format, parseISO, formatDistanceToNow, differenceInDays, differenceInYears, differenceInMonths } from 'date-fns';
 import { getCategoryLabel } from './animalVocab';
 import type { Species } from './speciesConfig';
 
@@ -14,8 +14,16 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Format a date string
  */
-export function formatDate(date: string | Date, formatStr: string = 'MMM d, yyyy'): string {
-  return format(new Date(date), formatStr);
+export function formatDate(date: string | Date | null | undefined, formatStr: string = 'MMM d, yyyy'): string {
+  if (!date) return '—';
+  // Parse date-only strings ('YYYY-MM-DD') as LOCAL midnight. `new Date('2026-08-09')`
+  // parses as UTC midnight, which formats to the PREVIOUS day for west-of-UTC users --
+  // so every stored date used to display one day early. Full timestamps keep their TZ.
+  const d = typeof date === 'string'
+    ? (/^\d{4}-\d{2}-\d{2}$/.test(date) ? parseISO(date) : new Date(date))
+    : date;
+  if (isNaN(d.getTime())) return '—';
+  return format(d, formatStr);
 }
 
 /**
@@ -105,7 +113,11 @@ export function getFamachaColor(score: number): string {
  * Get FAMACHA status
  */
 export function getFamachaStatus(score: number): { label: string; color: string } {
-  if (score <= 2) return { label: 'Deworm Immediately', color: 'text-red-600' };
+  // FAMACHA: 1 = red/robust (no anemia), 5 = pale/white (severe anemia -> deworm).
+  // Low scores are healthy; high scores need treatment. This was previously
+  // inverted, flagging anemic goats (4-5) as "Healthy" and healthy goats (1-2)
+  // as "Deworm Immediately".
+  if (score >= 4) return { label: 'Deworm Immediately', color: 'text-red-600' };
   if (score === 3) return { label: 'Monitor Closely', color: 'text-orange-600' };
   return { label: 'Healthy', color: 'text-green-600' };
 }
