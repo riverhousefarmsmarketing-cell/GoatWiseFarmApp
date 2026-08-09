@@ -84,6 +84,7 @@ export default function FinancesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [dateRange, setDateRange] = useState('year');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [newTransaction, setNewTransaction] = useState({
     type: 'expense' as 'income' | 'expense',
@@ -210,17 +211,32 @@ export default function FinancesPage() {
   const handleCreateTransaction = async () => {
     if (!newTransaction.category || !newTransaction.amount) return;
 
-    await createTransaction.mutateAsync({
-      type: newTransaction.type,
-      category: newTransaction.category,
-      amount: parseFloat(newTransaction.amount),
-      date: newTransaction.date,
-      description: newTransaction.description,
-      vendor: newTransaction.vendor || null,
-      payment_method: newTransaction.payment_method,
-      tax_deductible: newTransaction.tax_deductible,
-      notes: newTransaction.notes || null,
-    });
+    // The transactions table has no `vendor` column (only `vendor_id`), so
+    // sending `vendor` made PostgREST reject the entire insert -- and with no
+    // error handling the failure was invisible, so transactions silently never
+    // saved. Fold the vendor name into notes (as the import flow already does)
+    // and never send a `vendor` key.
+    const notesWithVendor = [
+      newTransaction.vendor ? `Vendor: ${newTransaction.vendor}` : null,
+      newTransaction.notes || null,
+    ].filter(Boolean).join('\n') || null;
+
+    try {
+      setSaveError(null);
+      await createTransaction.mutateAsync({
+        type: newTransaction.type,
+        category: newTransaction.category,
+        amount: parseFloat(newTransaction.amount),
+        date: newTransaction.date,
+        description: newTransaction.description || null,
+        payment_method: newTransaction.payment_method,
+        tax_deductible: newTransaction.tax_deductible,
+        notes: notesWithVendor,
+      });
+    } catch (err: any) {
+      setSaveError(err?.message || 'Could not save the transaction. Please try again.');
+      return;
+    }
 
     setShowAddModal(false);
     setNewTransaction({
@@ -249,7 +265,7 @@ export default function FinancesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Financial Tracking</h1>
           <p className="text-gray-500">Track income, expenses, and generate reports</p>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
+        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => { setSaveError(null); setShowAddModal(true); }}>
           Add Transaction
         </Button>
       </div>
@@ -544,11 +560,11 @@ export default function FinancesPage() {
       {/* Add Transaction Modal */}
       <Modal
         open={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={() => { setShowAddModal(false); setSaveError(null); }}
         title="Add Transaction"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setShowAddModal(false)}>
+            <Button variant="ghost" onClick={() => { setShowAddModal(false); setSaveError(null); }}>
               Cancel
             </Button>
             <Button onClick={handleCreateTransaction} loading={createTransaction.isPending}>
@@ -558,6 +574,11 @@ export default function FinancesPage() {
         }
       >
         <div className="space-y-4">
+          {saveError && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+              {saveError}
+            </div>
+          )}
           {/* Type Toggle */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>

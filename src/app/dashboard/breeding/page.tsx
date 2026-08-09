@@ -140,13 +140,25 @@ export default function BreedingPage() {
     enabled: !!user,
   });
 
-  const does = useMemo(() => 
-    (animals as any[])?.filter(a => a.sex === 'doe' || ['milking_doe', 'dry_doe', 'doeling', 'bred_doe'].includes(a.category)) || [],
+  // Match BOTH vocabularies. The Add Animal form now writes the species-neutral
+  // values ('female'/'male' + '*_female'/'male'/'young_male' categories), while
+  // older records and kidding-created kids still use the goat words
+  // ('doe'/'buck' + 'doeling'/'buckling'). Filtering on only the goat words left
+  // these dropdowns empty for every animal added through the current form.
+  const does = useMemo(() =>
+    (animals as any[])?.filter(a =>
+      ['doe', 'female'].includes(a.sex) ||
+      ['milking_doe', 'dry_doe', 'doeling', 'bred_doe',
+       'milking_female', 'dry_female', 'bred_female', 'young_female'].includes(a.category)
+    ) || [],
     [animals]
   );
-  
-  const bucks = useMemo(() => 
-    (animals as any[])?.filter(a => a.sex === 'buck' || ['buck', 'buckling'].includes(a.category)) || [],
+
+  const bucks = useMemo(() =>
+    (animals as any[])?.filter(a =>
+      ['buck', 'male'].includes(a.sex) ||
+      ['buck', 'buckling', 'male', 'young_male'].includes(a.category)
+    ) || [],
     [animals]
   );
 
