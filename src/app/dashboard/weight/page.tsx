@@ -284,7 +284,9 @@ export default function WeightTrackingPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (!formData.weight || parseFloat(formData.weight) <= 0) return;
+
     const record = {
       animal_id: formData.animal_id,
       date: formData.date,
@@ -596,6 +598,7 @@ export default function WeightTrackingPage() {
                               <div className="flex gap-1">
                                 <button
                                   onClick={() => openEditModal(record)}
+                                  aria-label="Edit weight record"
                                   className="p-1 text-gray-400 hover:text-gray-600"
                                 >
                                   <Edit2 className="h-4 w-4" />
@@ -606,6 +609,7 @@ export default function WeightTrackingPage() {
                                       deleteWeightMutation.mutate(record.id);
                                     }
                                   }}
+                                  aria-label="Delete weight record"
                                   className="p-1 text-gray-400 hover:text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -660,6 +664,7 @@ export default function WeightTrackingPage() {
               label="Weight"
               type="number"
               step="0.1"
+              min="0"
               required
               value={formData.weight}
               onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
@@ -719,6 +724,7 @@ export default function WeightTrackingPage() {
                   <Input
                     type="number"
                     step="0.1"
+                    min="0"
                     placeholder="lbs"
                     value={bulkWeights[animal.id] || ''}
                     onChange={(e) => setBulkWeights(prev => ({

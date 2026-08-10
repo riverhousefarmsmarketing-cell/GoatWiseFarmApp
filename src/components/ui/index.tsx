@@ -1,6 +1,6 @@
 'use client';
 
-import React, { forwardRef, ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, HTMLAttributes } from 'react';
+import React, { forwardRef, useEffect, useRef, ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
@@ -320,6 +320,21 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, size = 'md', children, footer }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape and move focus into the dialog when it opens, so keyboard
+  // and screen-reader users aren't stranded. (Effect runs unconditionally;
+  // guarded by `open` so the early return below stays legal.)
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    panelRef.current?.focus();
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
   // Map to real Tailwind classes. Previously non-'sm' sizes emitted the raw
   // string "md"/"lg" (not a class), so md/lg modals had no max-width and
@@ -331,14 +346,22 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: M
       <div className="flex min-h-full items-center justify-center p-4">
         {/* Backdrop */}
         <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-        
+
         {/* Modal */}
-       <div className={`relative bg-white rounded-xl shadow-xl w-full max-h-[90vh] overflow-hidden ${sizeClass}`}>
+       <div
+          ref={panelRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          className={`relative bg-white rounded-xl shadow-xl w-full max-h-[90vh] overflow-hidden focus:outline-none ${sizeClass}`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#DDD8D4]">
             <h2 className="text-lg font-semibold text-[#081810]">{title}</h2>
             <button
               onClick={onClose}
+              aria-label="Close dialog"
               className="text-[#6A7E70] hover:text-[#384E42]"
             >
               ✕

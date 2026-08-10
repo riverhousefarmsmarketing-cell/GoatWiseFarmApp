@@ -140,7 +140,7 @@ export default function MilkPage() {
   };
 
   const handleRecordMilk = async () => {
-    if (!newRecord.animal_id || !newRecord.amount) return;
+    if (!newRecord.animal_id || !newRecord.amount || parseFloat(newRecord.amount) <= 0) return;
 
     const fields = {
       animal_id: newRecord.animal_id,
@@ -396,6 +396,7 @@ export default function MilkPage() {
           <Input
             label="Amount (lbs)"
             type="number"
+            min="0"
             step="0.1"
             value={newRecord.amount}
             onChange={(e) => setNewRecord({ ...newRecord, amount: e.target.value })}

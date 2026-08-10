@@ -240,7 +240,7 @@ export default function FinancesPage() {
   };
 
   const handleSaveTransaction = async () => {
-    if (!newTransaction.category || !newTransaction.amount) return;
+    if (!newTransaction.category || !newTransaction.amount || parseFloat(newTransaction.amount) <= 0) return;
 
     // Shared fields for both create and update. The transactions table has no
     // `vendor` column (only `vendor_id`), so we never send a `vendor` key.
@@ -725,6 +725,7 @@ export default function FinancesPage() {
           <Input
             label="Amount ($)"
             type="number"
+            min="0"
             step="0.01"
             value={newTransaction.amount}
             onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}

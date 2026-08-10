@@ -217,11 +217,11 @@ export default function AddAnimalPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name) return;
+    if (!form.name.trim()) return;
 
     const animalData = {
       // Basic
-      name: form.name,
+      name: form.name.trim(),
       species,
       tag_number: form.tag_number || null,
       tattoo: form.tattoo || null,
@@ -368,6 +368,7 @@ export default function AddAnimalPage() {
             <Input
               label="Date of Birth"
               type="date"
+              max={format(new Date(), 'yyyy-MM-dd')}
               value={form.date_of_birth}
               onChange={(e) => updateForm('date_of_birth', e.target.value)}
             />
@@ -388,6 +389,8 @@ export default function AddAnimalPage() {
             <Input
               label="Weight (lbs)"
               type="number"
+              min="0"
+              step="0.1"
               value={form.weight}
               onChange={(e) => updateForm('weight', e.target.value)}
             />
@@ -555,6 +558,7 @@ export default function AddAnimalPage() {
               <Input
                 label="Purchase Cost ($)"
                 type="number"
+                min="0"
                 step="0.01"
                 value={form.purchase_cost}
                 onChange={(e) => updateForm('purchase_cost', e.target.value)}

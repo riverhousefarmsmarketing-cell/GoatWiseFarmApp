@@ -427,6 +427,15 @@ export default function BreedingPage() {
   const handleRecordKidding = async () => {
     if (!selectedRecord) return;
 
+    // A kidding can't precede the breeding, or gestation/labor stats go negative.
+    if (
+      selectedRecord.breeding_date &&
+      kiddingForm.kidding_date < String(selectedRecord.breeding_date).slice(0, 10)
+    ) {
+      alert('The kidding date cannot be before the breeding date.');
+      return;
+    }
+
     // Count kids
     const aliveKids = kiddingForm.kids.filter(k => k.status === 'alive').length;
     const totalKids = kiddingForm.kids.length;
