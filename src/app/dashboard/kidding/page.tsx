@@ -318,6 +318,15 @@ export default function KiddingPage() {
 
   const handleRecordKidding = () => {
     if (!selectedBreeding) return;
+    // A kidding can't happen before the breeding; otherwise gestation/labor
+    // stats come out negative. Dates are YYYY-MM-DD, so string compare orders them.
+    if (
+      selectedBreeding.breeding_date &&
+      kiddingForm.kidding_date < String(selectedBreeding.breeding_date).slice(0, 10)
+    ) {
+      alert('The kidding date cannot be before the breeding date.');
+      return;
+    }
     updateKidding.mutate({
       id: selectedBreeding.id,
       kidding_date: kiddingForm.kidding_date,
@@ -348,7 +357,7 @@ export default function KiddingPage() {
   };
 
   const handleAddKid = () => {
-    if (!kidForm.name) return;
+    if (!kidForm.name.trim()) return;
 
     if (editingKidId) {
       const updates = {

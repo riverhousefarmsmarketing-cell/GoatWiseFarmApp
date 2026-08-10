@@ -889,7 +889,7 @@ export default function HealthPage() {
             <div className="flex flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input type="text" placeholder="Search records..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+                <input type="text" aria-label="Search records" placeholder="Search records..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
               </div>
               <Select options={animalOptions} value={animalFilter} onChange={(e) => setAnimalFilter(e.target.value)} className="w-44" />
               <Select options={healthTypeOptions} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-40" />
@@ -1013,7 +1013,7 @@ export default function HealthPage() {
             <div className="flex flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input type="text" placeholder="Search inspections..." value={inspectionSearch} onChange={(e) => setInspectionSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+                <input type="text" aria-label="Search inspections" placeholder="Search inspections..." value={inspectionSearch} onChange={(e) => setInspectionSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
               </div>
               <Select options={animalOptions} value={inspectionAnimalFilter} onChange={(e) => setInspectionAnimalFilter(e.target.value)} className="w-44" />
               {(inspectionSearch || inspectionAnimalFilter !== 'all' || famachaFilter !== null) && (
@@ -1370,6 +1370,7 @@ export default function HealthPage() {
               label="Cost ($)"
               type="number"
               step="0.01"
+              min="0"
               value={newRecord.cost}
               onChange={(e) => setNewRecord({ ...newRecord, cost: e.target.value })}
               placeholder="25.00"
@@ -1517,6 +1518,7 @@ export default function HealthPage() {
                 label="Weight (lbs)"
                 type="number"
                 step="0.1"
+                min="0"
                 value={newInspection.weight}
                 onChange={(e) => setNewInspection({ ...newInspection, weight: e.target.value })}
                 placeholder="125.5"
@@ -1525,6 +1527,7 @@ export default function HealthPage() {
                 label="Temperature (°F)"
                 type="number"
                 step="0.1"
+                min="0"
                 value={newInspection.temperature}
                 onChange={(e) => setNewInspection({ ...newInspection, temperature: e.target.value })}
                 placeholder="102.5"
@@ -1532,6 +1535,7 @@ export default function HealthPage() {
               <Input
                 label="Respiration (breaths/min)"
                 type="number"
+                min="0"
                 value={newInspection.respiration}
                 onChange={(e) => setNewInspection({ ...newInspection, respiration: e.target.value })}
                 placeholder="20"
@@ -1539,6 +1543,7 @@ export default function HealthPage() {
               <Input
                 label="Heart Rate (bpm)"
                 type="number"
+                min="0"
                 value={newInspection.heart_rate}
                 onChange={(e) => setNewInspection({ ...newInspection, heart_rate: e.target.value })}
                 placeholder="80"
