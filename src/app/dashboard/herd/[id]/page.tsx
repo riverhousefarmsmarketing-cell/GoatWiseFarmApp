@@ -290,6 +290,7 @@ export default function AnimalDetailPage() {
     setEditData({
       name: animal?.name || '',
       breed: animal?.breed || '',
+      sex: animal?.sex || '',
       // Normalize to the neutral category value so it matches an option in the
       // (species-aware) category dropdown even for animals stored with goat words.
       category: toCanonicalCategory(animal?.category) || '',
@@ -305,6 +306,7 @@ export default function AnimalDetailPage() {
 
   // Species-aware breed options for edit modal
   const animalSpecies: Species = ((animal as any)?.species as Species) || 'goat';
+  const speciesEmoji = animalSpecies === 'sheep' ? '🐑' : '🐐';
   const animalSpeciesConfig = useMemo(() => getSpeciesConfig(animalSpecies), [animalSpecies]);
   const editBreedOptions = useMemo(() => [
     { value: '', label: 'Select breed...' },
@@ -314,7 +316,15 @@ export default function AnimalDetailPage() {
   ], [animalSpecies]);
 
   const handleSaveEdit = async () => {
-    await updateAnimal.mutateAsync(editData);
+    if (!editData?.name?.trim()) return;
+    // date_of_birth is a Postgres `date` column: an empty string is rejected
+    // ("invalid input syntax for type date"), which blocked saving edits on any
+    // animal without a birth date (bucks, purchased animals). Send null instead.
+    await updateAnimal.mutateAsync({
+      ...editData,
+      name: editData.name.trim(),
+      date_of_birth: editData.date_of_birth || null,
+    });
   };
 
   const handleDelete = () => {
@@ -446,7 +456,7 @@ export default function AnimalDetailPage() {
             {animalPhotos && animalPhotos.length > 0 ? (
               <img src={animalPhotos[0].url} alt={animal.name} className="w-full h-full object-cover" />
             ) : (
-              '🐐'
+              speciesEmoji
             )}
           </div>
 
@@ -652,12 +662,48 @@ export default function AnimalDetailPage() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-500">Registration #</dt>
-                <dd className="font-medium">{animal.registration_number || '—'}</dd>
+                {/* The Add form writes registry_number; the edit modal writes
+                    registration_number. Show whichever is set so entered
+                    registry data isn't invisible. */}
+                <dd className="font-medium">
+                  {animal.registration_number || (animal as any).registry_number || '—'}
+                </dd>
               </div>
+              {(animal as any).registry_name && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Registry</dt>
+                  <dd className="font-medium">{(animal as any).registry_name}</dd>
+                </div>
+              )}
               <div className="flex justify-between">
                 <dt className="text-gray-500">Microchip ID</dt>
                 <dd className="font-medium">{animal.microchip_id || '—'}</dd>
               </div>
+              {/* Fields captured on the Add form that otherwise never appear. */}
+              {(animal as any).weight != null && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Weight</dt>
+                  <dd className="font-medium">{(animal as any).weight} lbs</dd>
+                </div>
+              )}
+              {(animal as any).color && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Color</dt>
+                  <dd className="font-medium capitalize">{(animal as any).color}</dd>
+                </div>
+              )}
+              {(animal as any).purchase_date && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Purchased</dt>
+                  <dd className="font-medium">{formatDate((animal as any).purchase_date)}</dd>
+                </div>
+              )}
+              {(animal as any).purchase_cost != null && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Purchase Cost</dt>
+                  <dd className="font-medium">{formatCurrency((animal as any).purchase_cost)}</dd>
+                </div>
+              )}
             </dl>
           </Card>
 
@@ -924,7 +970,7 @@ export default function AnimalDetailPage() {
                 <p className="text-sm text-gray-500 mb-2">Sire (Father)</p>
                 {animal.sire ? (
                   <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                    <span className="text-2xl">🐐</span>
+                    <span className="text-2xl">{speciesEmoji}</span>
                     <AnimalLink 
                       animalId={animal.sire.id} 
                       name={animal.sire.name}
@@ -939,7 +985,7 @@ export default function AnimalDetailPage() {
                 <p className="text-sm text-gray-500 mb-2">Dam (Mother)</p>
                 {animal.dam ? (
                   <div className="flex items-center gap-3 p-3 bg-pink-50 rounded-lg">
-                    <span className="text-2xl">🐐</span>
+                    <span className="text-2xl">{speciesEmoji}</span>
                     <AnimalLink 
                       animalId={animal.dam.id} 
                       name={animal.dam.name}
@@ -1085,6 +1131,16 @@ export default function AnimalDetailPage() {
               options={editBreedOptions}
               value={editData.breed}
               onChange={(e) => setEditData({ ...editData, breed: e.target.value })}
+            />
+            <Select
+              label="Sex"
+              options={[
+                { value: 'female', label: 'Female' },
+                { value: 'male', label: 'Male' },
+                { value: 'castrated', label: 'Castrated' },
+              ]}
+              value={editData.sex}
+              onChange={(e) => setEditData({ ...editData, sex: e.target.value })}
             />
             <Select
               label="Category"
