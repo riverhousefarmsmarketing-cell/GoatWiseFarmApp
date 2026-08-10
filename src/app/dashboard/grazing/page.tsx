@@ -112,11 +112,11 @@ export default function GrazingPage() {
   const [assignForm, setAssignForm] = useState({
     group_id: '',
     paddock_id: '',
-    moved_in_at: new Date().toISOString().split('T')[0],
+    moved_in_at: format(new Date(), 'yyyy-MM-dd'),
     notes: '',
   });
   const [moveOutForm, setMoveOutForm] = useState({
-    moved_out_at: new Date().toISOString().split('T')[0],
+    moved_out_at: format(new Date(), 'yyyy-MM-dd'),
     next_paddock_id: '',
     notes: '',
   });
@@ -193,7 +193,7 @@ export default function GrazingPage() {
       return;
     }
     setShowAssign(false);
-    setAssignForm({ group_id: '', paddock_id: '', moved_in_at: new Date().toISOString().split('T')[0], notes: '' });
+    setAssignForm({ group_id: '', paddock_id: '', moved_in_at: format(new Date(), 'yyyy-MM-dd'), notes: '' });
   };
 
   const handleMoveOut = async () => {
@@ -213,7 +213,7 @@ export default function GrazingPage() {
     }
     setShowMoveOut(false);
     setSelectedMove(null);
-    setMoveOutForm({ moved_out_at: new Date().toISOString().split('T')[0], next_paddock_id: '', notes: '' });
+    setMoveOutForm({ moved_out_at: format(new Date(), 'yyyy-MM-dd'), next_paddock_id: '', notes: '' });
   };
 
   const openMoveOut = (move: PaddockMove) => {

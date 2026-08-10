@@ -10,7 +10,7 @@ import {
 } from '@/components/ui';
 import { formatDate, calculateAge } from '@/lib/utils';
 import { Shield, Plus, Star, AlertTriangle, Heart, Syringe, ChevronRight, Camera, X, Pencil, Trash2 } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { format, addDays, parseISO } from 'date-fns';
 
 const PREDATION_PHOTO_CATEGORIES = [
   { value: 'injury', label: 'Injury/Attack' },
@@ -330,7 +330,7 @@ export default function GuardiansPage() {
           caption: guardianPhotoCaption || null,
           filename,
           url: urlData.publicUrl,
-          date_taken: new Date().toISOString().split('T')[0],
+          date_taken: format(new Date(), 'yyyy-MM-dd'),
         });
       }
       queryClient.invalidateQueries({ queryKey: ['guardian_photos', selectedGuardian.id] });
@@ -355,7 +355,7 @@ export default function GuardiansPage() {
 
   const vaccinesDueSoon = vaccinations?.filter((v: any) => {
     if (!v.next_due_date) return false;
-    const due = new Date(v.next_due_date);
+    const due = parseISO(v.next_due_date);
     return due <= addDays(new Date(), 30) && due >= new Date();
   }).length || 0;
 

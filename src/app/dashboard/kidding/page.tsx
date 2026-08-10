@@ -16,6 +16,7 @@ import {
   AnimalLink,
 } from '@/components/ui';
 import { formatDate, calculateAge } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
 import {
   Baby,
   Plus,
@@ -98,7 +99,7 @@ export default function KiddingPage() {
 
   // Kidding form state
   const [kiddingForm, setKiddingForm] = useState({
-    kidding_date: new Date().toISOString().split('T')[0],
+    kidding_date: format(new Date(), 'yyyy-MM-dd'),
     number_of_kids: 1,
     labor_duration: '',
     assistance_required: false,
@@ -221,7 +222,7 @@ export default function KiddingPage() {
             sex: data.kidForm.sex,
             category: data.kidForm.sex === 'female' ? 'young_female' : 'young_male',
             breed: dam?.breed || null,
-            date_of_birth: selectedBreeding?.kidding_date || new Date().toISOString().split('T')[0],
+            date_of_birth: selectedBreeding?.kidding_date || format(new Date(), 'yyyy-MM-dd'),
             dam_id: data.dam_id,
             sire_id: data.sire_id,
             status: data.kidForm.retained ? 'active' : 'sold',
@@ -391,7 +392,7 @@ export default function KiddingPage() {
   const getDaysUntilDue = (dueDate: string | null) => {
     if (!dueDate) return null;
     const today = new Date();
-    const due = new Date(dueDate);
+    const due = parseISO(dueDate);
     const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     return diff;
   };
@@ -433,7 +434,7 @@ export default function KiddingPage() {
           <p className="text-2xl font-semibold text-green-600">
             {breedingRecords?.filter(r => {
               if (r.status !== 'kidded' || !r.kidding_date) return false;
-              return new Date(r.kidding_date).getFullYear() === new Date().getFullYear();
+              return r.kidding_date?.slice(0, 4) === String(new Date().getFullYear());
             }).length || 0}
           </p>
         </Card>
@@ -442,7 +443,7 @@ export default function KiddingPage() {
           <p className="text-2xl font-semibold text-cyan-600">
             {breedingRecords?.filter(r => {
               if (r.status !== 'kidded' || !r.kidding_date) return false;
-              return new Date(r.kidding_date).getFullYear() === new Date().getFullYear();
+              return r.kidding_date?.slice(0, 4) === String(new Date().getFullYear());
             }).reduce((sum, r) => sum + (r.number_of_kids || 0), 0) || 0}
           </p>
         </Card>
@@ -561,7 +562,7 @@ export default function KiddingPage() {
                           onClick={() => {
                             setSelectedBreeding(record);
                             setKiddingForm({
-                              kidding_date: new Date().toISOString().split('T')[0],
+                              kidding_date: format(new Date(), 'yyyy-MM-dd'),
                               number_of_kids: 1,
                               labor_duration: '',
                               assistance_required: false,

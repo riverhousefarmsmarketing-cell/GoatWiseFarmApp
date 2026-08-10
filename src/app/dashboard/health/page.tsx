@@ -33,6 +33,7 @@ import {
   AnimalLink,
 } from '@/components/ui';
 import { formatDate, getFamachaColor, getFamachaStatus } from '@/lib/utils';
+import { format } from 'date-fns';
 import {
   conditions as allConditions,
   getConditionsBySymptomTag,
@@ -292,7 +293,7 @@ export default function HealthPage() {
   const [newRecord, setNewRecord] = useState({
     animal_id: '',
     type: 'vaccination' as const,
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'),
     treatment: '',
     medication: '',
     dosage: '',
@@ -307,7 +308,7 @@ export default function HealthPage() {
   // New inspection state
   const [newInspection, setNewInspection] = useState({
     animal_id: '',
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'),
     famacha: '',
     body_condition_score: '',
     weight: '',
@@ -381,7 +382,7 @@ export default function HealthPage() {
   const handleSwCreateRecord = (type: string, conditionName?: string) => {
     setShowSomethingsWrong(false);
     const sympLabels = swSelectedSymptoms.map(s => SYMPTOM_TAG_LABELS[s]).join(', ');
-    setNewRecord(prev => ({ ...prev, animal_id: swAnimalId, type: type as any, notes: conditionName ? 'Suspected: ' + conditionName + '. Symptoms: ' + sympLabels : 'Symptoms noted: ' + sympLabels, date: new Date().toISOString().split('T')[0] }));
+    setNewRecord(prev => ({ ...prev, animal_id: swAnimalId, type: type as any, notes: conditionName ? 'Suspected: ' + conditionName + '. Symptoms: ' + sympLabels : 'Symptoms noted: ' + sympLabels, date: format(new Date(), 'yyyy-MM-dd') }));
     setShowAddRecordModal(true);
   };
 
@@ -524,7 +525,7 @@ export default function HealthPage() {
     setEditingInspectionId(insp.id);
     setNewInspection({
       animal_id: insp.animal_id || '',
-      date: insp.date || new Date().toISOString().split('T')[0],
+      date: insp.date || format(new Date(), 'yyyy-MM-dd'),
       famacha: insp.famacha != null ? String(insp.famacha) : '',
       body_condition_score: insp.body_condition_score != null ? String(insp.body_condition_score) : '',
       weight: insp.weight != null ? String(insp.weight) : '',
@@ -544,7 +545,7 @@ export default function HealthPage() {
     setNewRecord({
       animal_id: '',
       type: 'vaccination',
-      date: new Date().toISOString().split('T')[0],
+      date: format(new Date(), 'yyyy-MM-dd'),
       treatment: '',
       medication: '',
       dosage: '',
@@ -562,7 +563,7 @@ export default function HealthPage() {
   const resetInspectionForm = () => {
     setNewInspection({
       animal_id: '',
-      date: new Date().toISOString().split('T')[0],
+      date: format(new Date(), 'yyyy-MM-dd'),
       famacha: '',
       body_condition_score: '',
       weight: '',
@@ -972,7 +973,7 @@ export default function HealthPage() {
                               setNewRecord({
                                 animal_id: record.animal_id || '',
                                 type: record.type || 'vaccination',
-                                date: record.date || new Date().toISOString().split('T')[0],
+                                date: record.date || format(new Date(), 'yyyy-MM-dd'),
                                 treatment: record.treatment || '',
                                 medication: record.medication || '',
                                 dosage: record.dosage ? String(record.dosage) : '',

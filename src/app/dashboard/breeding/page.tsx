@@ -339,7 +339,7 @@ export default function BreedingPage() {
     const thisYear = new Date().getFullYear();
     const kiddedThisYear = breedingRecords?.filter(r => {
       if (r.status !== 'kidded' || !r.kidding_date) return false;
-      return new Date(r.kidding_date).getFullYear() === thisYear;
+      return r.kidding_date?.slice(0, 4) === String(thisYear);
     }) || [];
 
     return {
@@ -631,7 +631,7 @@ export default function BreedingPage() {
                   <tbody className="divide-y">
                     {pregnantDoes.map((record) => {
                       const daysUntil = record.due_date 
-                        ? differenceInDays(new Date(record.due_date), new Date())
+                        ? differenceInDays(parseISO(record.due_date.slice(0, 10)), new Date())
                         : null;
                       const isOverdue = daysUntil !== null && daysUntil < 0;
                       const isDueSoon = daysUntil !== null && daysUntil >= 0 && daysUntil <= 7;
@@ -759,7 +759,7 @@ export default function BreedingPage() {
                   </thead>
                   <tbody className="divide-y">
                     {plannedBreedings.map((record) => {
-                      const daysUntilBreed = differenceInDays(new Date(record.breeding_date), new Date());
+                      const daysUntilBreed = differenceInDays(parseISO(record.breeding_date.slice(0, 10)), new Date());
                       const isOverdue = daysUntilBreed < 0;
                       const isSoon = daysUntilBreed >= 0 && daysUntilBreed <= 14;
 

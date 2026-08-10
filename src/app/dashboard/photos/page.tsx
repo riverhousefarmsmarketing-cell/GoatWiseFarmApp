@@ -34,6 +34,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import Link from 'next/link';
+import { format } from 'date-fns';
 
 interface Photo {
   id: string;
@@ -80,7 +81,7 @@ export default function PhotoGalleryPage() {
     animal_id: '',
     category: 'general',
     caption: '',
-    date_taken: new Date().toISOString().split('T')[0],
+    date_taken: format(new Date(), 'yyyy-MM-dd'),
     files: [] as File[],
   });
 
@@ -231,7 +232,7 @@ export default function PhotoGalleryPage() {
         animal_id: '',
         category: 'general',
         caption: '',
-        date_taken: new Date().toISOString().split('T')[0],
+        date_taken: format(new Date(), 'yyyy-MM-dd'),
         files: [],
       });
     } catch (error) {

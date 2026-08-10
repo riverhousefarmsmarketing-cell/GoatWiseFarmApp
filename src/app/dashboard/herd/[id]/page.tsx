@@ -364,7 +364,7 @@ export default function AnimalDetailPage() {
           caption: photoCaption || null,
           filename,
           url: urlData.publicUrl,
-          date_taken: new Date().toISOString().split('T')[0],
+          date_taken: format(new Date(), 'yyyy-MM-dd'),
         });
       }
 

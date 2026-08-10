@@ -31,6 +31,7 @@ import {
   Droplets,
 } from 'lucide-react';
 import Link from 'next/link';
+import { format, parseISO } from 'date-fns';
 
 // Decision Layer imports
 import {
@@ -232,7 +233,9 @@ export default function DashboardPage() {
 
     // Prepare milk data
     const milkList = (milkRecords as any[]) || [];
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Local calendar day -- milk records store their date in local time, so a
+    // UTC-derived "today" would miss today's entries in the evening west of UTC.
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
     const todayMilk = milkList
       .filter((m: any) => m.date === todayStr)
       .reduce((sum: number, m: any) => sum + (m.amount || 0), 0);
@@ -610,7 +613,7 @@ export default function DashboardPage() {
 
     // Overdue does
     stats.overdueDoes.forEach((b: any) => {
-      const daysOverdue = Math.floor((new Date().getTime() - new Date(b.due_date).getTime()) / (1000 * 60 * 60 * 24));
+      const daysOverdue = Math.floor((new Date().getTime() - parseISO(b.due_date).getTime()) / (1000 * 60 * 60 * 24));
       taskList.push({
         type: 'urgent',
         icon: AlertTriangle,
@@ -628,7 +631,7 @@ export default function DashboardPage() {
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
     stats.upcomingDues.filter((b: any) => new Date(b.due_date) <= sevenDaysFromNow).forEach((b: any) => {
-      const daysUntil = Math.ceil((new Date(b.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      const daysUntil = Math.ceil((parseISO(b.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       taskList.push({
         type: 'warning',
         icon: Baby,
@@ -874,7 +877,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               stats.upcomingDues.slice(0, 5).map((breeding: any, i: number) => {
-                const daysUntil = Math.ceil((new Date(breeding.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                const daysUntil = Math.ceil((parseISO(breeding.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                 const isUrgent = daysUntil <= 7;
                 
                 return (

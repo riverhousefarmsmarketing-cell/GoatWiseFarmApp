@@ -12,6 +12,7 @@ import {
   LoadingSpinner,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
 import {
   FileText,
   Printer,
@@ -39,7 +40,7 @@ export default function CertificatesPage() {
   const [farmEmail, setFarmEmail] = useState('');
   const [buyerName, setBuyerName] = useState('');
   const [buyerAddress, setBuyerAddress] = useState('');
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [saleDate, setSaleDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [salePrice, setSalePrice] = useState('');
   
 
@@ -168,7 +169,7 @@ export default function CertificatesPage() {
   // Calculate age
   const calculateAge = (birthDate: string | null) => {
     if (!birthDate) return 'Unknown';
-    const birth = new Date(birthDate);
+    const birth = parseISO(birthDate);
     const now = new Date();
     const months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
     if (months < 12) return `${months} months`;

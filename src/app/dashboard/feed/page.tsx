@@ -15,6 +15,7 @@ import {
   Modal,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { format } from 'date-fns';
 import {
   Package,
   Plus,
@@ -97,7 +98,7 @@ export default function FeedInventoryPage() {
   const [inventoryFormData, setInventoryFormData] = useState({
     feed_type_id: '',
     quantity: '',
-    purchase_date: new Date().toISOString().split('T')[0],
+    purchase_date: format(new Date(), 'yyyy-MM-dd'),
     expiration_date: '',
     lot_number: '',
     notes: '',
@@ -108,7 +109,7 @@ export default function FeedInventoryPage() {
     feed_type_id: '',
     herd_id: '',
     quantity: '',
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'),
     notes: '',
   });
 
@@ -293,7 +294,7 @@ export default function FeedInventoryPage() {
     setInventoryFormData({
       feed_type_id: '',
       quantity: '',
-      purchase_date: new Date().toISOString().split('T')[0],
+      purchase_date: format(new Date(), 'yyyy-MM-dd'),
       expiration_date: '',
       lot_number: '',
       notes: '',
@@ -305,7 +306,7 @@ export default function FeedInventoryPage() {
       feed_type_id: '',
       herd_id: '',
       quantity: '',
-      date: new Date().toISOString().split('T')[0],
+      date: format(new Date(), 'yyyy-MM-dd'),
       notes: '',
     });
   };
