@@ -60,6 +60,13 @@ const IDEAL_WEIGHTS: Record<string, { min: number; max: number; label: string }>
   'castrated': { min: 100, max: 200, label: 'Adult' },
 };
 
+// Ideal ranges and all on-screen weights are expressed in lbs, so normalize any
+// record entered in kg before comparing/aggregating. Without this a kg weight
+// was compared against lbs thresholds (e.g. an 80 kg / 176 lb doe flagged
+// "underweight" against a 100 lb minimum) and mixed-unit deltas were spurious.
+const toLbs = (weight: number | null | undefined, unit: string | null | undefined): number | null =>
+  weight == null ? null : unit === 'kg' ? weight * 2.20462 : weight;
+
 export default function WeightTrackingPage() {
   const { user } = useAuth();
   const supabase = getSupabaseClient();
@@ -208,8 +215,8 @@ export default function WeightTrackingPage() {
         .filter((r: WeightRecord) => r.animal_id === animal.id)
         .sort((a: WeightRecord, b: WeightRecord) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      const currentWeight = animalRecords[0]?.weight || null;
-      const previousWeight = animalRecords[1]?.weight || null;
+      const currentWeight = toLbs(animalRecords[0]?.weight, animalRecords[0]?.weight_unit);
+      const previousWeight = toLbs(animalRecords[1]?.weight, animalRecords[1]?.weight_unit);
       const change = currentWeight && previousWeight ? currentWeight - previousWeight : null;
       const changePercent = change && previousWeight ? (change / previousWeight) * 100 : null;
 
@@ -219,7 +226,9 @@ export default function WeightTrackingPage() {
         const oldest = animalRecords[animalRecords.length - 1];
         const newest = animalRecords[0];
         const daysDiff = Math.max(1, (new Date(newest.date).getTime() - new Date(oldest.date).getTime()) / (1000 * 60 * 60 * 24));
-        avgGrowthRate = (newest.weight - oldest.weight) / daysDiff;
+        const newestLbs = toLbs(newest.weight, newest.weight_unit) ?? 0;
+        const oldestLbs = toLbs(oldest.weight, oldest.weight_unit) ?? 0;
+        avgGrowthRate = (newestLbs - oldestLbs) / daysDiff;
       }
 
       // Check ideal weight range
@@ -446,7 +455,7 @@ export default function WeightTrackingPage() {
                   <div className="text-right">
                     {stat.currentWeight ? (
                       <>
-                        <p className="text-2xl font-bold">{stat.currentWeight} lbs</p>
+                        <p className="text-2xl font-bold">{Math.round(stat.currentWeight)} lbs</p>
                         {stat.change !== null && (
                           <p className={`text-sm flex items-center justify-end gap-1 ${
                             stat.change > 0 ? 'text-green-600' : stat.change < 0 ? 'text-red-600' : 'text-gray-500'
@@ -491,7 +500,7 @@ export default function WeightTrackingPage() {
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-gray-500">Current Weight:</span>
-                          <span className="font-medium">{stat.currentWeight ? `${stat.currentWeight} lbs` : '-'}</span>
+                          <span className="font-medium">{stat.currentWeight ? `${Math.round(stat.currentWeight)} lbs` : '-'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Previous Weight:</span>
