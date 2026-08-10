@@ -444,14 +444,14 @@ export default function BreedingPlannerPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{plan.name || `${plan.doe?.name} x ${plan.buck?.name || 'TBD'}`}</h3>
+                          <h3 className="font-semibold">{plan.name || `${plan.doe?.name || 'Unknown doe'} x ${plan.buck?.name || 'TBD'}`}</h3>
                           <Badge className={statusColors[plan.status]}>{plan.status}</Badge>
                         </div>
                         <div className="text-sm text-gray-500 space-y-1">
                           <p>
-                            <span className="font-medium">Doe:</span> {plan.doe?.name || plan.doe_name}
-                            {(plan.buck?.name || plan.buck_name) && (
-                              <> • <span className="font-medium">Buck:</span> {plan.buck?.name || plan.buck_name}</>
+                            <span className="font-medium">Doe:</span> {plan.doe?.name || 'Unknown doe'}
+                            {(plan.buck?.name) && (
+                              <> • <span className="font-medium">Buck:</span> {plan.buck?.name}</>
                             )}
                           </p>
                           <p>
@@ -531,9 +531,9 @@ export default function BreedingPlannerPage() {
             }).slice(0, 5).map((plan: any) => (
               <div key={plan.id} className="p-4 flex justify-between items-center">
                 <div>
-                  <p className="font-medium">{plan.doe_id ? <AnimalLink animalId={plan.doe_id} name={plan.doe?.name || plan.doe_name} variant="subtle" /> : (plan.doe?.name || plan.doe_name)}</p>
+                  <p className="font-medium">{plan.doe_id ? <AnimalLink animalId={plan.doe_id} name={plan.doe?.name || 'Unknown doe'} variant="subtle" /> : (plan.doe?.name || 'Unknown doe')}</p>
                   <p className="text-sm text-gray-500">
-                    with {plan.buck_id ? <AnimalLink animalId={plan.buck_id} name={plan.buck?.name || plan.buck_name || 'TBD'} variant="subtle" /> : (plan.buck?.name || plan.buck_name || 'TBD')}
+                    with {plan.buck_id ? <AnimalLink animalId={plan.buck_id} name={plan.buck?.name || 'TBD'} variant="subtle" /> : (plan.buck?.name || 'TBD')}
                   </p>
                 </div>
                 <Badge variant="info">{formatDate(plan.planned_breeding_date)}</Badge>
@@ -562,7 +562,7 @@ export default function BreedingPlannerPage() {
               return (
                 <div key={plan.id} className="p-4 flex justify-between items-center">
                   <div>
-                    <p className="font-medium">{plan.doe_id ? <AnimalLink animalId={plan.doe_id} name={plan.doe?.name || plan.doe_name} variant="subtle" /> : (plan.doe?.name || plan.doe_name)}</p>
+                    <p className="font-medium">{plan.doe_id ? <AnimalLink animalId={plan.doe_id} name={plan.doe?.name || 'Unknown doe'} variant="subtle" /> : (plan.doe?.name || 'Unknown doe')}</p>
                     <p className="text-sm text-gray-500">
                       {plan.gestation_days} day gestation
                     </p>

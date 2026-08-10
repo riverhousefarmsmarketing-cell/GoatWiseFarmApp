@@ -874,7 +874,7 @@ export default function GuardiansPage() {
                 <div className="flex gap-2 mt-1"><StatusBadge status={selectedGuardian.status} /><StatusBadge status={selectedGuardian.training_status} /></div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center p-3 bg-gray-50 rounded-lg"><p className="text-sm text-gray-500">Age</p><p className="font-semibold">{selectedGuardian.birth_date ? calculateAge(selectedGuardian.birth_date) : '—'}</p></div>
               <div className="text-center p-3 bg-gray-50 rounded-lg"><p className="text-sm text-gray-500">Weight</p><p className="font-semibold">{selectedGuardian.weight || '—'} lbs</p></div>
               <div className="text-center p-3 bg-gray-50 rounded-lg"><p className="text-sm text-gray-500">Rating</p><RatingStars rating={selectedGuardian.effectiveness_rating || 0} /></div>

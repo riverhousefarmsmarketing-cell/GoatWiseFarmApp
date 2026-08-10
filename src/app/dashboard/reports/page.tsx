@@ -492,7 +492,7 @@ export default function ReportsPage() {
               </div>
               <div className="p-4">
                 {breedingStats ? (
-                  <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                     <div>
                       <p className="text-2xl font-bold text-green-600">{breedingStats.successRate.toFixed(0)}%</p>
                       <p className="text-xs text-gray-500">Success Rate</p>
@@ -521,7 +521,7 @@ export default function ReportsPage() {
               </div>
               <div className="p-4">
                 {herdStats ? (
-                  <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                     <div>
                       <p className="text-2xl font-bold text-pink-600">{herdStats.does}</p>
                       <p className="text-xs text-gray-500">Does</p>

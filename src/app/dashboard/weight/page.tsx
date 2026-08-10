@@ -504,7 +504,7 @@ export default function WeightTrackingPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Previous Weight:</span>
-                          <span className="font-medium">{stat.previousWeight ? `${stat.previousWeight} lbs` : '-'}</span>
+                          <span className="font-medium">{stat.previousWeight ? `${Math.round(stat.previousWeight)} lbs` : '-'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Change:</span>
