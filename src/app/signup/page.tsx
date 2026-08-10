@@ -15,6 +15,7 @@ export default function SignUpPage() {
   const [farmName, setFarmName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,9 +34,11 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const { error } = await signUp(email, password, farmName);
+      const { error, needsEmailConfirmation } = await signUp(email, password, farmName);
       if (error) {
         setError(error.message);
+      } else if (needsEmailConfirmation) {
+        setConfirmationSent(true);
       } else {
         router.push('/dashboard');
       }
@@ -45,6 +48,26 @@ export default function SignUpPage() {
       setLoading(false);
     }
   };
+
+  if (confirmationSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
+        <div className="w-full max-w-md text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
+            <span className="text-3xl">📬</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Check your email</h1>
+          <p className="text-gray-600 mt-2">
+            We sent a confirmation link to <span className="font-medium">{email}</span>. Click it to
+            activate your account, then sign in.
+          </p>
+          <Link href="/login" className="inline-block mt-6 text-primary-600 font-medium hover:underline">
+            Go to sign in
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">

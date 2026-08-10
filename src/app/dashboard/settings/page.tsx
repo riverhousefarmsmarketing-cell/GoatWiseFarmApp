@@ -910,7 +910,7 @@ export default function SettingsPage() {
           <Palette className="h-5 w-5 text-gray-400" />
           Measurement Units
         </h2>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Select
             label="Weight"
             options={[

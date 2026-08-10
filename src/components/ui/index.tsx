@@ -288,7 +288,10 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, size = 'md', children, footer }: ModalProps) {
   if (!open) return null;
-const sizeClass = size === 'sm' ? 'max-w-sm' : size
+  // Map to real Tailwind classes. Previously non-'sm' sizes emitted the raw
+  // string "md"/"lg" (not a class), so md/lg modals had no max-width and
+  // stretched full-width on desktop.
+  const sizeClass = size === 'sm' ? 'max-w-sm' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">

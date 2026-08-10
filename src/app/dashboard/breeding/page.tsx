@@ -1116,7 +1116,7 @@ export default function BreedingPage() {
                   </div>
                   
                   {/* Row 1: Name, Sex, Status */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <Input
                       placeholder="Name (optional)"
                       value={kid.name}
