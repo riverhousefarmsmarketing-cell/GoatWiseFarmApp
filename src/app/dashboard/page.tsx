@@ -105,10 +105,14 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  // Fetch inspections (for FAMACHA scores)
+  // Fetch inspections (for FAMACHA scores). Bounded to the last year -- the
+  // signal only needs each animal's latest inspection, so loading the entire
+  // history on the landing page was wasted work.
   const { data: inspections } = useQuery({
     queryKey: ['inspections_all'],
     queryFn: async () => {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
       const { data, error } = await supabase
         .from('inspections')
         .select(`
@@ -116,6 +120,7 @@ export default function DashboardPage() {
           animal:animals(id, name)
         `)
         .eq('user_id', user!.id)
+        .gte('date', format(oneYearAgo, 'yyyy-MM-dd'))
         .order('date', { ascending: false });
       if (error) throw error;
       return data;
@@ -141,14 +146,22 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  // Fetch weight records
+  // Fetch weight records (last year). The weight-loss signal only needs each
+  // animal's most recent readings, so loading the full history on the landing
+  // page was wasteful. The key is ['weight_records','dashboard'] -- distinct
+  // from the Weight page's ['weight_records'] (which selects a different shape)
+  // so the two don't collide in the cache, while the Weight page's
+  // invalidateQueries(['weight_records']) still refreshes this by prefix.
   const { data: weightRecords } = useQuery({
-    queryKey: ['weight_records'],
+    queryKey: ['weight_records', 'dashboard'],
     queryFn: async () => {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
       const { data, error } = await supabase
         .from('weight_records')
         .select('*, animal:animals(id, name)')
         .eq('user_id', user!.id)
+        .gte('date', format(oneYearAgo, 'yyyy-MM-dd'))
         .order('date', { ascending: false });
       if (error) throw error;
       return data;
