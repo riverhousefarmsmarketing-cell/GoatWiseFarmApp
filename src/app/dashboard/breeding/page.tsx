@@ -155,6 +155,13 @@ export default function BreedingPage() {
     [animals]
   );
 
+  // Default gestation follows the doe's species (sheep ~147d, goat ~150d) so the
+  // due date is right for both. Goat is the default when species is unknown.
+  const gestationForDoe = (doeId: string): string => {
+    const doe = (does as any[]).find((d) => d.id === doeId);
+    return doe?.species === 'sheep' ? '147' : '150';
+  };
+
   // Mutations
   const createBreeding = useMutation({
     mutationFn: async (data: any) => {
@@ -437,7 +444,6 @@ export default function BreedingPage() {
     }
 
     // Count kids
-    const aliveKids = kiddingForm.kids.filter(k => k.status === 'alive').length;
     const totalKids = kiddingForm.kids.length;
 
     // Create animal records for live kids
@@ -450,10 +456,21 @@ export default function BreedingPage() {
     );
     setKidWarnings(failures);
 
+    // Non-alive kids don't get an animal record, so preserve whatever the user
+    // entered for them (name/sex/notes) in the kidding notes rather than losing
+    // it -- only the +1 on the count survived before.
+    const lostKids = kiddingForm.kids.filter(k => k.status !== 'alive');
+    const lostNote = lostKids.length
+      ? `Lost/stillborn: ${lostKids
+          .map(k => [k.name || 'unnamed', k.sex, k.status, k.notes].filter(Boolean).join(' '))
+          .join('; ')}`
+      : null;
+
     // Build comprehensive kidding notes
     const laborNotes = [
       `Labor: ${kiddingForm.labor_ease}`,
       kiddingForm.assistance_required ? 'Assistance required' : null,
+      lostNote,
       kiddingForm.notes || null,
     ].filter(Boolean).join('. ');
 
@@ -808,10 +825,26 @@ export default function BreedingPage() {
                               <Button
                                 size="sm"
                                 onClick={() => {
+                                  // Recompute the due date from today's actual
+                                  // breeding, preserving the record's planned
+                                  // gestation length. Without this the due date
+                                  // kept the originally-planned value and no
+                                  // longer matched breeding_date + gestation.
+                                  const gestation =
+                                    record.due_date && record.breeding_date
+                                      ? differenceInDays(
+                                          parseISO(String(record.due_date).slice(0, 10)),
+                                          parseISO(String(record.breeding_date).slice(0, 10))
+                                        )
+                                      : 150;
                                   updateBreeding.mutate({
                                     id: record.id,
                                     status: 'bred',
                                     breeding_date: format(new Date(), 'yyyy-MM-dd'),
+                                    due_date: format(
+                                      addDays(new Date(), gestation > 0 ? gestation : 150),
+                                      'yyyy-MM-dd'
+                                    ),
                                   });
                                 }}
                               >
@@ -958,7 +991,7 @@ export default function BreedingPage() {
             required
             options={[{ value: '', label: 'Select doe...' }, ...does.map(a => ({ value: a.id, label: a.name }))]}
             value={breedingForm.doe_id}
-            onChange={(e) => setBreedingForm(prev => ({ ...prev, doe_id: e.target.value }))}
+            onChange={(e) => setBreedingForm(prev => ({ ...prev, doe_id: e.target.value, gestation_days: gestationForDoe(e.target.value) }))}
           />
           <Select
             label="Buck"
@@ -976,7 +1009,8 @@ export default function BreedingPage() {
           <Select
             label="Gestation"
             options={[
-              { value: '150', label: 'Standard (150 days)' },
+              { value: '150', label: 'Goat standard (150 days)' },
+              { value: '147', label: 'Sheep (147 days)' },
               { value: '145', label: 'Mini (145 days)' },
             ]}
             value={breedingForm.gestation_days}
@@ -1017,7 +1051,7 @@ export default function BreedingPage() {
             required
             options={[{ value: '', label: 'Select doe...' }, ...does.map(a => ({ value: a.id, label: a.name }))]}
             value={planForm.doe_id}
-            onChange={(e) => setPlanForm(prev => ({ ...prev, doe_id: e.target.value }))}
+            onChange={(e) => setPlanForm(prev => ({ ...prev, doe_id: e.target.value, gestation_days: gestationForDoe(e.target.value) }))}
           />
           <Select
             label="Buck (can decide later)"
@@ -1035,7 +1069,8 @@ export default function BreedingPage() {
           <Select
             label="Gestation"
             options={[
-              { value: '150', label: 'Standard (150 days)' },
+              { value: '150', label: 'Goat standard (150 days)' },
+              { value: '147', label: 'Sheep (147 days)' },
               { value: '145', label: 'Mini (145 days)' },
             ]}
             value={planForm.gestation_days}
