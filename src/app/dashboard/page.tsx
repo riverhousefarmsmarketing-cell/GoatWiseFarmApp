@@ -214,11 +214,11 @@ export default function DashboardPage() {
 
     // Prepare FAMACHA data from inspections
     const famachaRecords = ((inspections as any[]) || [])
-      .filter((i: any) => i.famacha_score != null)
+      .filter((i: any) => i.famacha != null)
       .map((i: any) => ({
         animalId: i.animal?.id || i.animal_id,
         animalName: i.animal?.name || 'Unknown',
-        score: i.famacha_score,
+        score: i.famacha,
         date: new Date(i.date),
       }));
 

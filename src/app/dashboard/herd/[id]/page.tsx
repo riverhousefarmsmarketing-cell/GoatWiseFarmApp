@@ -236,18 +236,37 @@ export default function AnimalDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['animal', animalId] });
+      // The herd list and stat cards read ['animals', ...]; without this the
+      // edited name/status/herd stays stale for up to the 60s staleTime.
+      queryClient.invalidateQueries({ queryKey: ['animals'] });
       setShowEditModal(false);
+    },
+    onError: (e: any) => {
+      alert(`Could not save changes: ${e?.message || 'please try again.'}`);
     },
   });
 
   // Delete animal mutation
   const deleteAnimal = useMutation({
     mutationFn: async () => {
+      // Remove dependent rows first, otherwise the animal delete fails on a
+      // foreign-key violation for any animal that has records.
+      await supabase.from('milk_records').delete().eq('animal_id', animalId);
+      await supabase.from('health_records').delete().eq('animal_id', animalId);
+      await supabase.from('weight_records').delete().eq('animal_id', animalId);
+      await supabase.from('inspections').delete().eq('animal_id', animalId);
+      await supabase.from('breeding_records').delete().eq('doe_id', animalId);
+      await supabase.from('breeding_records').delete().eq('buck_id', animalId);
+
       const { error } = await (supabase.from('animals') as any).delete().eq('id', animalId);
       if (error) throw error;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['animals'] });
       router.push('/dashboard/herd');
+    },
+    onError: (e: any) => {
+      alert(`Could not delete this animal: ${e?.message || 'please try again.'}`);
     },
   });
 

@@ -13,6 +13,7 @@ import {
   useUpdateInspection,
   useDeleteInspection,
   useMarkFollowUpComplete,
+  healthKeys,
 } from '@/hooks/useHealth';
 import { useAnimals } from '@/hooks/useAnimals';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -359,7 +360,7 @@ export default function HealthPage() {
   };
   const handleFamachaClick = (score: number) => { if (famachaFilter === score) setFamachaFilter(null); else { setFamachaFilter(score); setActiveTab('inspections'); } };
   const handleAlertClick = (type: string) => { if (type === 'followups' || type === 'withdrawals') setActiveTab('overview'); else if (type === 'deworming') { setFamachaFilter(4); setActiveTab('inspections'); } };
-  const handleDeleteRecord = async (id: string) => { try { await supabase.from('health_records').delete().eq('id', id); queryClient.invalidateQueries({ queryKey: ['health-records'] }); queryClient.invalidateQueries({ queryKey: ['follow-ups-due'] }); setShowDeleteConfirm(null); } catch(e) { console.error(e); } };
+  const handleDeleteRecord = async (id: string) => { try { const { error } = await supabase.from('health_records').delete().eq('id', id); if (error) throw error; queryClient.invalidateQueries({ queryKey: healthKeys.all }); setShowDeleteConfirm(null); } catch(e: any) { console.error(e); alert(`Could not delete the record: ${e?.message || 'please try again.'}`); } };
   // "Something's Wrong" handlers
   const handleSwOpen = () => {
     setShowSomethingsWrong(true); setSwStep('symptoms'); setSwSelectedSymptoms([]); setSwMatchedConditions([]); setSwExpandedCondition(null); setSwAnimalId('');
