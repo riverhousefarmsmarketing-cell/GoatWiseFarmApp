@@ -83,6 +83,7 @@ export default function BreedingPlannerPage() {
           doe:animals!breeding_plans_doe_id_fkey(id, name),
           buck:animals!breeding_plans_buck_id_fkey(id, name)
         `)
+        .eq('user_id', user?.id ?? '')
         .order('planned_breeding_date', { ascending: true });
       if (error) throw error;
       return data;
