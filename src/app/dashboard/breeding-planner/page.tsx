@@ -16,6 +16,7 @@ import {
   EmptyState,
   LoadingSpinner,
   AnimalLink,
+  ErrorState,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import {
@@ -72,7 +73,7 @@ export default function BreedingPlannerPage() {
   const breedableDoes = does?.filter(a => isFemale(a));
   const bucks = activeAnimals?.filter(a => isIntactMale(a));
 
-  const { data: plans, isLoading } = useQuery<any>({
+  const { data: plans, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ['breeding_plans'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -426,6 +427,8 @@ export default function BreedingPlannerPage() {
             <div className="flex justify-center py-12">
               <LoadingSpinner className="h-8 w-8" />
             </div>
+          ) : isError ? (
+            <ErrorState onRetry={() => refetch()} />
           ) : !plans?.length ? (
             <EmptyState
               icon={<Calendar className="h-12 w-12" />}

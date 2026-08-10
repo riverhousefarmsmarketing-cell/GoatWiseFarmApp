@@ -13,6 +13,7 @@ import {
   Badge,
   LoadingSpinner,
   Modal,
+  ErrorState,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -114,7 +115,7 @@ export default function FeedInventoryPage() {
   });
 
   // Fetch feed types
-  const { data: feedTypes, isLoading: typesLoading } = useQuery({
+  const { data: feedTypes, isLoading: typesLoading, isError: typesError, refetch: refetchTypes } = useQuery({
     queryKey: ['feed_types'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -448,6 +449,14 @@ export default function FeedInventoryPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (typesError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <ErrorState onRetry={() => refetchTypes()} />
       </div>
     );
   }

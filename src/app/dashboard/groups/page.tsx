@@ -14,6 +14,7 @@ import {
   Modal,
   Badge,
   EmptyState,
+  ErrorState,
   LoadingSpinner,
 } from '@/components/ui';
 import {
@@ -65,7 +66,7 @@ export default function GroupsPage() {
   });
 
   // Fetch groups
-  const { data: groups, isLoading } = useQuery({
+  const { data: groups, isLoading, isError, refetch } = useQuery({
     queryKey: ['groups'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -268,6 +269,10 @@ export default function GroupsPage() {
         <div className="flex justify-center py-12">
           <LoadingSpinner />
         </div>
+      ) : isError ? (
+        <Card>
+          <ErrorState onRetry={() => refetch()} />
+        </Card>
       ) : !groups?.length ? (
         <Card>
           <EmptyState

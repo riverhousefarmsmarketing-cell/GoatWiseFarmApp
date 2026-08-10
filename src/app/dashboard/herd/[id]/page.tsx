@@ -16,6 +16,7 @@ import {
   Badge,
   LoadingSpinner,
   AnimalLink,
+  ErrorState,
 } from '@/components/ui';
 import {
   formatDate,
@@ -92,7 +93,7 @@ export default function AnimalDetailPage() {
   const [isUploading, setIsUploading] = useState(false);
 
   // Fetch animal details
-  const { data: animal, isLoading } = useQuery({
+  const { data: animal, isLoading, isError, refetch } = useQuery({
     queryKey: ['animal', animalId],
     queryFn: async () => {
       const { data, error } = await (supabase
@@ -408,6 +409,14 @@ export default function AnimalDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner className="h-8 w-8" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <ErrorState onRetry={() => refetch()} />
       </div>
     );
   }

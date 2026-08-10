@@ -6,7 +6,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useHerds } from '@/hooks/useHerds';
 import {
-  Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, LoadingSpinner,
+  Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, ErrorState, LoadingSpinner,
 } from '@/components/ui';
 import { formatDate, calculateAge } from '@/lib/utils';
 import { Shield, Plus, Star, AlertTriangle, Heart, Syringe, ChevronRight, Camera, X, Pencil, Trash2 } from 'lucide-react';
@@ -141,7 +141,7 @@ export default function GuardiansPage() {
     location: '', description: '', animals_lost: '0', animals_injured: '0',
   });
 
-  const { data: guardians, isLoading } = useQuery<any>({
+  const { data: guardians, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ['guardians', typeFilter],
     queryFn: async () => {
       let query = supabase.from('guardians').select('*').order('name');
@@ -629,6 +629,7 @@ export default function GuardiansPage() {
       {activeTab === 'guardians' && (
         <Card padding="none">
          {isLoading ? <div className="flex justify-center py-12"><LoadingSpinner className="h-8 w-8" /></div> :
+           isError ? <ErrorState onRetry={() => refetch()} /> :
            !guardians?.length ? <EmptyState icon={<Shield className="h-12 w-12" />} title="No guardians" action={<Button onClick={openCreateGuardian}>Add Guardian</Button>} /> : (
             <div className="divide-y">
               {guardians.map((g: any) => (

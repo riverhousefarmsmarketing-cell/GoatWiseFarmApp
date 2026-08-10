@@ -12,6 +12,7 @@ import {
   Badge,
   LoadingSpinner,
   Modal,
+  ErrorState,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import {
@@ -105,7 +106,7 @@ export default function PhotoGalleryPage() {
   });
 
   // Fetch photos
-  const { data: photos, isLoading: photosLoading } = useQuery({
+  const { data: photos, isLoading: photosLoading, isError: photosError, refetch: refetchPhotos } = useQuery({
     queryKey: ['photos'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -339,6 +340,14 @@ export default function PhotoGalleryPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (photosError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <ErrorState onRetry={() => refetchPhotos()} />
       </div>
     );
   }

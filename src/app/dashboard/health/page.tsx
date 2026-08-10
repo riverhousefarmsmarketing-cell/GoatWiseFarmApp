@@ -31,6 +31,7 @@ import {
   EmptyState,
   LoadingSpinner,
   AnimalLink,
+  ErrorState,
 } from '@/components/ui';
 import { formatDate, getFamachaColor, getFamachaStatus } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -323,7 +324,7 @@ export default function HealthPage() {
   });
 
   // Data hooks
-  const { data: healthRecords, isLoading: recordsLoading } = useHealthRecords({ type: typeFilter, days: dateRange === 'all' ? 9999 : parseInt(dateRange) });
+  const { data: healthRecords, isLoading: recordsLoading, isError: recordsError, refetch: refetchRecords } = useHealthRecords({ type: typeFilter, days: dateRange === 'all' ? 9999 : parseInt(dateRange) });
   const { data: followUps } = useFollowUpsDue();
   const { data: withdrawals } = useActiveWithdrawals();
   const { data: latestInspections } = useLatestInspections();
@@ -907,6 +908,8 @@ export default function HealthPage() {
               <div className="p-8 flex justify-center">
                 <LoadingSpinner />
               </div>
+            ) : recordsError ? (
+              <ErrorState onRetry={() => refetchRecords()} />
             ) : !filteredRecords?.length ? (
               <EmptyState
                 icon={<Heart className="h-12 w-12" />}

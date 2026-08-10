@@ -14,6 +14,7 @@ import {
   Badge,
   EmptyState,
   LoadingSpinner,
+  ErrorState,
 } from '@/components/ui';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import {
@@ -102,7 +103,7 @@ export default function FinancesPage() {
   });
 
   // Fetch transactions
-  const { data: transactions, isLoading } = useQuery<any>({
+  const { data: transactions, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ['transactions', typeFilter, dateRange],
     queryFn: async () => {
       let startDate: Date;
@@ -527,6 +528,8 @@ export default function FinancesPage() {
               <div className="flex justify-center py-12">
                 <LoadingSpinner />
               </div>
+            ) : isError ? (
+              <ErrorState onRetry={() => refetch()} />
             ) : !transactions?.length ? (
               <EmptyState
                 icon={<Receipt className="h-12 w-12" />}
