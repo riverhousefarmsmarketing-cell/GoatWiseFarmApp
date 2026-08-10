@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import { toCanonicalCategory } from '@/lib/animalVocab';
+import { format } from 'date-fns';
 import {
   Scale,
   Plus,
@@ -73,14 +74,14 @@ export default function WeightTrackingPage() {
   // Form state
   const [formData, setFormData] = useState({
     animal_id: '',
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'),
     weight: '',
     weight_unit: 'lbs',
     notes: '',
   });
 
   // Bulk entry state
-  const [bulkDate, setBulkDate] = useState(new Date().toISOString().split('T')[0]);
+  const [bulkDate, setBulkDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [bulkWeights, setBulkWeights] = useState<Record<string, string>>({});
 
   // Fetch animals
@@ -177,7 +178,7 @@ export default function WeightTrackingPage() {
   const resetForm = () => {
     setFormData({
       animal_id: '',
-      date: new Date().toISOString().split('T')[0],
+      date: format(new Date(), 'yyyy-MM-dd'),
       weight: '',
       weight_unit: 'lbs',
       notes: '',

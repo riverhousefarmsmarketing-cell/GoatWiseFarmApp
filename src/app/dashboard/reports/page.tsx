@@ -14,6 +14,7 @@ import {
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import { isFemale, isIntactMale } from '@/lib/animalVocab';
+import { format } from 'date-fns';
 import {
   BarChart3,
   TrendingUp,
@@ -50,8 +51,8 @@ export default function ReportsPage() {
     }
     
     return {
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0],
+      start: format(start, 'yyyy-MM-dd'),
+      end: format(end, 'yyyy-MM-dd'),
     };
   }, [timeRange]);
 
