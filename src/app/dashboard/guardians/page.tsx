@@ -431,10 +431,15 @@ export default function GuardiansPage() {
       ...newGuardian, birth_date: newGuardian.birth_date || null, herd_id: newGuardian.herd_id || null,
       weight: newGuardian.weight ? parseFloat(newGuardian.weight) : null, notes: newGuardian.notes || null,
     };
-    if (editingGuardianId) {
-      await updateGuardian.mutateAsync({ id: editingGuardianId, ...fields });
-    } else {
-      await createGuardian.mutateAsync(fields);
+    try {
+      if (editingGuardianId) {
+        await updateGuardian.mutateAsync({ id: editingGuardianId, ...fields });
+      } else {
+        await createGuardian.mutateAsync(fields);
+      }
+    } catch (e: any) {
+      alert(`Could not save the guardian: ${e?.message || 'please try again.'}`);
+      return;
     }
     setEditingGuardianId(null);
     setShowAddModal(false);
@@ -469,10 +474,15 @@ export default function GuardiansPage() {
       cost: newHealthRecord.cost ? parseFloat(newHealthRecord.cost) : null,
       follow_up_date: newHealthRecord.follow_up_date || null,
     };
-    if (editingHealthRecordId) {
-      await updateHealthRecord.mutateAsync({ id: editingHealthRecordId, ...fields });
-    } else {
-      await createHealthRecord.mutateAsync(fields);
+    try {
+      if (editingHealthRecordId) {
+        await updateHealthRecord.mutateAsync({ id: editingHealthRecordId, ...fields });
+      } else {
+        await createHealthRecord.mutateAsync(fields);
+      }
+    } catch (e: any) {
+      alert(`Could not save the health record: ${e?.message || 'please try again.'}`);
+      return;
     }
     setEditingHealthRecordId(null);
     setShowHealthModal(false);
@@ -501,10 +511,15 @@ export default function GuardiansPage() {
   const handleCreateVaccination = async () => {
     if (!newVaccine.guardian_id || !newVaccine.vaccine_name) return;
     const fields = { ...newVaccine, next_due_date: newVaccine.next_due_date || null };
-    if (editingVaccineId) {
-      await updateVaccination.mutateAsync({ id: editingVaccineId, ...fields });
-    } else {
-      await createVaccination.mutateAsync(fields);
+    try {
+      if (editingVaccineId) {
+        await updateVaccination.mutateAsync({ id: editingVaccineId, ...fields });
+      } else {
+        await createVaccination.mutateAsync(fields);
+      }
+    } catch (e: any) {
+      alert(`Could not save the vaccination: ${e?.message || 'please try again.'}`);
+      return;
     }
     setEditingVaccineId(null);
     setShowVaccineModal(false);

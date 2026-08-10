@@ -258,7 +258,10 @@ export default function ImportPage() {
     if (lines.length === 0) throw new Error('Empty file');
 
     const headers = parseCSVLine(lines[0]);
-    const rows = lines.slice(1, 101).map(line => parseCSVLine(line)); // Preview first 100 rows
+    // Parse ALL data rows. processImport() iterates this array, and the preview
+    // table slices to the first 10 for display -- so capping here silently
+    // dropped every row past the 100th while still reporting the full count.
+    const rows = lines.slice(1).map(line => parseCSVLine(line));
 
     return {
       headers,

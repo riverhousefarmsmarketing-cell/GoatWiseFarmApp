@@ -276,7 +276,9 @@ export default function DashboardPage() {
         weightByAnimal[id] = { id, name, weights: [] };
       }
       weightByAnimal[id].weights.push({
-        weight: w.weight,
+        // Normalize to lbs so the weight-loss signal compares like with like and
+        // reports the drop in lbs even when a record was entered in kg.
+        weight: w.weight_unit === 'kg' ? w.weight * 2.20462 : w.weight,
         date: new Date(w.date),
       });
     });

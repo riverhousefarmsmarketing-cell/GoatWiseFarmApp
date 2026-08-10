@@ -149,8 +149,6 @@ export function useUpdateBreedingRecord() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<{
       status: string;
-      confirmation_date: string;
-      confirmation_method: string;
       kidding_date: string;
       number_of_kids: number;
       kidding_notes: string;
@@ -232,11 +230,14 @@ export function useConfirmPregnancy() {
       confirmationDate?: string;
       confirmationMethod?: string;
     }) => {
+      // breeding_records has no confirmation_date/confirmation_method columns;
+      // sending them made PostgREST reject the whole update (status included).
+      // Record the confirmation details in notes, which is a real column.
+      const confirmationNote = `Pregnancy confirmed ${confirmationDate || format(new Date(), 'yyyy-MM-dd')}${confirmationMethod ? ` via ${confirmationMethod}` : ''}`;
       const { data, error } = await mutationFrom('breeding_records')
         .update({
           status: 'confirmed_pregnant',
-          confirmation_date: confirmationDate || format(new Date(), 'yyyy-MM-dd'),
-          confirmation_method: confirmationMethod,
+          notes: confirmationNote,
         })
         .eq('id', breedingId)
         .select()

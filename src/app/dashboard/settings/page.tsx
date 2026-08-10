@@ -248,10 +248,12 @@ function SampleDataSection() {
       for (const assignment of groupAssignments) {
         for (const animalName of assignment.animals) {
           if (animalIds[animalName] && groupIds[assignment.group]) {
-            await (supabase.from('animal_groups') as any).insert({
+            const { error: agError } = await (supabase.from('animal_groups') as any).insert({
+              user_id: user.id,
               animal_id: animalIds[animalName],
               group_id: groupIds[assignment.group],
             });
+            if (agError) throw agError;
           }
         }
       }
