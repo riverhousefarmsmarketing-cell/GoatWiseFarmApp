@@ -26,7 +26,7 @@ import {
   getStatusColor,
   getFamachaColor,
 } from '@/lib/utils';
-import { isFemale, toCanonicalCategory, getCategoryOptions } from '@/lib/animalVocab';
+import { isFemale, toCanonicalCategory, getCategoryOptions, isCategoryConsistentWithSex } from '@/lib/animalVocab';
 import {
   ArrowLeft,
   Edit,
@@ -704,6 +704,49 @@ export default function AnimalDetailPage() {
                   <dd className="font-medium">{formatCurrency((animal as any).purchase_cost)}</dd>
                 </div>
               )}
+              {(animal as any).purchase_source && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Source</dt>
+                  <dd className="font-medium">{(animal as any).purchase_source}</dd>
+                </div>
+              )}
+              {(animal as any).secondary_breed && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Secondary Breed</dt>
+                  <dd className="font-medium">{(animal as any).secondary_breed}</dd>
+                </div>
+              )}
+              {(animal as any).health_status && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Health Status</dt>
+                  <dd className="font-medium capitalize">{(animal as any).health_status}</dd>
+                </div>
+              )}
+              {(animal as any).tattoo && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Tattoo</dt>
+                  <dd className="font-medium">{(animal as any).tattoo}</dd>
+                </div>
+              )}
+              {((animal as any).born_on_farm || (animal as any).pedigreed || (animal as any).polled || (animal as any).disbudded) && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Attributes</dt>
+                  <dd className="font-medium text-right">
+                    {[
+                      (animal as any).born_on_farm ? 'Born on farm' : null,
+                      (animal as any).pedigreed ? 'Pedigreed' : null,
+                      (animal as any).polled ? 'Polled' : null,
+                      (animal as any).disbudded ? 'Disbudded' : null,
+                    ].filter(Boolean).join(', ')}
+                  </dd>
+                </div>
+              )}
+              {(animal as any).castration_date && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">Castrated</dt>
+                  <dd className="font-medium">{formatDate((animal as any).castration_date)}</dd>
+                </div>
+              )}
             </dl>
           </Card>
 
@@ -1140,11 +1183,19 @@ export default function AnimalDetailPage() {
                 { value: 'castrated', label: 'Castrated' },
               ]}
               value={editData.sex}
-              onChange={(e) => setEditData({ ...editData, sex: e.target.value })}
+              onChange={(e) => {
+                const sex = e.target.value;
+                // Clear the category if the new sex makes it contradictory.
+                setEditData({
+                  ...editData,
+                  sex,
+                  category: isCategoryConsistentWithSex(sex, editData.category) ? editData.category : '',
+                });
+              }}
             />
             <Select
               label="Category"
-              options={getCategoryOptions(animal?.species)}
+              options={getCategoryOptions(animal?.species, editData.sex)}
               value={editData.category}
               onChange={(e) => setEditData({ ...editData, category: e.target.value })}
             />

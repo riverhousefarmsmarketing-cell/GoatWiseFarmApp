@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
-import { isFemale, isIntactMale } from '@/lib/animalVocab';
+import { isFemale, isIntactMale, categoriesForSex, isCategoryConsistentWithSex, type CanonicalCategory } from '@/lib/animalVocab';
 import { BREEDS } from '@/lib/breedData';
 
 // ==========================================
@@ -111,15 +111,17 @@ export default function AddAnimalPage() {
 
   const { data: herds } = useHerds();
   const { data: groups } = useGroups();
-  const { data: allAnimals } = useAnimals({ status: 'active' });
-
-  // Does and bucks for pedigree selection
-  const does = allAnimals?.filter(isFemale) || [];
-  const bucks = allAnimals?.filter(isIntactMale) || [];
+  const { data: allAnimals } = useAnimals();
 
   // Species state — drives all terminology, categories, and breed list
   const [species, setSpecies] = useState<Species>('goat');
   const speciesConfig = useMemo(() => getSpeciesConfig(species), [species]);
+
+  // Does and bucks for pedigree selection. Include every status (a sold or
+  // deceased parent is still valid lineage) and restrict to the same species as
+  // the animal being created (no cross-species parents).
+  const does = allAnimals?.filter((a) => isFemale(a) && (a.species || 'goat') === species) || [];
+  const bucks = allAnimals?.filter((a) => isIntactMale(a) && (a.species || 'goat') === species) || [];
 
   const breedOptions = useMemo(() => [
     { value: '', label: 'Select breed...' },
@@ -280,6 +282,23 @@ export default function AddAnimalPage() {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
+  // Only offer categories consistent with the chosen sex, and clear the
+  // category if a sex change makes the current one contradictory -- so sex and
+  // category can never be saved in conflict.
+  const visibleCategoryOptions = useMemo(() => {
+    const allowed = categoriesForSex(form.sex);
+    if (!allowed) return categoryOptions;
+    return categoryOptions.filter((o) => allowed.includes(o.value as CanonicalCategory));
+  }, [categoryOptions, form.sex]);
+
+  const updateSex = (newSex: string) => {
+    setForm(prev => ({
+      ...prev,
+      sex: newSex,
+      category: isCategoryConsistentWithSex(newSex, prev.category) ? prev.category : '',
+    }));
+  };
+
   const toggleGroupId = (groupId: string) => {
     setForm(prev => ({
       ...prev,
@@ -357,11 +376,11 @@ export default function AddAnimalPage() {
               label="Sex"
               options={sexOptions}
               value={form.sex}
-              onChange={(e) => updateForm('sex', e.target.value)}
+              onChange={(e) => updateSex(e.target.value)}
             />
             <Select
               label="Category"
-              options={categoryOptions}
+              options={visibleCategoryOptions}
               value={form.category}
               onChange={(e) => updateForm('category', e.target.value)}
             />
