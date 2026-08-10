@@ -1222,7 +1222,9 @@ export default function AnimalDetailPage() {
       </Modal>
 
       {/* Lightbox */}
-      {showLightbox && animalPhotos && animalPhotos.length > 0 && (
+      {/* Guard on the indexed photo so a stale lightboxIndex (list shrank while
+          open) can't read undefined and throw. */}
+      {showLightbox && animalPhotos && animalPhotos[lightboxIndex] && (
         <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
           <button
             onClick={() => setShowLightbox(false)}

@@ -670,7 +670,10 @@ export default function PhotoGalleryPage() {
       </Modal>
 
       {/* Lightbox */}
-      {showLightbox && filteredPhotos.length > 0 && (
+      {/* Guard on the indexed photo, not just length: if the list shrinks while
+          the lightbox is open (delete-from-lightbox, background refetch), a stale
+          lightboxIndex would read undefined and throw. */}
+      {showLightbox && filteredPhotos[lightboxIndex] && (
         <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
           {/* Close button */}
           <button
