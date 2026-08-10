@@ -75,6 +75,37 @@ export function toCanonicalCategory(category?: string | null): string {
   return CATEGORY_TO_CANONICAL[category] ?? category;
 }
 
+// ---- sex <-> category consistency ----
+// Which canonical categories are consistent with a given sex value (accepts
+// either vocabulary). 'young' (an unsexed kid/lamb) is allowed for any sex.
+// Without this coupling a user could save sex='female' with category='male',
+// which made the animal count as both a doe and a buck in stats and appear in
+// both breeding pickers.
+const SEX_TO_CATEGORIES: Record<string, CanonicalCategory[]> = {
+  female: ['milking_female', 'dry_female', 'bred_female', 'young_female', 'young'],
+  doe: ['milking_female', 'dry_female', 'bred_female', 'young_female', 'young'],
+  male: ['male', 'young_male', 'young'],
+  buck: ['male', 'young_male', 'young'],
+  castrated: ['castrated', 'young'],
+  wether: ['castrated', 'young'],
+};
+
+/** Canonical categories consistent with a sex, or null if sex is unknown (no constraint). */
+export function categoriesForSex(sex?: string | null): CanonicalCategory[] | null {
+  if (!sex) return null;
+  return SEX_TO_CATEGORIES[sex] ?? null;
+}
+
+/** True when a category is compatible with a sex (or when either is unknown). */
+export function isCategoryConsistentWithSex(
+  sex?: string | null,
+  category?: string | null
+): boolean {
+  const allowed = categoriesForSex(sex);
+  if (!allowed || !category) return true;
+  return allowed.includes(toCanonicalCategory(category) as CanonicalCategory);
+}
+
 // ---- labels (species-aware, accept either vocabulary) ----
 export function getCategoryLabel(category?: string | null, species: Species = 'goat'): string {
   if (!category) return '';
@@ -94,10 +125,14 @@ export function getCategoryLabel(category?: string | null, species: Species = 'g
   return labels[canon];
 }
 
-/** Select options for the category field, using canonical (neutral) values. */
-export function getCategoryOptions(species: Species = 'goat') {
+/**
+ * Select options for the category field, using canonical (neutral) values.
+ * When `sex` is provided, only categories consistent with that sex are offered
+ * so the two fields can't be saved contradictorily.
+ */
+export function getCategoryOptions(species: Species = 'goat', sex?: string | null) {
   const c = getSpeciesConfig(species).categories;
-  return [
+  const all = [
     { value: 'milking_female', label: c.milkingFemale },
     { value: 'dry_female', label: c.dryFemale },
     { value: 'bred_female', label: c.bredFemale },
@@ -107,4 +142,7 @@ export function getCategoryOptions(species: Species = 'goat') {
     { value: 'castrated', label: c.castrated },
     { value: 'young', label: c.young },
   ];
+  const allowed = categoriesForSex(sex);
+  if (!allowed) return all;
+  return all.filter((o) => allowed.includes(o.value as CanonicalCategory));
 }

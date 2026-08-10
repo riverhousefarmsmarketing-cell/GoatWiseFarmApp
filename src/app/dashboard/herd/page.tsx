@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useAnimals, useAnimalStats, useCreateAnimal, useDeleteAnimal } from '@/hooks/useAnimals';
 import { Card, Button, Input, Select, Badge, Modal, EmptyState, ErrorState, LoadingSpinner } from '@/components/ui';
 import { formatDate, calculateAge, getStatusColor, getCategoryDisplay } from '@/lib/utils';
-import { categoryIs } from '@/lib/animalVocab';
+import { categoryIs, categoriesForSex, isCategoryConsistentWithSex, type CanonicalCategory } from '@/lib/animalVocab';
 import { Plus, Search, Filter, Users, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
@@ -284,11 +284,22 @@ export default function HerdPage() {
             label="Sex"
             options={sexOptions}
             value={newAnimal.sex}
-            onChange={(e) => setNewAnimal({ ...newAnimal, sex: e.target.value as any })}
+            onChange={(e) => {
+              const sex = e.target.value;
+              setNewAnimal({
+                ...newAnimal,
+                sex: sex as any,
+                // Clear the category if the new sex makes it contradictory.
+                category: (isCategoryConsistentWithSex(sex, newAnimal.category) ? newAnimal.category : '') as any,
+              });
+            }}
           />
           <Select
             label="Category"
-            options={newCategoryOptions}
+            options={newCategoryOptions.filter((c) => {
+              const allowed = categoriesForSex(newAnimal.sex);
+              return !allowed || allowed.includes(c.value as CanonicalCategory);
+            })}
             value={newAnimal.category}
             onChange={(e) => setNewAnimal({ ...newAnimal, category: e.target.value as any })}
           />
