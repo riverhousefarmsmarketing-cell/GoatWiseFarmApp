@@ -28,6 +28,7 @@ import {
   Modal,
   Badge,
   EmptyState,
+  ErrorState,
   LoadingSpinner,
 } from '@/components/ui';
 import {
@@ -86,7 +87,7 @@ export default function GrazingPage() {
   const [activeTab, setActiveTab] = useState<'paddocks' | 'history'>('paddocks');
 
   // Data
-  const { data: paddocks, isLoading: paddocksLoading } = usePaddocks();
+  const { data: paddocks, isLoading: paddocksLoading, isError: paddocksError, refetch: refetchPaddocks } = usePaddocks();
   const { data: activeMoves } = useActivePaddockMoves();
   const { data: allMoves, isLoading: movesLoading } = usePaddockMoves();
   const { data: groups } = useGroups();
@@ -314,6 +315,8 @@ export default function GrazingPage() {
         <>
           {paddocksLoading ? (
             <div className="flex justify-center py-12"><LoadingSpinner /></div>
+          ) : paddocksError ? (
+            <Card><ErrorState onRetry={() => refetchPaddocks()} /></Card>
           ) : !paddocks?.length ? (
             <Card>
               <EmptyState

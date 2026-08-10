@@ -2,7 +2,7 @@
 
 import React, { forwardRef, ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 // ==========================================
 // BUTTON
@@ -253,6 +253,39 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
       <h3 className="text-lg font-medium text-[#081810]">{title}</h3>
       {description && <p className="mt-1 text-sm text-[#6A7E70] max-w-sm">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+// ==========================================
+// ERROR STATE
+// ==========================================
+
+interface ErrorStateProps {
+  title?: string;
+  description?: string;
+  onRetry?: () => void;
+}
+
+/**
+ * Shown when a data fetch fails, so a failed load is never mistaken for an
+ * empty data set. Pass onRetry (e.g. a react-query refetch) to offer a retry.
+ */
+export function ErrorState({ title, description, onRetry }: ErrorStateProps) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="text-red-500 mb-4">
+        <AlertTriangle className="h-12 w-12" />
+      </div>
+      <h3 className="text-lg font-medium text-[#081810]">{title || 'Couldn’t load this data'}</h3>
+      <p className="mt-1 text-sm text-[#6A7E70] max-w-sm">
+        {description || 'Something went wrong loading this page. Check your connection and try again.'}
+      </p>
+      {onRetry && (
+        <div className="mt-4">
+          <Button variant="secondary" onClick={onRetry}>Try again</Button>
+        </div>
+      )}
     </div>
   );
 }

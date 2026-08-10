@@ -12,6 +12,7 @@ import {
   Modal,
   Badge,
   EmptyState,
+  ErrorState,
   LoadingSpinner,
   AnimalLink,
 } from '@/components/ui';
@@ -123,7 +124,7 @@ export default function KiddingPage() {
   });
 
   // Fetch breeding records
-  const { data: breedingRecords, isLoading: breedingLoading } = useQuery({
+  const { data: breedingRecords, isLoading: breedingLoading, isError: breedingError, refetch: refetchBreeding } = useQuery({
     queryKey: ['breeding_records_with_details'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -480,6 +481,10 @@ export default function KiddingPage() {
             <div className="flex justify-center py-12">
               <LoadingSpinner />
             </div>
+          ) : breedingError ? (
+            <Card>
+              <ErrorState onRetry={() => refetchBreeding()} />
+            </Card>
           ) : upcomingDues.length === 0 ? (
             <Card>
               <EmptyState

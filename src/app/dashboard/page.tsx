@@ -10,6 +10,7 @@ import {
   Badge,
   LoadingSpinner,
   AnimalLink,
+  ErrorState,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import {
@@ -53,7 +54,7 @@ export default function DashboardPage() {
   const supabase = getSupabaseClient();
 
   // Fetch animals
-  const { data: animals, isLoading: animalsLoading } = useQuery({
+  const { data: animals, isLoading: animalsLoading, isError: animalsError, refetch: refetchAnimals } = useQuery({
     queryKey: ['animals'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -654,6 +655,14 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (animalsError) {
+    return (
+      <div className="space-y-6">
+        <ErrorState onRetry={() => refetchAnimals()} />
       </div>
     );
   }

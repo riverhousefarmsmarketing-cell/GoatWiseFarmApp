@@ -10,6 +10,7 @@ import {
   Select,
   Badge,
   LoadingSpinner,
+  ErrorState,
   AnimalLink,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
@@ -85,7 +86,7 @@ export default function ReportsPage() {
     enabled: !!user,
   });
 
-  const { data: transactions, isLoading: financialLoading } = useQuery({
+  const { data: transactions, isLoading: financialLoading, isError: financialError, refetch: refetchFinancial } = useQuery({
     queryKey: ['transactions_report', dateRange],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -639,6 +640,8 @@ export default function ReportsPage() {
             <div className="flex justify-center py-12">
               <LoadingSpinner />
             </div>
+          ) : financialError ? (
+            <ErrorState onRetry={() => refetchFinancial()} />
           ) : !financialStats ? (
             <Card className="p-8 text-center">
               <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />

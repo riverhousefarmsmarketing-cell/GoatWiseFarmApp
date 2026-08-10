@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useTodaysMilk, useMilkStats, useTopProducers, useCreateMilkRecord, useUpdateMilkRecord, useDeleteMilkRecord } from '@/hooks/useMilk';
 import { useAnimals } from '@/hooks/useAnimals';
 import { categoryIs } from '@/lib/animalVocab';
-import { Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, LoadingSpinner, AnimalLink } from '@/components/ui';
+import { Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, LoadingSpinner, AnimalLink, ErrorState } from '@/components/ui';
 import { formatDate, formatWeight } from '@/lib/utils';
 import { Milk, Plus, TrendingUp, TrendingDown, Droplets, Calendar, Pencil, Trash2 } from 'lucide-react';
 import {
@@ -49,7 +49,7 @@ export default function MilkPage() {
     discard_reason: '',
   });
 
-  const { data: todaysMilk, isLoading: todayLoading } = useTodaysMilk();
+  const { data: todaysMilk, isLoading: todayLoading, isError: todayError, refetch: refetchToday } = useTodaysMilk();
   const { data: milkStats } = useMilkStats(7);
   const { data: topProducers } = useTopProducers(7);
   const { data: activeAnimals } = useAnimals({ status: 'active' });
@@ -266,6 +266,8 @@ export default function MilkPage() {
           <div className="flex items-center justify-center py-8">
             <LoadingSpinner />
           </div>
+        ) : todayError ? (
+          <ErrorState onRetry={() => refetchToday()} />
         ) : !todaysMilk?.length ? (
           <EmptyState
             icon={<Milk className="h-8 w-8" />}

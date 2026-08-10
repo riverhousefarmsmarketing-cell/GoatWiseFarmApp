@@ -20,6 +20,7 @@ import {
   Badge,
   EmptyState,
   LoadingSpinner,
+  ErrorState,
 } from '@/components/ui';
 import { formatDate, calculateAge, getCategoryDisplay } from '@/lib/utils';
 import { categoryIs, toCanonicalCategory } from '@/lib/animalVocab';
@@ -73,7 +74,7 @@ export default function HerdDetailPage() {
   const [transferToHerdId, setTransferToHerdId] = useState('');
 
   // Data hooks
-  const { data: herd, isLoading: herdLoading } = useHerd(herdId);
+  const { data: herd, isLoading: herdLoading, isError: herdError, refetch: refetchHerd } = useHerd(herdId);
   const { data: herdAnimals, isLoading: animalsLoading } = useHerdAnimals(herdId) as any;
   const { data: allAnimals } = useAnimals({ status: 'active' });
   const { data: allHerds } = useHerdsWithStats();
@@ -158,6 +159,14 @@ export default function HerdDetailPage() {
     return (
       <div className="flex justify-center py-12">
         <LoadingSpinner className="h-8 w-8" />
+      </div>
+    );
+  }
+
+  if (herdError) {
+    return (
+      <div className="space-y-6">
+        <ErrorState onRetry={() => refetchHerd()} />
       </div>
     );
   }

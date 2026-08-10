@@ -13,6 +13,7 @@ import {
   LoadingSpinner,
   Modal,
   AnimalLink,
+  ErrorState,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import { toCanonicalCategory } from '@/lib/animalVocab';
@@ -108,7 +109,7 @@ export default function WeightTrackingPage() {
   });
 
   // Fetch weight records
-  const { data: weightRecords, isLoading: weightsLoading } = useQuery({
+  const { data: weightRecords, isLoading: weightsLoading, isError: weightsError, refetch: refetchWeights } = useQuery({
     queryKey: ['weight_records'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -334,6 +335,14 @@ export default function WeightTrackingPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (weightsError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <ErrorState onRetry={() => refetchWeights()} />
       </div>
     );
   }

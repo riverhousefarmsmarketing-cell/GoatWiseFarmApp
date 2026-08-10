@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useAnimals, useAnimalStats, useCreateAnimal, useDeleteAnimal } from '@/hooks/useAnimals';
-import { Card, Button, Input, Select, Badge, Modal, EmptyState, LoadingSpinner } from '@/components/ui';
+import { Card, Button, Input, Select, Badge, Modal, EmptyState, ErrorState, LoadingSpinner } from '@/components/ui';
 import { formatDate, calculateAge, getStatusColor, getCategoryDisplay } from '@/lib/utils';
 import { categoryIs } from '@/lib/animalVocab';
 import { Plus, Search, Filter, Users, MoreVertical, Edit, Trash2 } from 'lucide-react';
@@ -70,7 +70,7 @@ export default function HerdPage() {
 
   const newCategoryOptions = categoryOptions.filter(c => c.value !== 'all');
 
-  const { data: animals, isLoading } = useAnimals({ search, category, status });
+  const { data: animals, isLoading, isError, refetch } = useAnimals({ search, category, status });
   const { data: stats } = useAnimalStats();
   const createAnimal = useCreateAnimal();
   const deleteAnimal = useDeleteAnimal();
@@ -197,6 +197,8 @@ export default function HerdPage() {
           <div className="flex items-center justify-center py-12">
             <LoadingSpinner />
           </div>
+        ) : isError ? (
+          <ErrorState onRetry={() => refetch()} />
         ) : !animals?.length ? (
           <EmptyState
             icon={<Users className="h-12 w-12" />}

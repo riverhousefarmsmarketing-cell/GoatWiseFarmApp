@@ -13,6 +13,7 @@ import {
   StatCard,
   Badge,
   EmptyState,
+  ErrorState,
   LoadingSpinner,
   AnimalLink,
 } from '@/components/ui';
@@ -107,7 +108,7 @@ export default function BreedingPage() {
   });
 
   // Fetch breeding records
-  const { data: breedingRecords, isLoading } = useQuery({
+  const { data: breedingRecords, isLoading, isError, refetch } = useQuery({
     queryKey: ['breeding_records'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -604,6 +605,10 @@ export default function BreedingPage() {
             <div className="flex justify-center py-12 print:hidden">
               <LoadingSpinner />
             </div>
+          ) : isError ? (
+            <Card className="print:hidden">
+              <ErrorState onRetry={() => refetch()} />
+            </Card>
           ) : !pregnantDoes.length ? (
             <Card className="print:hidden">
               <EmptyState
