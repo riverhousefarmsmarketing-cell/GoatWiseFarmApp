@@ -250,15 +250,10 @@ export default function AnimalDetailPage() {
   // Delete animal mutation
   const deleteAnimal = useMutation({
     mutationFn: async () => {
-      // Remove dependent rows first, otherwise the animal delete fails on a
-      // foreign-key violation for any animal that has records.
-      await supabase.from('milk_records').delete().eq('animal_id', animalId);
-      await supabase.from('health_records').delete().eq('animal_id', animalId);
-      await supabase.from('weight_records').delete().eq('animal_id', animalId);
-      await supabase.from('inspections').delete().eq('animal_id', animalId);
-      await supabase.from('breeding_records').delete().eq('doe_id', animalId);
-      await supabase.from('breeding_records').delete().eq('buck_id', animalId);
-
+      // Every FK referencing animals is ON DELETE CASCADE or SET NULL, so a
+      // single delete cleans up correctly. Manually deleting breeding_records by
+      // buck_id (as this did before) would DESTROY the doe's breeding history
+      // for that sire, which the schema instead preserves via SET NULL.
       const { error } = await (supabase.from('animals') as any).delete().eq('id', animalId);
       if (error) throw error;
     },

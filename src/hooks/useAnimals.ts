@@ -159,16 +159,11 @@ export function useDeleteAnimal() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Delete related records first to prevent orphans
-      await supabase.from('milk_records').delete().eq('animal_id', id);
-      await supabase.from('health_records').delete().eq('animal_id', id);
-      await supabase.from('weight_records').delete().eq('animal_id', id);
-      await supabase.from('inspections').delete().eq('animal_id', id);
-      // Breeding records reference both doe and buck
-      await supabase.from('breeding_records').delete().eq('doe_id', id);
-      await supabase.from('breeding_records').delete().eq('buck_id', id);
-
-      // Then delete the animal
+      // Every foreign key that references animals is ON DELETE CASCADE or SET
+      // NULL, so a single delete cleans up dependents correctly. The previous
+      // manual sweep also did `DELETE FROM breeding_records WHERE buck_id = id`,
+      // which DESTROYED the doe's breeding history for that sire -- the schema
+      // intends buck_id to be SET NULL there (record kept). Let the DB handle it.
       const { error } = await supabase.from('animals')
         .delete()
         .eq('id', id);
