@@ -17,7 +17,7 @@ import {
   AnimalLink,
 } from '@/components/ui';
 import { formatDate, calculateAge } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInCalendarDays, startOfToday } from 'date-fns';
 import {
   Baby,
   Plus,
@@ -197,8 +197,13 @@ export default function KiddingPage() {
   },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['breeding_records_with_details'] });
+      // The breeding page reads the same table under a different key.
+      queryClient.invalidateQueries({ queryKey: ['breeding_records'] });
       setShowKiddingModal(false);
       setSelectedBreeding(null);
+    },
+    onError: (e: any) => {
+      alert(`Could not record the kidding: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -226,7 +231,10 @@ export default function KiddingPage() {
             date_of_birth: selectedBreeding?.kidding_date || format(new Date(), 'yyyy-MM-dd'),
             dam_id: data.dam_id,
             sire_id: data.sire_id,
-            status: data.kidForm.retained ? 'active' : 'sold',
+            // A newborn is always 'active' -- marking it 'sold' here would create a
+            // sold animal with no sale record and hide it from the herd on day one.
+            // "Retained" is tracked on the kid_record; record an actual sale later.
+            status: 'active',
             notes: data.kidForm.notes || null,
           })
           .select()
@@ -265,11 +273,16 @@ export default function KiddingPage() {
       setShowKidModal(false);
       resetKidForm();
     },
+    onError: (e: any) => {
+      alert(`Could not add the kid record: ${e?.message || 'please try again.'}`);
+    },
   });
 
-  // Update an existing kid record (does not create an animal)
+  // Update an existing kid record. When the kid is linked to a herd animal, keep
+  // that animal's name/sex/category in sync -- otherwise the kid_record and the
+  // real animal (and its AnimalLink) silently diverge.
   const updateKid = useMutation({
-    mutationFn: async (params: { id: string; updates: Record<string, any> }) => {
+    mutationFn: async (params: { id: string; animal_id: string | null; updates: Record<string, any> }) => {
       const { data, error } = await (supabase as any)
         .from('kid_records')
         .update(params.updates)
@@ -277,12 +290,28 @@ export default function KiddingPage() {
         .select()
         .single();
       if (error) throw error;
+
+      if (params.animal_id) {
+        const { error: animalError } = await (supabase as any)
+          .from('animals')
+          .update({
+            name: params.updates.name,
+            sex: params.updates.sex,
+            category: params.updates.sex === 'female' ? 'young_female' : 'young_male',
+          })
+          .eq('id', params.animal_id);
+        if (animalError) throw animalError;
+      }
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kid_records'] });
+      queryClient.invalidateQueries({ queryKey: ['animals'] });
       setShowKidModal(false);
       resetKidForm();
+    },
+    onError: (e: any) => {
+      alert(`Could not update the kid record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -297,6 +326,9 @@ export default function KiddingPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kid_records'] });
+    },
+    onError: (e: any) => {
+      alert(`Could not delete the kid record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -372,7 +404,8 @@ export default function KiddingPage() {
         retained: kidForm.retained,
         notes: kidForm.notes || null,
       };
-      updateKid.mutateAsync({ id: editingKidId, updates });
+      const editingKid = kidRecords?.find(k => k.id === editingKidId);
+      updateKid.mutateAsync({ id: editingKidId, animal_id: editingKid?.animal_id ?? null, updates });
       return;
     }
 
@@ -398,13 +431,12 @@ export default function KiddingPage() {
     statusFilter === 'all' ? r.status === 'kidded' : r.status === statusFilter
   ) || [];
 
-  // Calculate days until due
+  // Calculate days until due. Measure in whole calendar days on the local date
+  // portion so the count doesn't drift by the time of day (Math.ceil on a raw ms
+  // diff made "due tomorrow" flip between 1 and 2 depending on the clock).
   const getDaysUntilDue = (dueDate: string | null) => {
     if (!dueDate) return null;
-    const today = new Date();
-    const due = parseISO(dueDate);
-    const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return diff;
+    return differenceInCalendarDays(parseISO(dueDate.slice(0, 10)), startOfToday());
   };
 
   return (
@@ -815,7 +847,7 @@ export default function KiddingPage() {
             min="0"
             max="6"
             value={kiddingForm.number_of_kids}
-            onChange={(e) => setKiddingForm({ ...kiddingForm, number_of_kids: parseInt(e.target.value) || 0 })}
+            onChange={(e) => setKiddingForm({ ...kiddingForm, number_of_kids: Math.max(0, parseInt(e.target.value) || 0) })}
             required
           />
           <Input
@@ -929,7 +961,7 @@ export default function KiddingPage() {
               min="1"
               max="6"
               value={kidForm.birth_order}
-              onChange={(e) => setKidForm({ ...kidForm, birth_order: parseInt(e.target.value) || 1 })}
+              onChange={(e) => setKidForm({ ...kidForm, birth_order: Math.max(1, parseInt(e.target.value) || 1) })}
             />
             <Select
               label="Presentation"
