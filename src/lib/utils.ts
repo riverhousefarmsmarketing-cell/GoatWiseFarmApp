@@ -12,6 +12,27 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Normalize a stored weight to pounds. weight_records / birth weights can be
+ * entered in lbs, kg, oz, or g (the kidding form writes oz), but every chart,
+ * threshold, and total in the app is expressed in lbs -- so summing or comparing
+ * raw values mixes incomparable units. Returns null for a null/NaN weight so
+ * callers can distinguish "no reading" from zero.
+ */
+const WEIGHT_TO_LBS: Record<string, number> = {
+  lbs: 1,
+  kg: 2.20462,
+  oz: 1 / 16,
+  g: 0.00220462,
+};
+
+export function weightToLbs(weight: number | null | undefined, unit?: string | null): number | null {
+  if (weight == null) return null;
+  const n = Number(weight);
+  if (!Number.isFinite(n)) return null;
+  return n * (WEIGHT_TO_LBS[unit || 'lbs'] ?? 1);
+}
+
+/**
  * Format a date string
  */
 export function formatDate(date: string | Date | null | undefined, formatStr: string = 'MMM d, yyyy'): string {

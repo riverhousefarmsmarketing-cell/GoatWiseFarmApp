@@ -15,7 +15,7 @@ import {
   AnimalLink,
   ErrorState,
 } from '@/components/ui';
-import { formatDate } from '@/lib/utils';
+import { formatDate, weightToLbs } from '@/lib/utils';
 import { toCanonicalCategory } from '@/lib/animalVocab';
 import { format } from 'date-fns';
 import {
@@ -62,11 +62,11 @@ const IDEAL_WEIGHTS: Record<string, { min: number; max: number; label: string }>
 };
 
 // Ideal ranges and all on-screen weights are expressed in lbs, so normalize any
-// record entered in kg before comparing/aggregating. Without this a kg weight
-// was compared against lbs thresholds (e.g. an 80 kg / 176 lb doe flagged
+// record entered in kg/oz/g before comparing/aggregating. Without this a kg
+// weight was compared against lbs thresholds (e.g. an 80 kg / 176 lb doe flagged
 // "underweight" against a 100 lb minimum) and mixed-unit deltas were spurious.
-const toLbs = (weight: number | null | undefined, unit: string | null | undefined): number | null =>
-  weight == null ? null : unit === 'kg' ? weight * 2.20462 : weight;
+// Shared with the dashboard and certificates via lib/utils.
+const toLbs = weightToLbs;
 
 export default function WeightTrackingPage() {
   const { user } = useAuth();
@@ -136,6 +136,9 @@ export default function WeightTrackingPage() {
       setShowAddModal(false);
       resetForm();
     },
+    onError: (e: any) => {
+      alert(`Could not save the weight record: ${e?.message || 'please try again.'}`);
+    },
   });
 
   // Update weight record mutation
@@ -152,6 +155,9 @@ export default function WeightTrackingPage() {
       setEditingRecord(null);
       resetForm();
     },
+    onError: (e: any) => {
+      alert(`Could not update the weight record: ${e?.message || 'please try again.'}`);
+    },
   });
 
   // Delete weight record mutation
@@ -165,6 +171,9 @@ export default function WeightTrackingPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['weight_records'] });
+    },
+    onError: (e: any) => {
+      alert(`Could not delete the weight record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -181,6 +190,9 @@ export default function WeightTrackingPage() {
       setShowBulkModal(false);
       setBulkWeights({});
     },
+    onError: (e: any) => {
+      alert(`Could not save the weigh-in: ${e?.message || 'please try again.'}`);
+    },
   });
 
   const resetForm = () => {
@@ -191,6 +203,14 @@ export default function WeightTrackingPage() {
       weight_unit: 'lbs',
       notes: '',
     });
+  };
+
+  // Clear the bulk grid on close so cancelling doesn't leave a full set of
+  // weights staged to be re-submitted (as duplicates) the next time it opens.
+  const closeBulkModal = () => {
+    setShowBulkModal(false);
+    setBulkWeights({});
+    setBulkDate(format(new Date(), 'yyyy-MM-dd'));
   };
 
   // Calculate stats per animal
@@ -214,28 +234,42 @@ export default function WeightTrackingPage() {
     animalsList.forEach((animal: any) => {
       const animalRecords = records
         .filter((r: WeightRecord) => r.animal_id === animal.id)
-        .sort((a: WeightRecord, b: WeightRecord) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        // Break date ties with created_at so "current" vs "previous" (and the
+        // sign of `change`) is deterministic when two readings share a date.
+        .sort((a: WeightRecord, b: WeightRecord) => {
+          const byDate = new Date(b.date).getTime() - new Date(a.date).getTime();
+          if (byDate !== 0) return byDate;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
 
       const currentWeight = toLbs(animalRecords[0]?.weight, animalRecords[0]?.weight_unit);
       const previousWeight = toLbs(animalRecords[1]?.weight, animalRecords[1]?.weight_unit);
-      const change = currentWeight && previousWeight ? currentWeight - previousWeight : null;
-      const changePercent = change && previousWeight ? (change / previousWeight) * 100 : null;
+      const change = currentWeight != null && previousWeight != null ? currentWeight - previousWeight : null;
+      const changePercent = change != null && previousWeight ? (change / previousWeight) * 100 : null;
 
-      // Calculate average growth rate (lbs per day)
+      // Calculate average growth rate (lbs per day). A per-day rate is undefined
+      // when every reading shares one date, so skip it rather than flooring the
+      // span to 1 day and fabricating a rate.
       let avgGrowthRate: number | null = null;
       if (animalRecords.length >= 2) {
         const oldest = animalRecords[animalRecords.length - 1];
         const newest = animalRecords[0];
-        const daysDiff = Math.max(1, (new Date(newest.date).getTime() - new Date(oldest.date).getTime()) / (1000 * 60 * 60 * 24));
-        const newestLbs = toLbs(newest.weight, newest.weight_unit) ?? 0;
-        const oldestLbs = toLbs(oldest.weight, oldest.weight_unit) ?? 0;
-        avgGrowthRate = (newestLbs - oldestLbs) / daysDiff;
+        const realDays = (new Date(newest.date).getTime() - new Date(oldest.date).getTime()) / (1000 * 60 * 60 * 24);
+        if (realDays > 0) {
+          const newestLbs = toLbs(newest.weight, newest.weight_unit) ?? 0;
+          const oldestLbs = toLbs(oldest.weight, oldest.weight_unit) ?? 0;
+          avgGrowthRate = (newestLbs - oldestLbs) / realDays;
+        }
       }
 
-      // Check ideal weight range
-      const idealRange = IDEAL_WEIGHTS[toCanonicalCategory(animal.category)] || null;
-      const isUnderweight = currentWeight && idealRange ? currentWeight < idealRange.min : false;
-      const isOverweight = currentWeight && idealRange ? currentWeight > idealRange.max : false;
+      // Check ideal weight range. Ranges are goat pounds; applying them to sheep
+      // would flag them against the wrong thresholds, so only judge goats until
+      // sheep ranges exist.
+      const idealRange = animal.species === 'sheep'
+        ? null
+        : IDEAL_WEIGHTS[toCanonicalCategory(animal.category)] || null;
+      const isUnderweight = currentWeight != null && idealRange ? currentWeight < idealRange.min : false;
+      const isOverweight = currentWeight != null && idealRange ? currentWeight > idealRange.max : false;
 
       stats[animal.id] = {
         animal,
@@ -285,6 +319,7 @@ export default function WeightTrackingPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!formData.animal_id) return;
     if (!formData.weight || parseFloat(formData.weight) <= 0) return;
 
     const record = {
@@ -523,13 +558,13 @@ export default function WeightTrackingPage() {
                             stat.change && stat.change > 0 ? 'text-green-600' : 
                             stat.change && stat.change < 0 ? 'text-red-600' : ''
                           }`}>
-                            {stat.change ? `${stat.change > 0 ? '+' : ''}${stat.change.toFixed(1)} lbs (${stat.changePercent?.toFixed(1)}%)` : '-'}
+                            {stat.change != null ? `${stat.change > 0 ? '+' : ''}${stat.change.toFixed(1)} lbs (${stat.changePercent?.toFixed(1)}%)` : '-'}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Avg Growth Rate:</span>
                           <span className="font-medium">
-                            {stat.avgGrowthRate ? `${stat.avgGrowthRate.toFixed(2)} lbs/day` : '-'}
+                            {stat.avgGrowthRate != null ? `${stat.avgGrowthRate.toFixed(2)} lbs/day` : '-'}
                           </span>
                         </div>
                         {stat.idealRange && (
@@ -546,16 +581,21 @@ export default function WeightTrackingPage() {
                       <h4 className="font-medium text-gray-900 mb-3">Weight History</h4>
                       {stat.records.length > 0 ? (
                         <div className="h-32 flex items-end gap-1">
-                          {stat.records.slice(0, 12).reverse().map((record, idx) => {
-                            const max = Math.max(...stat.records.map(r => r.weight));
-                            const min = Math.min(...stat.records.map(r => r.weight));
+                          {(() => {
+                            // Normalize every bar to lbs so kg/oz records don't
+                            // distort the heights or mislabel their values.
+                            const lbsAll = stat.records.map(r => toLbs(r.weight, r.weight_unit) ?? 0);
+                            const max = Math.max(...lbsAll);
+                            const min = Math.min(...lbsAll);
                             const range = max - min || 1;
-                            const height = ((record.weight - min) / range) * 80 + 20;
-                            
+                            return stat.records.slice(0, 12).reverse().map((record) => {
+                            const recLbs = toLbs(record.weight, record.weight_unit) ?? 0;
+                            const height = ((recLbs - min) / range) * 80 + 20;
+
                             return (
                               <div key={record.id} className="flex-1 flex flex-col items-center group relative">
                                 <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                                  {formatDate(record.date)}: {record.weight} lbs
+                                  {formatDate(record.date)}: {Math.round(recLbs)} lbs
                                 </div>
                                 <div
                                   className="w-full bg-primary-500 rounded-t hover:bg-primary-600 transition-colors"
@@ -563,7 +603,8 @@ export default function WeightTrackingPage() {
                                 />
                               </div>
                             );
-                          })}
+                            });
+                          })()}
                         </div>
                       ) : (
                         <p className="text-gray-400 text-sm">No weight records</p>
@@ -592,7 +633,7 @@ export default function WeightTrackingPage() {
                           {stat.records.slice(0, 5).map((record) => (
                             <div key={record.id} className="flex items-center justify-between text-sm bg-white p-2 rounded">
                               <div>
-                                <span className="font-medium">{record.weight} lbs</span>
+                                <span className="font-medium">{Math.round(toLbs(record.weight, record.weight_unit) ?? 0)} lbs</span>
                                 <span className="text-gray-400 ml-2">{formatDate(record.date)}</span>
                               </div>
                               <div className="flex gap-1">
@@ -701,7 +742,7 @@ export default function WeightTrackingPage() {
       {/* Bulk Weigh-In Modal */}
       <Modal
         open={showBulkModal}
-        onClose={() => setShowBulkModal(false)}
+        onClose={closeBulkModal}
         title="Bulk Weigh-In"
       >
         <form onSubmit={handleBulkSubmit} className="space-y-4">
@@ -742,11 +783,11 @@ export default function WeightTrackingPage() {
           </p>
 
           <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => setShowBulkModal(false)}>
+            <Button type="button" variant="outline" onClick={closeBulkModal}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={bulkAddMutation.isPending || Object.values(bulkWeights).filter(w => w && parseFloat(w) > 0).length === 0}
             >
               Save All
