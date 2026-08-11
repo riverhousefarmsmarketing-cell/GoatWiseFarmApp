@@ -174,7 +174,10 @@ export function evaluateWeightLoss(data: WeightData): DecisionSignal | null {
   const daysBetween = Math.ceil(
     (recent[0].date.getTime() - recent[2].date.getTime()) / (1000 * 60 * 60 * 24)
   );
-  
+
+  // Same-day re-weighs are scale/handling jitter, not a trend.
+  if (daysBetween <= 0) return null;
+
   // Rapid loss: >5% in <30 days
   if (percentLoss > 5 && daysBetween < 30) {
     const rule = DECISION_RULES['weight-rapid-loss'];
@@ -195,9 +198,11 @@ export function evaluateWeightLoss(data: WeightData): DecisionSignal | null {
       evidence: `Lost ${percentLoss.toFixed(1)}% (${(oldestWeight - newestWeight).toFixed(1)} lbs) in ${daysBetween} days`,
     };
   }
-  
-  // Slow loss: consistent decline over 3 weigh-ins
-  if (isDecline) {
+
+  // Slow loss: a consistent decline of at least 2% across the 3 weigh-ins. The
+  // magnitude floor keeps normal weigh-to-weigh drift (e.g. a fraction of a pound
+  // of gut fill) from raising a false alarm on every monotonic dip.
+  if (percentLoss >= 2) {
     const rule = DECISION_RULES['weight-slow-loss'];
     return {
       id: `weight-slow-${animalId}`,
@@ -211,10 +216,10 @@ export function evaluateWeightLoss(data: WeightData): DecisionSignal | null {
       system: rule.system,
       ruleId: 'weight-slow-loss',
       timestamp: new Date(),
-      evidence: `Declined across 3 weigh-ins: ${recent[2].weight} → ${recent[1].weight} → ${recent[0].weight} lbs`,
+      evidence: `Declined ${percentLoss.toFixed(1)}% across 3 weigh-ins over ${daysBetween} days`,
     };
   }
-  
+
   return null;
 }
 

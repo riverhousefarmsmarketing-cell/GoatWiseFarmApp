@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -85,12 +85,14 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  // Fetch health records (last 30 days)
+  // Fetch health records (last 90 days). The recurrence signal looks for 3+ of the
+  // same condition within 90 days, so the window has to reach back that far; the
+  // recent-activity list still just takes the newest few.
   const { data: healthRecords, isError: healthError } = useQuery({
     queryKey: ['health_records_recent'],
     queryFn: async () => {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
       const { data, error } = await supabase
         .from('health_records')
         .select(`
@@ -98,7 +100,7 @@ export default function DashboardPage() {
           animal:animals(id, name)
         `)
         .eq('user_id', user!.id)
-        .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+        .gte('date', format(ninetyDaysAgo, 'yyyy-MM-dd'))
         .order('date', { ascending: false });
       if (error) throw error;
       return data;
@@ -225,9 +227,7 @@ export default function DashboardPage() {
   // ============================================
   // DECISION LAYER SIGNALS
   // ============================================
-  const decisionSignals = useMemo(() => {
-    const signals: DecisionSignal[] = [];
-
+  const signalParams = useMemo(() => {
     // Prepare FAMACHA data from inspections
     const famachaRecords = ((inspections as any[]) || [])
       .filter((i: any) => i.famacha != null)
@@ -238,7 +238,8 @@ export default function DashboardPage() {
         date: new Date(i.date),
       }));
 
-    // Prepare health records for recurrence check
+    // Prepare health records for the recurrence rule (3+ of the same condition in
+    // 90 days). The health query is widened to 90 days to match.
     const healthRecordsForSignals = ((healthRecords as any[]) || []).map((h: any) => ({
       animalId: h.animal?.id || h.animal_id,
       animalName: h.animal?.name || 'Unknown',
@@ -261,12 +262,16 @@ export default function DashboardPage() {
     const sevenDayTotal = milkList.reduce((sum: number, m: any) => sum + milkAmountToLbs(m.amount, m.amount_unit), 0);
     const uniqueDays = new Set(milkList.map((m: any) => m.date)).size;
     const sevenDayAvg = uniqueDays > 0 ? sevenDayTotal / uniqueDays : 0;
-    // Whether milk was ENTERED today (vs. amount > 0) -- so a recorded zero (a real
-    // 100% production stop) still triggers the drop signal, while "not milked yet"
-    // stays quiet.
-    const hasTodayMilkEntry = milkList.some((m: any) => m.date === todayStr);
 
-    // Per-animal milk data
+    // The milk-drop rule reads a 0 total as a 100% drop, but "not milked yet" is
+    // not a drop -- so evaluate milk drop only once something is entered today
+    // (farm level) and only for animals actually milked today (per-animal).
+    const todayMilkAnimalIds = new Set(
+      milkList.filter((m: any) => m.date === todayStr).map((m: any) => m.animal?.id || m.animal_id)
+    );
+    const hasTodayMilkEntry = todayMilkAnimalIds.size > 0;
+
+    // Per-animal milk data (normalized to lbs)
     const milkByAnimal: Record<string, { id: string; name: string; today: number; total: number; days: Set<string> }> = {};
     milkList.forEach((m: any) => {
       const id = m.animal?.id || m.animal_id;
@@ -282,14 +287,16 @@ export default function DashboardPage() {
       }
     });
 
-    const milkByAnimalArray = Object.values(milkByAnimal).map((a) => ({
-      animalId: a.id,
-      animalName: a.name,
-      todayTotal: a.today,
-      sevenDayAverage: a.days.size > 0 ? a.total / a.days.size : 0,
-    }));
+    const milkByAnimalArray = Object.values(milkByAnimal)
+      .filter((a) => todayMilkAnimalIds.has(a.id))
+      .map((a) => ({
+        animalId: a.id,
+        animalName: a.name,
+        todayTotal: a.today,
+        sevenDayAverage: a.days.size > 0 ? a.total / a.days.size : 0,
+      }));
 
-    // Prepare weight data
+    // Prepare weight data (normalized to lbs)
     const weightList = (weightRecords as any[]) || [];
     const weightByAnimal: Record<string, { id: string; name: string; weights: { weight: number; date: Date }[] }> = {};
     weightList.forEach((w: any) => {
@@ -299,8 +306,6 @@ export default function DashboardPage() {
         weightByAnimal[id] = { id, name, weights: [] };
       }
       weightByAnimal[id].weights.push({
-        // Normalize to lbs so the weight-loss signal compares like with like and
-        // reports the drop in lbs even when a record was entered in kg/oz/g.
         weight: weightToLbs(w.weight, w.weight_unit) ?? 0,
         date: new Date(w.date),
       });
@@ -312,18 +317,25 @@ export default function DashboardPage() {
       weights: a.weights,
     }));
 
-    // Prepare breeding data
+    // Prepare breeding data. Only RESOLVED breedings feed the failure rule -- a
+    // still-pending 'bred'/'planned' row is not a failure, and scoring it as one
+    // raised a false "breeding difficulty" alarm for does simply mid-cycle.
     const breedingList = (breedingRecords as any[]) || [];
+    const RESOLVED_SUCCESS = new Set(['confirmed_pregnant', 'kidded']);
+    const RESOLVED_FAILURE = new Set(['open', 'aborted', 'not_pregnant']);
     const breedingByAnimal: Record<string, { id: string; name: string; breedings: { date: Date; successful: boolean }[] }> = {};
     breedingList.forEach((b: any) => {
+      const isSuccess = RESOLVED_SUCCESS.has(b.status);
+      const isFailure = RESOLVED_FAILURE.has(b.status);
+      if (!isSuccess && !isFailure) return; // pending -- don't score yet
       const id = b.doe?.id || b.doe_id;
       const name = b.doe?.name || 'Unknown';
       if (!breedingByAnimal[id]) {
         breedingByAnimal[id] = { id, name, breedings: [] };
       }
       breedingByAnimal[id].breedings.push({
-        date: new Date(b.date || b.breeding_date),
-        successful: b.status === 'confirmed_pregnant' || b.status === 'kidded',
+        date: new Date(b.breeding_date || b.date),
+        successful: isSuccess,
       });
     });
 
@@ -359,172 +371,34 @@ export default function DashboardPage() {
       guardianId: i.guardian_id,
     }));
 
-    // Get signals using the aggregator
-    const getSignalsAsync = async () => {
-      return await getDecisionSignals({
-        famachaRecords,
-        healthRecords: healthRecordsForSignals,
-        milkData: {
-          todayTotal: todayMilk,
-          sevenDayAverage: sevenDayAvg,
-          byAnimal: milkByAnimalArray,
-        },
-        weightData: weightDataArray,
-        breedingData: breedingDataArray,
-        breedingSeasonStart,
-        financialData: animalCount > 0 ? {
-          totalIncome,
-          totalExpenses,
-          periodMonths: 6,
-          animalCount,
-        } : undefined,
-        guardianIncidents: incidentList,
-      });
+    return {
+      famachaRecords,
+      healthRecords: healthRecordsForSignals,
+      milkData: hasTodayMilkEntry
+        ? { todayTotal: todayMilk, sevenDayAverage: sevenDayAvg, byAnimal: milkByAnimalArray }
+        : undefined,
+      weightData: weightDataArray,
+      breedingData: breedingDataArray,
+      breedingSeasonStart,
+      financialData: animalCount > 0
+        ? { totalIncome, totalExpenses, periodMonths: 6, animalCount }
+        : undefined,
+      guardianIncidents: incidentList,
     };
-
-    // Since we're in useMemo, we'll compute synchronously
-    // The getDecisionSignals function is sync despite the async signature
-    // For now, let's compute directly
-
-    // FAMACHA signals
-    const latestFamachaByAnimal = new Map<string, typeof famachaRecords[0]>();
-    famachaRecords.forEach(record => {
-      const existing = latestFamachaByAnimal.get(record.animalId);
-      if (!existing || record.date > existing.date) {
-        latestFamachaByAnimal.set(record.animalId, record);
-      }
-    });
-
-    latestFamachaByAnimal.forEach(record => {
-      if (record.score === 3) {
-        signals.push({
-          id: `famacha-${record.animalId}`,
-          scope: 'animal',
-          severity: 'watching',
-          title: 'FAMACHA Score Borderline',
-          primaryText: "This score is borderline. Many farms recheck within about a week.",
-          animalId: record.animalId,
-          animalName: record.animalName,
-          system: 'health',
-          ruleId: 'health-famacha-borderline',
-          timestamp: new Date(),
-          evidence: `FAMACHA score: ${record.score}`,
-        });
-      } else if (record.score >= 4) {
-        signals.push({
-          id: `famacha-${record.animalId}`,
-          scope: 'animal',
-          severity: 'action',
-          title: 'FAMACHA Score Critical',
-          primaryText: "Scores at this level are commonly treated to prevent further anemia.",
-          cta: 'View deworming options',
-          ctaHref: '/dashboard/resources/medications',
-          animalId: record.animalId,
-          animalName: record.animalName,
-          system: 'health',
-          ruleId: 'health-famacha-critical',
-          timestamp: new Date(),
-          evidence: `FAMACHA score: ${record.score} (critical threshold: 4-5)`,
-        });
-      }
-    });
-
-    // Milk drop signals (farm level)
-    if (sevenDayAvg > 0 && hasTodayMilkEntry) {
-      const percentDrop = ((sevenDayAvg - todayMilk) / sevenDayAvg) * 100;
-      if (percentDrop > 15) {
-        signals.push({
-          id: `milk-drop-farm`,
-          scope: 'farm',
-          severity: 'attention',
-          title: 'Milk Production Drop',
-          primaryText: "This drop is larger than typical daily variation.",
-          secondaryText: "Sudden drops can indicate stress, illness, or feed changes.",
-          cta: 'Check health records',
-          ctaHref: '/dashboard/health',
-          system: 'milk',
-          ruleId: 'milk-sudden-drop',
-          timestamp: new Date(),
-          evidence: `Today: ${todayMilk.toFixed(1)} lbs vs 7-day avg: ${sevenDayAvg.toFixed(1)} lbs (${percentDrop.toFixed(0)}% drop)`,
-        });
-      }
-    }
-
-    // Weight loss signals
-    weightDataArray.forEach(animal => {
-      if (animal.weights.length >= 3) {
-        const sorted = [...animal.weights].sort((a, b) => b.date.getTime() - a.date.getTime());
-        const recent = sorted.slice(0, 3);
-        const isDecline = recent[0].weight < recent[1].weight && recent[1].weight < recent[2].weight;
-        
-        const oldestWeight = recent[2].weight;
-        const newestWeight = recent[0].weight;
-        const percentLoss = oldestWeight > 0 ? ((oldestWeight - newestWeight) / oldestWeight) * 100 : 0;
-        const daysBetween = Math.ceil((recent[0].date.getTime() - recent[2].date.getTime()) / (1000 * 60 * 60 * 24));
-
-        // Only treat it as a real decline when the readings span more than a day
-        // (same-day re-weighs are scale/handling jitter, not a trend). The gradual
-        // signal also needs a >=2% total drop so normal weigh-to-weigh drift across
-        // three readings doesn't raise a false alarm.
-        if (isDecline && daysBetween > 0) {
-          if (percentLoss > 5 && daysBetween < 30) {
-            signals.push({
-              id: `weight-rapid-${animal.animalId}`,
-              scope: 'animal',
-              severity: 'attention',
-              title: 'Rapid Weight Loss',
-              primaryText: "This amount of weight loss is larger than what's usually expected.",
-              secondaryText: "Rapid loss often warrants a health check.",
-              cta: 'Check FAMACHA',
-              ctaHref: '/dashboard/health',
-              animalId: animal.animalId,
-              animalName: animal.animalName,
-              system: 'weight',
-              ruleId: 'weight-rapid-loss',
-              timestamp: new Date(),
-              evidence: `Lost ${percentLoss.toFixed(1)}% in ${daysBetween} days`,
-            });
-          } else if (percentLoss >= 2) {
-            signals.push({
-              id: `weight-slow-${animal.animalId}`,
-              scope: 'animal',
-              severity: 'watching',
-              title: 'Gradual Weight Loss',
-              primaryText: "Slow weight loss often appears before visible signs.",
-              animalId: animal.animalId,
-              animalName: animal.animalName,
-              system: 'weight',
-              ruleId: 'weight-slow-loss',
-              timestamp: new Date(),
-              evidence: `Declined ${percentLoss.toFixed(1)}% across 3 weigh-ins over ${daysBetween} days`,
-            });
-          }
-        }
-      }
-    });
-
-    // Financial signals
-    if (animalCount > 0 && totalExpenses > totalIncome) {
-      const perAnimalCost = totalExpenses / animalCount;
-      const perAnimalRevenue = totalIncome / animalCount;
-      signals.push({
-        id: `financial-loss`,
-        scope: 'farm',
-        severity: 'attention',
-        title: 'Costs Exceeding Revenue',
-        primaryText: "Costs have exceeded income for a while.",
-        secondaryText: "Many farms review expenses periodically to identify areas to optimize.",
-        cta: 'View expense breakdown',
-        ctaHref: '/dashboard/finances',
-        system: 'financial',
-        ruleId: 'financial-sustained-loss',
-        timestamp: new Date(),
-        evidence: `Per-animal: $${perAnimalRevenue.toFixed(2)} revenue vs $${perAnimalCost.toFixed(2)} cost over 6 months`,
-      });
-    }
-
-    return signals;
   }, [inspections, healthRecords, milkRecords, weightRecords, breedingRecords, transactionsSixMonths, animals, guardianIncidents]);
+
+  // getDecisionSignals has an async signature, so compute in an effect and hold
+  // the result in state. This runs the FULL aggregator -- including the breeding,
+  // guardian-incident, and health-recurrence signals the old inline
+  // reimplementation silently omitted.
+  const [decisionSignals, setDecisionSignals] = useState<DecisionSignal[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    getDecisionSignals(signalParams)
+      .then((s) => { if (!cancelled) setDecisionSignals(s); })
+      .catch((err) => { console.error('Failed to compute decision signals:', err); });
+    return () => { cancelled = true; };
+  }, [signalParams]);
 
   // Calculate stats
   const stats = useMemo(() => {
