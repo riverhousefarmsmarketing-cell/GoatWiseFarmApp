@@ -13,6 +13,7 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { formatDate, weightToLbs } from '@/lib/utils';
+import { milkAmountToLbs } from '@/hooks/useMilk';
 import {
   Users,
   Heart,
@@ -32,7 +33,7 @@ import {
   Droplets,
 } from 'lucide-react';
 import Link from 'next/link';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInCalendarDays, startOfToday } from 'date-fns';
 
 // Decision Layer imports
 import {
@@ -68,7 +69,7 @@ export default function DashboardPage() {
   });
 
   // Fetch breeding records
-  const { data: breedingRecords } = useQuery({
+  const { data: breedingRecords, isError: breedingError } = useQuery({
     queryKey: ['breeding_records'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -85,7 +86,7 @@ export default function DashboardPage() {
   });
 
   // Fetch health records (last 30 days)
-  const { data: healthRecords } = useQuery({
+  const { data: healthRecords, isError: healthError } = useQuery({
     queryKey: ['health_records_recent'],
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
@@ -108,7 +109,7 @@ export default function DashboardPage() {
   // Fetch inspections (for FAMACHA scores). Bounded to the last year -- the
   // signal only needs each animal's latest inspection, so loading the entire
   // history on the landing page was wasted work.
-  const { data: inspections } = useQuery({
+  const { data: inspections, isError: inspectionsError } = useQuery({
     queryKey: ['inspections_all'],
     queryFn: async () => {
       const oneYearAgo = new Date();
@@ -129,7 +130,7 @@ export default function DashboardPage() {
   });
 
   // Fetch milk records (last 7 days)
-  const { data: milkRecords } = useQuery({
+  const { data: milkRecords, isError: milkError } = useQuery({
     queryKey: ['milk_records_week'],
     queryFn: async () => {
       const sevenDaysAgo = new Date();
@@ -152,7 +153,7 @@ export default function DashboardPage() {
   // from the Weight page's ['weight_records'] (which selects a different shape)
   // so the two don't collide in the cache, while the Weight page's
   // invalidateQueries(['weight_records']) still refreshes this by prefix.
-  const { data: weightRecords } = useQuery({
+  const { data: weightRecords, isError: weightError } = useQuery({
     queryKey: ['weight_records', 'dashboard'],
     queryFn: async () => {
       const oneYearAgo = new Date();
@@ -170,7 +171,7 @@ export default function DashboardPage() {
   });
 
   // Fetch transactions (last 30 days)
-  const { data: transactions } = useQuery({
+  const { data: transactions, isError: transactionsError } = useQuery({
     queryKey: ['transactions_recent'],
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
@@ -188,7 +189,7 @@ export default function DashboardPage() {
   });
 
   // Fetch transactions (6 months for financial signals)
-  const { data: transactionsSixMonths } = useQuery({
+  const { data: transactionsSixMonths, isError: sixMonthError } = useQuery({
     queryKey: ['transactions_six_months'],
     queryFn: async () => {
       const sixMonthsAgo = new Date();
@@ -207,7 +208,7 @@ export default function DashboardPage() {
   // Fetch guardian incidents. The table is predation_events -- there has never
   // been a guardian_incidents table, so this query failed on every dashboard
   // load and the Decision Layer always saw zero incidents.
-  const { data: guardianIncidents } = useQuery({
+  const { data: guardianIncidents, isError: incidentsError } = useQuery({
     queryKey: ['predation_events'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -250,13 +251,20 @@ export default function DashboardPage() {
     // Local calendar day -- milk records store their date in local time, so a
     // UTC-derived "today" would miss today's entries in the evening west of UTC.
     const todayStr = format(new Date(), 'yyyy-MM-dd');
+    // Normalize every amount to lbs before summing -- the milk page can store
+    // kg/liters/gallons/quarts, and adding those to lbs raw makes the totals,
+    // averages, and the milk-drop signal compare incomparable units.
     const todayMilk = milkList
       .filter((m: any) => m.date === todayStr)
-      .reduce((sum: number, m: any) => sum + (m.amount || 0), 0);
-    
-    const sevenDayTotal = milkList.reduce((sum: number, m: any) => sum + (m.amount || 0), 0);
+      .reduce((sum: number, m: any) => sum + milkAmountToLbs(m.amount, m.amount_unit), 0);
+
+    const sevenDayTotal = milkList.reduce((sum: number, m: any) => sum + milkAmountToLbs(m.amount, m.amount_unit), 0);
     const uniqueDays = new Set(milkList.map((m: any) => m.date)).size;
     const sevenDayAvg = uniqueDays > 0 ? sevenDayTotal / uniqueDays : 0;
+    // Whether milk was ENTERED today (vs. amount > 0) -- so a recorded zero (a real
+    // 100% production stop) still triggers the drop signal, while "not milked yet"
+    // stays quiet.
+    const hasTodayMilkEntry = milkList.some((m: any) => m.date === todayStr);
 
     // Per-animal milk data
     const milkByAnimal: Record<string, { id: string; name: string; today: number; total: number; days: Set<string> }> = {};
@@ -266,10 +274,11 @@ export default function DashboardPage() {
       if (!milkByAnimal[id]) {
         milkByAnimal[id] = { id, name, today: 0, total: 0, days: new Set() };
       }
-      milkByAnimal[id].total += m.amount || 0;
+      const lbs = milkAmountToLbs(m.amount, m.amount_unit);
+      milkByAnimal[id].total += lbs;
       milkByAnimal[id].days.add(m.date);
       if (m.date === todayStr) {
-        milkByAnimal[id].today += m.amount || 0;
+        milkByAnimal[id].today += lbs;
       }
     });
 
@@ -421,7 +430,7 @@ export default function DashboardPage() {
     });
 
     // Milk drop signals (farm level)
-    if (sevenDayAvg > 0 && todayMilk > 0) {
+    if (sevenDayAvg > 0 && hasTodayMilkEntry) {
       const percentDrop = ((sevenDayAvg - todayMilk) / sevenDayAvg) * 100;
       if (percentDrop > 15) {
         signals.push({
@@ -529,10 +538,14 @@ export default function DashboardPage() {
     const bucks = animalsList.filter((a: any) => isIntactMale(a) && a.status === 'active').length;
     const kids = animalsList.filter((a: any) => (categoryIs(a, 'young_female') || categoryIs(a, 'young_male') || categoryIs(a, 'young')) && a.status === 'active').length;
 
-    // Pregnant does
-    const pregnantDoes = breedingList.filter((b: any) => 
-      b.status === 'confirmed_pregnant' || b.status === 'bred'
-    ).length;
+    // Pregnant does -- count DISTINCT does, not breeding rows. A doe with more
+    // than one open breeding row (e.g. a stale 'bred' plus a 'confirmed_pregnant')
+    // was counted multiple times, overstating the herd.
+    const pregnantDoes = new Set(
+      breedingList
+        .filter((b: any) => b.status === 'confirmed_pregnant' || b.status === 'bred')
+        .map((b: any) => b.doe_id)
+    ).size;
 
     // Upcoming due dates (next 30 days). Compare on date STRINGS ('YYYY-MM-DD',
     // where lexicographic order == chronological) so a doe due TODAY isn't misfiled
@@ -556,8 +569,8 @@ export default function DashboardPage() {
       return b.due_date < todayStr;
     });
 
-    // Milk production this week
-    const totalMilkWeek = milkList.reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
+    // Milk production this week (normalized to lbs)
+    const totalMilkWeek = milkList.reduce((sum: number, r: any) => sum + milkAmountToLbs(r.amount, r.amount_unit), 0);
     const milkDays = new Set(milkList.map((r: any) => r.date)).size;
     const avgDailyMilk = milkDays > 0 ? totalMilkWeek / milkDays : 0;
 
@@ -609,7 +622,7 @@ export default function DashboardPage() {
       if (!milkByDate[r.date]) {
         milkByDate[r.date] = { total: 0, date: r.date };
       }
-      milkByDate[r.date].total += r.amount || 0;
+      milkByDate[r.date].total += milkAmountToLbs(r.amount, r.amount_unit);
     });
     Object.values(milkByDate).slice(0, 3).forEach((r: any) => {
       activities.push({
@@ -633,7 +646,7 @@ export default function DashboardPage() {
 
     // Overdue does
     stats.overdueDoes.forEach((b: any) => {
-      const daysOverdue = Math.floor((new Date().getTime() - parseISO(b.due_date).getTime()) / (1000 * 60 * 60 * 24));
+      const daysOverdue = differenceInCalendarDays(startOfToday(), parseISO(String(b.due_date).slice(0, 10)));
       taskList.push({
         type: 'urgent',
         icon: AlertTriangle,
@@ -647,11 +660,11 @@ export default function DashboardPage() {
       });
     });
 
-    // Due this week
-    const sevenDaysFromNow = new Date();
-    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-    stats.upcomingDues.filter((b: any) => new Date(b.due_date) <= sevenDaysFromNow).forEach((b: any) => {
-      const daysUntil = Math.ceil((parseISO(b.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    // Due this week -- compare in whole calendar days on the local date, matching
+    // how upcomingDues itself was filtered (a raw `new Date(due_date)` here parsed
+    // as UTC and drifted the 7-day cutoff versus the badge below).
+    stats.upcomingDues.filter((b: any) => differenceInCalendarDays(parseISO(String(b.due_date).slice(0, 10)), startOfToday()) <= 7).forEach((b: any) => {
+      const daysUntil = differenceInCalendarDays(parseISO(String(b.due_date).slice(0, 10)), startOfToday());
       taskList.push({
         type: 'warning',
         icon: Baby,
@@ -700,6 +713,18 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Some data failed to load. The dashboard degrades to zeros/absent signals
+          when a secondary query errors, which reads as a false "all clear" -- warn
+          so the figures below aren't mistaken for a complete picture. */}
+      {(breedingError || healthError || inspectionsError || milkError || weightError || transactionsError || sixMonthError || incidentsError) && (
+        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-800">
+            Some data couldn't be loaded, so the figures and alerts below may be incomplete. Please refresh.
+          </p>
+        </div>
+      )}
 
       {/* ============================================ */}
       {/* DECISION LAYER - Farm Status Summary */}
@@ -905,7 +930,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               stats.upcomingDues.slice(0, 5).map((breeding: any, i: number) => {
-                const daysUntil = Math.ceil((parseISO(breeding.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                const daysUntil = differenceInCalendarDays(parseISO(String(breeding.due_date).slice(0, 10)), startOfToday());
                 const isUrgent = daysUntil <= 7;
                 
                 return (
@@ -970,11 +995,11 @@ export default function DashboardPage() {
               );
             }
 
-            // Group by date
+            // Group by date (normalized to lbs)
             const byDate: Record<string, number> = {};
             milkList.forEach((r: any) => {
               if (!byDate[r.date]) byDate[r.date] = 0;
-              byDate[r.date] += r.amount || 0;
+              byDate[r.date] += milkAmountToLbs(r.amount, r.amount_unit);
             });
 
             const dates = Object.keys(byDate).sort();
@@ -985,7 +1010,9 @@ export default function DashboardPage() {
                 {dates.map((date) => {
                   const amount = byDate[date];
                   const height = maxMilk > 0 ? (amount / maxMilk) * 100 : 0;
-                  const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+                  // parseISO keeps the label on the record's local date; new Date on a
+                  // 'YYYY-MM-DD' string is UTC midnight and prints the prior weekday west of UTC.
+                  const dayName = format(parseISO(date), 'EEE');
 
                   return (
                     <div key={date} className="flex-1 flex flex-col items-center gap-1">
@@ -1026,8 +1053,11 @@ export default function DashboardPage() {
                 'dry_female': { count: 0, color: 'bg-yellow-500' },
                 'bred_female': { count: 0, color: 'bg-purple-500' },
                 'male': { count: 0, color: 'bg-blue-500' },
+                'castrated': { count: 0, color: 'bg-slate-500' },
                 'young_female': { count: 0, color: 'bg-pink-400' },
                 'young_male': { count: 0, color: 'bg-cyan-400' },
+                'young': { count: 0, color: 'bg-teal-400' },
+                'other': { count: 0, color: 'bg-gray-400' },
               };
 
               animalsList.filter((a: any) => a.status === 'active').forEach((a: any) => {
@@ -1036,6 +1066,11 @@ export default function DashboardPage() {
                   categories[canonical].count++;
                 } else if (isIntactMale(a)) {
                   categories['male'].count++;
+                } else {
+                  // Anything that doesn't map to a named bucket (unknown/blank
+                  // category) still gets counted, so the summary reconciles with
+                  // the Active Animals total instead of silently dropping animals.
+                  categories['other'].count++;
                 }
               });
 
@@ -1044,11 +1079,21 @@ export default function DashboardPage() {
                 'dry_female': 'Dry Does',
                 'bred_female': 'Bred Does',
                 'male': 'Bucks',
+                'castrated': 'Wethers',
                 'young_female': 'Doelings',
                 'young_male': 'Bucklings',
+                'young': 'Kids',
+                'other': 'Other',
               };
 
-              return Object.entries(categories).map(([cat, data]) => (
+              // Show only non-empty buckets (the added Wethers/Kids/Other rows
+              // would otherwise render as a wall of zeros); if the herd is empty
+              // fall back to showing the core buckets.
+              const entries = Object.entries(categories).filter(([, data]) => data.count > 0);
+              const shown = entries.length > 0
+                ? entries
+                : Object.entries(categories).slice(0, 6);
+              return shown.map(([cat, data]) => (
                 <div key={cat} className="text-center">
                   <div className={`w-12 h-12 mx-auto rounded-full ${data.color} bg-opacity-20 flex items-center justify-center mb-2`}>
                     <span className={`text-lg font-bold ${data.color.replace('bg-', 'text-')}`}>
