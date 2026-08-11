@@ -60,9 +60,9 @@ export interface Database {
         Update: { farm_name?: string | null; farm_location?: string | null; weight_unit?: string; milk_unit?: string; temperature_unit?: string; enabled_species?: string[]; updated_at?: string; };
       };
       herds: {
-        Row: { id: string; user_id: string; name: string; location: string | null; pasture_name: string | null; description: string | null; color: string; created_at: string; updated_at: string; };
-        Insert: { id?: string; user_id: string; name: string; location?: string | null; pasture_name?: string | null; description?: string | null; color?: string; created_at?: string; updated_at?: string; };
-        Update: { name?: string; location?: string | null; pasture_name?: string | null; description?: string | null; color?: string; updated_at?: string; };
+        Row: { id: string; user_id: string; name: string; location: string | null; pasture_name: string | null; description: string | null; color: string; species: 'goat' | 'sheep'; created_at: string; updated_at: string; };
+        Insert: { id?: string; user_id: string; name: string; location?: string | null; pasture_name?: string | null; description?: string | null; color?: string; species?: 'goat' | 'sheep'; created_at?: string; updated_at?: string; };
+        Update: { name?: string; location?: string | null; pasture_name?: string | null; description?: string | null; color?: string; species?: 'goat' | 'sheep'; updated_at?: string; };
       };
             animals: {
         Row: {

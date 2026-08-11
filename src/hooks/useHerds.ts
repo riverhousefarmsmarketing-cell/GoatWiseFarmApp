@@ -87,6 +87,7 @@ export function useHerdsWithStats() {
           color: '#9ca3af',
           location: null,
           pasture_name: null,
+          species: 'goat',
           user_id: user?.id || '',
           created_at: '',
           updated_at: '',
@@ -117,6 +118,7 @@ export function useHerd(id: string) {
           color: '#9ca3af',
           location: null,
           pasture_name: null,
+          species: 'goat',
           user_id: '',
           created_at: '',
           updated_at: '',
@@ -167,7 +169,7 @@ export function useCreateHerd() {
   const supabase = getSupabaseClient();
 
   return useMutation({
-    mutationFn: async (herd: { name: string; description?: string | null; color?: string; location?: string | null }) => {
+    mutationFn: async (herd: { name: string; description?: string | null; color?: string; location?: string | null; pasture_name?: string | null; species?: 'goat' | 'sheep' }) => {
       const { data, error } = await mutationFrom('herds')
         .insert([{ ...herd, user_id: user?.id }])
         .select()
