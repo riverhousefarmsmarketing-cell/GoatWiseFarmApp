@@ -90,9 +90,11 @@ export default function PhotoGalleryPage() {
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [editForm, setEditForm] = useState({ caption: '', category: '' });
 
-  // Fetch animals
+  // Fetch animals. Distinct key: photos can be tagged to sold/deceased animals,
+  // so this must include all statuses -- but the bare ['animals'] key is cached
+  // active-only by other pages, and whichever loads first wins.
   const { data: animals } = useQuery({
-    queryKey: ['animals'],
+    queryKey: ['animals', 'photos-all'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('animals')
@@ -154,7 +156,12 @@ export default function PhotoGalleryPage() {
           url: urlData.publicUrl,
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        // Roll back the just-uploaded object so a failed insert doesn't leave an
+        // orphaned file in the bucket with no DB row referencing it.
+        await supabase.storage.from('photos').remove([filename]).catch(() => {});
+        throw insertError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['photos'] });
@@ -182,6 +189,7 @@ export default function PhotoGalleryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['photos'] });
     },
+    onError: (e: any) => alert(`Could not delete the photo: ${e?.message || 'please try again.'}`),
   });
 
   // Update photo metadata mutation
@@ -211,10 +219,12 @@ export default function PhotoGalleryPage() {
     setIsUploading(true);
     setUploadProgress(0);
 
+    const total = uploadForm.files.length;
+    let uploaded = 0;
     try {
-      for (let i = 0; i < uploadForm.files.length; i++) {
+      for (let i = 0; i < total; i++) {
         const file = uploadForm.files[i];
-        
+
         await uploadMutation.mutateAsync({
           file,
           metadata: {
@@ -225,24 +235,36 @@ export default function PhotoGalleryPage() {
           },
         });
 
-        setUploadProgress(((i + 1) / uploadForm.files.length) * 100);
+        uploaded = i + 1;
+        setUploadProgress((uploaded / total) * 100);
       }
 
       setShowUploadModal(false);
-      setUploadForm({
-        animal_id: '',
-        category: 'general',
-        caption: '',
-        date_taken: format(new Date(), 'yyyy-MM-dd'),
-        files: [],
-      });
+      resetUploadForm();
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Error uploading photos. Please try again.');
+      // Keep only the files that did NOT upload, so a retry doesn't re-insert the
+      // ones that already succeeded (which produced duplicate photos before).
+      setUploadForm((prev) => ({ ...prev, files: prev.files.slice(uploaded) }));
+      alert(
+        uploaded > 0
+          ? `Uploaded ${uploaded} of ${total}. The remaining ${total - uploaded} could not be uploaded and are still selected — please try again.`
+          : 'Error uploading photos. Please try again.'
+      );
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
     }
+  };
+
+  const resetUploadForm = () => {
+    setUploadForm({
+      animal_id: '',
+      category: 'general',
+      caption: '',
+      date_taken: format(new Date(), 'yyyy-MM-dd'),
+      files: [],
+    });
   };
 
   // Filter photos
@@ -323,6 +345,9 @@ export default function PhotoGalleryPage() {
         category: editForm.category,
       });
       setEditingPhoto(null);
+      // Close the lightbox too: changing the category can drop this photo from the
+      // active filter, which would leave lightboxIndex pointing at a different photo.
+      setShowLightbox(false);
     } catch (error) {
       console.error('Update error:', error);
       alert('Error saving changes. Please try again.');
@@ -387,7 +412,7 @@ export default function PhotoGalleryPage() {
         </Card>
         <Card padding="sm" className="text-center">
           <ImageIcon className="h-5 w-5 mx-auto mb-1 text-green-600" />
-          <p className="text-2xl font-bold">{stats.totalAnimals - stats.animalsWithPhotos}</p>
+          <p className="text-2xl font-bold">{Math.max(0, stats.totalAnimals - stats.animalsWithPhotos)}</p>
           <p className="text-xs text-gray-500">Need Photos</p>
         </Card>
       </div>
@@ -512,7 +537,7 @@ export default function PhotoGalleryPage() {
       {/* Upload Modal */}
       <Modal
         open={showUploadModal}
-        onClose={() => !isUploading && setShowUploadModal(false)}
+        onClose={() => { if (!isUploading) { setShowUploadModal(false); resetUploadForm(); } }}
         title="Upload Photos"
       >
         <form onSubmit={handleUpload} className="space-y-4">
@@ -570,6 +595,7 @@ export default function PhotoGalleryPage() {
           <Input
             label="Date Taken"
             type="date"
+            max={format(new Date(), 'yyyy-MM-dd')}
             value={uploadForm.date_taken}
             onChange={(e) => setUploadForm(prev => ({ ...prev, date_taken: e.target.value }))}
           />
@@ -601,7 +627,7 @@ export default function PhotoGalleryPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowUploadModal(false)}
+              onClick={() => { setShowUploadModal(false); resetUploadForm(); }}
               disabled={isUploading}
             >
               Cancel
