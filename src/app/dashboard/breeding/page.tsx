@@ -65,6 +65,22 @@ const statusColors: Record<string, string> = {
   aborted: 'bg-red-100 text-red-700',
 };
 
+// Kid rows in the record-kidding form need a stable React key. Keying by array
+// index scrambled the remaining rows' input values (and dropped focus) when a
+// middle row was removed. A monotonic counter gives each row a durable id;
+// _key is a UI-only field and is never read by the kid/animal write path.
+let kidRowKeyCounter = 0;
+const makeKidRow = () => ({
+  _key: ++kidRowKeyCounter,
+  name: '',
+  sex: 'female',
+  status: 'alive',
+  birth_weight: '',
+  vigor: 'strong',
+  notes: '',
+});
+type KidRow = ReturnType<typeof makeKidRow>;
+
 export default function BreedingPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -99,9 +115,7 @@ export default function BreedingPage() {
 
   const [kiddingForm, setKiddingForm] = useState({
     kidding_date: format(new Date(), 'yyyy-MM-dd'),
-    kids: [
-      { name: '', sex: 'female', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' },
-    ] as Array<{ name: string; sex: string; status: string; birth_weight: string; vigor: string; notes: string }>,
+    kids: [makeKidRow()] as KidRow[],
     labor_ease: 'normal',
     assistance_required: false,
     notes: '',
@@ -304,7 +318,7 @@ export default function BreedingPage() {
     });
     setKiddingForm({
       kidding_date: format(new Date(), 'yyyy-MM-dd'),
-      kids: [{ name: '', sex: 'female', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' }],
+      kids: [makeKidRow()],
       labor_ease: 'normal',
       assistance_required: false,
       notes: '',
@@ -493,7 +507,7 @@ export default function BreedingPage() {
   const addKidRow = () => {
     setKiddingForm(prev => ({
       ...prev,
-      kids: [...prev.kids, { name: '', sex: 'female', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' }],
+      kids: [...prev.kids, makeKidRow()],
     }));
   };
 
@@ -519,7 +533,7 @@ export default function BreedingPage() {
     setSelectedRecord(record);
     setKiddingForm({
       kidding_date: format(new Date(), 'yyyy-MM-dd'),
-      kids: [{ name: '', sex: 'female', status: 'alive', birth_weight: '', vigor: 'strong', notes: '' }],
+      kids: [makeKidRow()],
       labor_ease: 'normal',
       assistance_required: false,
       notes: '',
@@ -1154,7 +1168,7 @@ export default function BreedingPage() {
             
             <div className="space-y-3 border rounded-lg p-3 bg-gray-50">
               {kiddingForm.kids.map((kid, index) => (
-                <div key={index} className="p-3 bg-white rounded-lg border space-y-2">
+                <div key={kid._key} className="p-3 bg-white rounded-lg border space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600">Kid #{index + 1}</span>
                     {kiddingForm.kids.length > 1 && (
