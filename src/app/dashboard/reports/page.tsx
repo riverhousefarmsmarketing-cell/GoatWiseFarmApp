@@ -14,7 +14,8 @@ import {
   AnimalLink,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
-import { isFemale, isIntactMale } from '@/lib/animalVocab';
+import { isFemale, isIntactMale, toCanonicalCategory } from '@/lib/animalVocab';
+import { milkAmountToLbs } from '@/hooks/useMilk';
 import { format } from 'date-fns';
 import {
   BarChart3,
@@ -57,7 +58,7 @@ export default function ReportsPage() {
     };
   }, [timeRange]);
 
-  const { data: animals } = useQuery({
+  const { data: animals, isError: animalsError } = useQuery({
     queryKey: ['animals'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -70,7 +71,7 @@ export default function ReportsPage() {
     enabled: !!user,
   });
 
-  const { data: milkRecords, isLoading: milkLoading } = useQuery({
+  const { data: milkRecords, isLoading: milkLoading, isError: milkError } = useQuery({
     queryKey: ['milk_records_report', dateRange],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -102,13 +103,18 @@ export default function ReportsPage() {
     enabled: !!user,
   });
 
-  const { data: breedingRecords } = useQuery({
-    queryKey: ['breeding_records_report'],
+  // Respect the time-range selector, like milk and financial do -- otherwise the
+  // Overview mixed a ranged milk/profit figure next to all-time breeding numbers
+  // under one control. Filtered on breeding_date; pick "All Time" for lifetime.
+  const { data: breedingRecords, isError: breedingError } = useQuery({
+    queryKey: ['breeding_records_report', dateRange],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('breeding_records')
         .select('*')
-        .eq('user_id', user!.id);
+        .eq('user_id', user!.id)
+        .gte('breeding_date', dateRange.start)
+        .lte('breeding_date', dateRange.end);
       if (error) throw error;
       return data;
     },
@@ -120,26 +126,30 @@ export default function ReportsPage() {
     const records = milkRecords as any[];
     if (!records?.length) return null;
 
-    const totalMilk = records.reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
+    // Normalize every amount to lbs before summing -- milk records can be entered
+    // in kg/liters/gallons/quarts, and adding those to lbs raw makes every total,
+    // average, and ranking on this page compare incomparable units.
+    const totalMilk = records.reduce((sum: number, r: any) => sum + milkAmountToLbs(r.amount, r.amount_unit), 0);
     const uniqueDates = new Set(records.map((r: any) => r.date)).size;
     const avgDaily = uniqueDates > 0 ? totalMilk / uniqueDates : 0;
 
     const byDate = records.reduce((acc: any, r: any) => {
       if (!acc[r.date]) acc[r.date] = { date: r.date, am: 0, pm: 0, once: 0, total: 0 };
-      acc[r.date].total += r.amount || 0;
-      if (r.session === 'AM') acc[r.date].am += r.amount || 0;
-      if (r.session === 'PM') acc[r.date].pm += r.amount || 0;
-      if (r.session === 'once_daily') acc[r.date].once += r.amount || 0;
+      const lbs = milkAmountToLbs(r.amount, r.amount_unit);
+      acc[r.date].total += lbs;
+      if (r.session === 'AM') acc[r.date].am += lbs;
+      if (r.session === 'PM') acc[r.date].pm += lbs;
+      if (r.session === 'once_daily') acc[r.date].once += lbs;
       return acc;
     }, {} as Record<string, any>);
 
-    const dailyData = Object.values(byDate).sort((a: any, b: any) => 
+    const dailyData = Object.values(byDate).sort((a: any, b: any) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
     const byAnimal = records.reduce((acc: any, r: any) => {
       if (!acc[r.animal_id]) acc[r.animal_id] = { animal_id: r.animal_id, total: 0, count: 0 };
-      acc[r.animal_id].total += r.amount || 0;
+      acc[r.animal_id].total += milkAmountToLbs(r.amount, r.amount_unit);
       acc[r.animal_id].count += 1;
       return acc;
     }, {} as Record<string, any>);
@@ -269,9 +279,13 @@ export default function ReportsPage() {
     const sold = animalsList.filter((a: any) => a.status === 'sold').length;
     const deceased = animalsList.filter((a: any) => a.status === 'deceased').length;
 
+    // Canonicalize the category so the dual goat/species-neutral vocabulary
+    // (e.g. 'milking_doe' vs 'milking_female') collapses to one bucket instead of
+    // rendering two separate bars for the same real category.
     const byCategory = animalsList.reduce((acc: any, a: any) => {
-      if (!acc[a.category]) acc[a.category] = 0;
-      acc[a.category] += 1;
+      const cat = toCanonicalCategory(a.category);
+      if (!acc[cat]) acc[cat] = 0;
+      acc[cat] += 1;
       return acc;
     }, {} as Record<string, number>);
 
@@ -284,7 +298,9 @@ export default function ReportsPage() {
 
     const does = animalsList.filter((a: any) => isFemale(a) && a.status === 'active').length;
     const bucks = animalsList.filter((a: any) => isIntactMale(a) && a.status === 'active').length;
-    const wethers = animalsList.filter((a: any) => (a.sex === 'wether' || a.sex === 'castrated') && a.status === 'active').length;
+    // Wethers are castrated males: sex stays 'male', category is 'castrated'. The
+    // old sex === 'wether'/'castrated' check never matched, so this always read 0.
+    const wethers = animalsList.filter((a: any) => toCanonicalCategory(a.category) === 'castrated' && a.status === 'active').length;
 
     return {
       total,
@@ -301,12 +317,14 @@ export default function ReportsPage() {
 
   const renderBarChart = (data: { label: string; value: number; color?: string; animalId?: string }[], maxValue: number) => (
     <div className="space-y-2">
-      {data.map((item, i) => (
-        <div key={i} className="flex items-center gap-3">
+      {data.length === 0 ? (
+        <p className="text-gray-500 text-center py-4 text-sm">No data</p>
+      ) : data.map((item, i) => (
+        <div key={`${item.label}-${i}`} className="flex items-center gap-3">
           <span className="text-sm text-gray-600 w-32 truncate">
             {item.animalId ? (
-              <AnimalLink 
-                animalId={item.animalId} 
+              <AnimalLink
+                animalId={item.animalId}
                 name={item.label}
                 variant="subtle"
               />
@@ -320,7 +338,10 @@ export default function ReportsPage() {
               style={{ width: `${maxValue > 0 ? (item.value / maxValue) * 100 : 0}%` }}
             />
           </div>
-          <span className="text-sm font-medium w-20 text-right">{item.value.toFixed(1)}</span>
+          {/* Integer counts (herd/breed) shouldn't render as "5.0". */}
+          <span className="text-sm font-medium w-20 text-right">
+            {Number.isInteger(item.value) ? item.value : item.value.toFixed(1)}
+          </span>
         </div>
       ))}
     </div>
@@ -357,6 +378,17 @@ export default function ReportsPage() {
           />
         </div>
       </div>
+
+      {/* A failed query leaves its stats null, which every tab renders identically
+          to a genuinely empty farm ("No data"). Warn so the two aren't confused. */}
+      {(animalsError || milkError || breedingError || financialError) && (
+        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-start gap-2">
+          <Activity className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-800">
+            Some data couldn't be loaded, so a report below may show "no data" that isn't really empty. Please refresh.
+          </p>
+        </div>
+      )}
 
       {/* Report Tabs */}
       <div className="border-b border-gray-200">
@@ -585,10 +617,15 @@ export default function ReportsPage() {
                 <div className="p-4">
                   {milkStats.dailyData.length > 0 ? (
                     <div className="h-64 flex items-end gap-1">
-                      {milkStats.dailyData.slice(-30).map((day: any, i: number) => {
-                        const maxTotal = Math.max(...milkStats.dailyData.map((d: any) => d.total));
+                      {(() => {
+                        // Scale the shown bars against the max of the shown window,
+                        // not the whole range -- otherwise an out-of-window peak
+                        // squashes the last-30 bars. Computed once, not per bar.
+                        const shownDays = milkStats.dailyData.slice(-30) as any[];
+                        const maxTotal = Math.max(...shownDays.map((d: any) => d.total), 0);
+                        return shownDays.map((day: any) => {
                         const height = maxTotal > 0 ? (day.total / maxTotal) * 100 : 0;
-                        
+
                         return (
                           <div key={day.date} className="flex-1 flex flex-col items-center group relative">
                             <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
@@ -600,7 +637,8 @@ export default function ReportsPage() {
                             />
                           </div>
                         );
-                      })}
+                        });
+                      })()}
                     </div>
                   ) : (
                     <p className="text-gray-500 text-center py-8">No data to display</p>
