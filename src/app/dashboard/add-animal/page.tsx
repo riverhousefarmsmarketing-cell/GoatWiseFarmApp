@@ -209,17 +209,49 @@ export default function AddAnimalPage() {
          .select()
          .single();
       if (error) throw error;
+
+      // Seed the intake weight as a weight_record so it shows up as a data point
+      // on the Weight/growth page (which reads only weight_records). Best-effort:
+      // the animal is already created, so a failure here shouldn't block success.
+      const created = result as { id?: string } | null;
+      if (created?.id && data.weight != null) {
+        try {
+          await (supabase.from('weight_records') as any).insert({
+            user_id: user?.id,
+            animal_id: created.id,
+            weight: data.weight,
+            weight_unit: 'lbs',
+            date: data.date_of_birth || format(new Date(), 'yyyy-MM-dd'),
+            notes: 'Intake weight',
+          });
+        } catch (err) {
+          console.error('Could not create intake weight record:', err);
+        }
+      }
       return result;
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['animals'] });
+      queryClient.invalidateQueries({ queryKey: ['weight_records'] });
       router.push(`/dashboard/herd/${data.id}`);
+    },
+    onError: (e: any) => {
+      alert(`Could not save the animal: ${e?.message || 'please try again.'}`);
     },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) {
+      alert('Please enter a name for the animal.');
+      return;
+    }
+    // category is NOT NULL with a CHECK constraint, and a sex change can clear it
+    // to '' -- submitting that would be rejected by the database. Ask for one.
+    if (!form.category) {
+      alert('Please choose a category.');
+      return;
+    }
 
     const animalData = {
       // Basic
@@ -234,6 +266,9 @@ export default function AddAnimalPage() {
       date_of_birth: form.date_of_birth || null,
       color: form.color || null,
       markings: form.markings || null,
+      // Also populate the legacy combined column that some readers (e.g. printed
+      // certificates) still use, so a new animal's color isn't blank there.
+      color_markings: [form.color.trim(), form.markings.trim()].filter(Boolean).join(' — ') || null,
       weight: form.weight ? parseFloat(form.weight) : null,
       status: form.status,
       health_status: form.health_status,
@@ -244,19 +279,24 @@ export default function AddAnimalPage() {
       pedigreed: form.pedigreed,
       pedigree_generations: form.pedigree_generations ? parseInt(form.pedigree_generations) : null,
 
-      // Physical
+      // Physical. Only keep the conditional dates when their condition still
+      // holds -- a value entered and then hidden (unchecked Disbudded, switched
+      // away from castrated) must not be saved as stale data.
       polled: form.polled,
       disbudded: form.disbudded,
-      disbudded_date: form.disbudded_date || null,
-      castration_date: form.castration_date || null,
+      disbudded_date: form.disbudded ? (form.disbudded_date || null) : null,
+      castration_date: (form.sex === 'castrated' || form.category === 'castrated')
+        ? (form.castration_date || null)
+        : null,
 
-      // Farm
+      // Farm. Purchase details only apply to animals NOT born on the farm; drop
+      // them if that box is (re-)checked so a home-bred animal carries no cost.
       herd_id: form.herd_id || null,
       group_ids: form.group_ids.length > 0 ? form.group_ids : null,
       born_on_farm: form.born_on_farm,
-      purchase_date: form.purchase_date || null,
-      purchase_cost: form.purchase_cost ? parseFloat(form.purchase_cost) : null,
-      purchase_source: form.purchase_source || null,
+      purchase_date: form.born_on_farm ? null : (form.purchase_date || null),
+      purchase_cost: form.born_on_farm ? null : (form.purchase_cost ? parseFloat(form.purchase_cost) : null),
+      purchase_source: form.born_on_farm ? null : (form.purchase_source || null),
 
       // Pedigree
       dam_id: form.dam_id || null,
@@ -275,7 +315,13 @@ export default function AddAnimalPage() {
       notes: form.notes || null,
     };
 
-    await createAnimal.mutateAsync(animalData);
+    // onError surfaces the message; catch here so the rejected promise from the
+    // form submit handler doesn't bubble as an unhandled rejection.
+    try {
+      await createAnimal.mutateAsync(animalData);
+    } catch {
+      /* handled by the mutation's onError */
+    }
   };
 
   const updateForm = (field: string, value: any) => {
@@ -336,9 +382,18 @@ export default function AddAnimalPage() {
               value={species}
               onChange={(e) => {
                 setSpecies(e.target.value as Species);
-                updateForm('sex', 'female');
-                updateForm('category', 'milking_female');
-                updateForm('breed', '');
+                // Reset everything the species drives. Clear dam/sire too: the
+                // pedigree lists are filtered to the animal's species, so a parent
+                // picked before the switch would otherwise stay selected in state
+                // and save a cross-species parent.
+                setForm((prev) => ({
+                  ...prev,
+                  sex: 'female',
+                  category: 'milking_female',
+                  breed: '',
+                  dam_id: '',
+                  sire_id: '',
+                }));
               }}
             />
           </div>
@@ -500,6 +555,7 @@ export default function AddAnimalPage() {
               <Input
                 label="Disbudding Date"
                 type="date"
+                max={format(new Date(), 'yyyy-MM-dd')}
                 value={form.disbudded_date}
                 onChange={(e) => updateForm('disbudded_date', e.target.value)}
               />
@@ -508,6 +564,7 @@ export default function AddAnimalPage() {
               <Input
                 label="Castration Date"
                 type="date"
+                max={format(new Date(), 'yyyy-MM-dd')}
                 value={form.castration_date}
                 onChange={(e) => updateForm('castration_date', e.target.value)}
               />
@@ -571,6 +628,7 @@ export default function AddAnimalPage() {
               <Input
                 label="Purchase Date"
                 type="date"
+                max={format(new Date(), 'yyyy-MM-dd')}
                 value={form.purchase_date}
                 onChange={(e) => updateForm('purchase_date', e.target.value)}
               />
