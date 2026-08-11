@@ -182,6 +182,19 @@ export default function GrazingPage() {
 
   const handleAssign = async () => {
     if (!assignForm.group_id || !assignForm.paddock_id) return;
+    // Prevent double occupancy: a paddock can't hold two groups and a group
+    // can't graze two paddocks at once (the second active move would be
+    // orphaned from the Paddocks view). Require moving out first.
+    const paddockOccupied = getActiveMove(assignForm.paddock_id);
+    if (paddockOccupied) {
+      alert(`That paddock is already occupied by ${paddockOccupied.groups?.name || 'another group'}. Move them out first.`);
+      return;
+    }
+    const groupBusy = getGroupActiveMove(assignForm.group_id);
+    if (groupBusy) {
+      alert(`That group is already grazing ${groupBusy.paddocks?.name || 'another paddock'}. Move them out first.`);
+      return;
+    }
     try {
       await createMove.mutateAsync({
         group_id: assignForm.group_id,
@@ -403,7 +416,7 @@ export default function GrazingPage() {
                           <RiskBadge movedInAt={activeMove.moved_in_at} />
                         </div>
                         <p className="text-xs text-gray-500">
-                          Moved in: {format(parseISO(activeMove.moved_in_at), 'MMM d, yyyy')}
+                          Moved in: {format(parseISO(activeMove.moved_in_at.slice(0,10)), 'MMM d, yyyy')}
                         </p>
                         <Button
                           size="sm"
@@ -486,9 +499,9 @@ export default function GrazingPage() {
                         )}
                       </div>
                       <p className="text-sm text-gray-500 mt-0.5">
-                        {format(parseISO(move.moved_in_at), 'MMM d, yyyy')}
+                        {format(parseISO(move.moved_in_at.slice(0,10)), 'MMM d, yyyy')}
                         {move.moved_out_at
-                          ? ` → ${format(parseISO(move.moved_out_at), 'MMM d, yyyy')} (${daysGrazed} days)`
+                          ? ` → ${format(parseISO(move.moved_out_at.slice(0,10)), 'MMM d, yyyy')} (${daysGrazed} days)`
                           : ' → present'}
                       </p>
                       {move.notes && (
