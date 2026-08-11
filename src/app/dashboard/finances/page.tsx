@@ -102,9 +102,13 @@ export default function FinancesPage() {
     notes: '',
   });
 
-  // Fetch transactions
+  // Fetch transactions for the selected date range. NOTE: typeFilter is applied
+  // client-side (below) to the Transactions-tab table only -- it must NOT scope
+  // this query, or the income/expense/profit totals, charts, and the Reports/
+  // tax cards (all derived from `transactions`) would reflect just one type
+  // (e.g. filtering to "Expense" made Overview show $0 income).
   const { data: transactions, isLoading, isError, refetch } = useQuery<any>({
-    queryKey: ['transactions', typeFilter, dateRange],
+    queryKey: ['transactions', dateRange],
     queryFn: async () => {
       let startDate: Date;
       const now = new Date();
@@ -121,22 +125,21 @@ export default function FinancesPage() {
           startDate = new Date(now.getFullYear(), 0, 1);
       }
 
-      let query = supabase
+      const { data, error } = await supabase
         .from('transactions')
         .select('*')
         .gte('date', format(startDate, 'yyyy-MM-dd'))
         .order('date', { ascending: false });
-
-      if (typeFilter !== 'all') {
-        query = query.eq('type', typeFilter);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
     enabled: !!user,
   });
+
+  // Type filter is a display-only concern for the Transactions tab table.
+  const displayedTransactions = typeFilter === 'all'
+    ? (transactions || [])
+    : (transactions || []).filter((t: any) => t.type === typeFilter);
 
   // Create transaction mutation
   const createTransaction = useMutation({
@@ -173,6 +176,9 @@ export default function FinancesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+    onError: (e: any) => {
+      alert(`Could not delete the transaction: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -240,7 +246,8 @@ export default function FinancesPage() {
   };
 
   const handleSaveTransaction = async () => {
-    if (!newTransaction.category || !newTransaction.amount || parseFloat(newTransaction.amount) <= 0) return;
+    // `> 0` (not `<= 0`) also rejects NaN from a non-numeric amount.
+    if (!newTransaction.category || !(parseFloat(newTransaction.amount) > 0)) return;
 
     // Shared fields for both create and update. The transactions table has no
     // `vendor` column (only `vendor_id`), so we never send a `vendor` key.
@@ -339,6 +346,44 @@ export default function FinancesPage() {
   const getCategoryLabel = (type: string, category: string) => {
     const list = type === 'income' ? incomeCategories : expenseCategories;
     return list.find(c => c.value === category)?.label || category;
+  };
+
+  // CSV-safe cell: neutralize spreadsheet formula injection (leading =,+,-,@)
+  // and quote any value containing a comma, quote, or newline.
+  const csvCell = (val: any): string => {
+    let s = val == null ? '' : String(val);
+    if (/^[=+\-@]/.test(s)) s = `'${s}`;
+    if (/[",\n\r]/.test(s)) s = `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+
+  const handleExportCsv = () => {
+    const rows = transactions || [];
+    if (!rows.length) {
+      alert('There are no transactions in the selected date range to export.');
+      return;
+    }
+    const header = ['Date', 'Type', 'Category', 'Description', 'Amount', 'Payment Method', 'Tax Deductible', 'Notes'];
+    const lines = [header.join(',')];
+    for (const t of rows) {
+      lines.push([
+        csvCell(t.date),
+        csvCell(t.type),
+        csvCell(getCategoryLabel(t.type, t.category)),
+        csvCell(t.description),
+        csvCell(t.amount),
+        csvCell(t.payment_method),
+        csvCell(t.tax_deductible ? 'Yes' : 'No'),
+        csvCell(t.notes),
+      ].join(','));
+    }
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -530,7 +575,7 @@ export default function FinancesPage() {
               </div>
             ) : isError ? (
               <ErrorState onRetry={() => refetch()} />
-            ) : !transactions?.length ? (
+            ) : !displayedTransactions.length ? (
               <EmptyState
                 icon={<Receipt className="h-12 w-12" />}
                 title="No transactions"
@@ -551,7 +596,7 @@ export default function FinancesPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {transactions.map((t: any) => (
+                    {displayedTransactions.map((t: any) => (
                       <tr key={t.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm">{formatDate(t.date)}</td>
                         <td className="px-4 py-3">
@@ -620,9 +665,9 @@ export default function FinancesPage() {
               <h3 className="font-semibold text-gray-900">Transaction Export</h3>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-              Export all transactions to CSV for use in spreadsheets or accounting software.
+              Export transactions in the selected date range to CSV for use in spreadsheets or accounting software.
             </p>
-            <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />}>
+            <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />} onClick={handleExportCsv}>
               Export to CSV
             </Button>
           </Card>
