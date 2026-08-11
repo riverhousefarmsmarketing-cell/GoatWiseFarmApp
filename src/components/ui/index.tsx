@@ -322,18 +322,28 @@ interface ModalProps {
 export function Modal({ open, onClose, title, size = 'md', children, footer }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Close on Escape and move focus into the dialog when it opens, so keyboard
-  // and screen-reader users aren't stranded. (Effect runs unconditionally;
-  // guarded by `open` so the early return below stays legal.)
+  // Keep the latest onClose in a ref so the effects below can depend on [open]
+  // alone. Callers pass an inline `onClose={() => ...}` (a new function every
+  // render), so depending on it would re-run these effects on EVERY render --
+  // which re-ran panelRef.focus() on every keystroke, stealing focus out of the
+  // input the user was typing in (one letter, then focus lost).
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Move focus into the dialog once, when it opens.
+  useEffect(() => {
+    if (open) panelRef.current?.focus();
+  }, [open]);
+
+  // Close on Escape while open.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
-    panelRef.current?.focus();
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   // Map to real Tailwind classes. Previously non-'sm' sizes emitted the raw
