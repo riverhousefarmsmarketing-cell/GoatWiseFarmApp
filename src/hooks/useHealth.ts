@@ -168,6 +168,9 @@ export function useMarkFollowUpComplete() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: healthKeys.all });
     },
+    onError: (e: any) => {
+      alert(`Could not update the follow-up: ${e?.message || 'please try again.'}`);
+    },
   });
 }
 
@@ -281,6 +284,9 @@ export function useDeleteInspection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: healthKeys.all });
+    },
+    onError: (e: any) => {
+      alert(`Could not delete the inspection: ${e?.message || 'please try again.'}`);
     },
   });
 }

@@ -265,7 +265,10 @@ export default function HealthPage() {
   const [animalFilter, setAnimalFilter] = useState('all');
   const [dateRange, setDateRange] = useState('90');
   const [searchQuery, setSearchQuery] = useState('');
-  const [famachaFilter, setFamachaFilter] = useState<number | null>(null);
+  // A number filters to that exact FAMACHA score; 'deworm' is the separate
+  // "needs deworming" filter (score >= 4) used by the alert card. Keeping them
+  // distinct means clicking the score-4 distribution tile shows exactly 4, not 4-5.
+  const [famachaFilter, setFamachaFilter] = useState<number | 'deworm' | null>(null);
   const [recordSort, setRecordSort] = useState<string | null>(null);
   const [recordSortDir, setRecordSortDir] = useState<SortDirection>(null);
   const [inspectionSort, setInspectionSort] = useState<string | null>(null);
@@ -328,6 +331,9 @@ export default function HealthPage() {
   const { data: followUps } = useFollowUpsDue();
   const { data: withdrawals } = useActiveWithdrawals();
   const { data: latestInspections } = useLatestInspections();
+  // Full inspection history for the Inspections tab list (so past inspections
+  // can be viewed/searched/edited/deleted, not just each animal's latest).
+  const { data: allInspections } = useInspections();
   const { data: animals } = useAnimals({ status: 'active' });
 
   // Mutations
@@ -361,7 +367,7 @@ export default function HealthPage() {
     else { setInspectionSort(key); setInspectionSortDir('asc'); }
   };
   const handleFamachaClick = (score: number) => { if (famachaFilter === score) setFamachaFilter(null); else { setFamachaFilter(score); setActiveTab('inspections'); } };
-  const handleAlertClick = (type: string) => { if (type === 'followups' || type === 'withdrawals') setActiveTab('overview'); else if (type === 'deworming') { setFamachaFilter(4); setActiveTab('inspections'); } };
+  const handleAlertClick = (type: string) => { if (type === 'followups' || type === 'withdrawals') setActiveTab('overview'); else if (type === 'deworming') { setFamachaFilter('deworm'); setActiveTab('inspections'); } };
   const handleDeleteRecord = async (id: string) => { try { const { error } = await supabase.from('health_records').delete().eq('id', id); if (error) throw error; queryClient.invalidateQueries({ queryKey: healthKeys.all }); setShowDeleteConfirm(null); } catch(e: any) { console.error(e); alert(`Could not delete the record: ${e?.message || 'please try again.'}`); } };
   // "Something's Wrong" handlers
   const handleSwOpen = () => {
@@ -396,13 +402,13 @@ export default function HealthPage() {
     return recs;
   }, [healthRecords, animalFilter, searchQuery, recordSort, recordSortDir]);
   const filteredInspections = useMemo(() => {
-    let ins = latestInspections || [];
-    if (famachaFilter !== null) { if (famachaFilter === 4) ins = ins.filter((i: any) => i.famacha && i.famacha >= 4); else ins = ins.filter((i: any) => i.famacha === famachaFilter); }
+    let ins = allInspections || [];
+    if (famachaFilter === 'deworm') ins = ins.filter((i: any) => i.famacha && i.famacha >= 4); else if (famachaFilter !== null) ins = ins.filter((i: any) => i.famacha === famachaFilter);
     if (inspectionAnimalFilter !== 'all') ins = ins.filter((i: any) => i.animal_id === inspectionAnimalFilter);
     if (inspectionSearch.trim()) { const q = inspectionSearch.toLowerCase(); ins = ins.filter((i: any) => (i.animals?.name||'').toLowerCase().includes(q)||(i.notes||'').toLowerCase().includes(q)||(i.action_taken||'').toLowerCase().includes(q)); }
     if (inspectionSort && inspectionSortDir) { ins = [...ins].sort((a: any, b: any) => { let aV:any, bV:any; switch(inspectionSort) { case 'date': aV=a.date||''; bV=b.date||''; break; case 'animal': aV=a.animals?.name||''; bV=b.animals?.name||''; break; case 'famacha': aV=a.famacha||0; bV=b.famacha||0; break; case 'bcs': aV=a.body_condition_score||0; bV=b.body_condition_score||0; break; case 'weight': aV=a.weight||0; bV=b.weight||0; break; case 'temp': aV=a.temperature||0; bV=b.temperature||0; break; default: return 0; } if (typeof aV==='number') return inspectionSortDir==='asc'?aV-bV:bV-aV; return inspectionSortDir==='asc'?String(aV).localeCompare(String(bV)):String(bV).localeCompare(String(aV)); }); }
     return ins;
-  }, [latestInspections, famachaFilter, inspectionAnimalFilter, inspectionSearch, inspectionSort, inspectionSortDir]);
+  }, [allInspections, famachaFilter, inspectionAnimalFilter, inspectionSearch, inspectionSort, inspectionSortDir]);
 
   // Upload photos helper
   const uploadPhotos = async (healthRecordId: string) => {
@@ -849,7 +855,7 @@ export default function HealthPage() {
                 <div className="p-8 flex justify-center">
                   <LoadingSpinner />
                 </div>
-              ) : !filteredRecords?.length ? (
+              ) : !healthRecords?.length ? (
                 <div className="p-8 text-center text-gray-500">
                   <p>No recent health records</p>
                 </div>
@@ -1026,7 +1032,7 @@ export default function HealthPage() {
 
           {famachaFilter !== null && (
             <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-lg px-4 py-2">
-              <p className="text-sm text-primary-700"><Filter className="h-4 w-4 inline mr-1" />Showing FAMACHA score {famachaFilter === 4 ? '4-5' : famachaFilter} only</p>
+              <p className="text-sm text-primary-700"><Filter className="h-4 w-4 inline mr-1" />{famachaFilter === 'deworm' ? 'Showing FAMACHA 4-5 (needs deworming)' : `Showing FAMACHA score ${famachaFilter} only`}</p>
               <Button variant="ghost" size="sm" onClick={() => setFamachaFilter(null)}><X className="h-3 w-3 mr-1" /> Clear</Button>
             </div>
           )}
