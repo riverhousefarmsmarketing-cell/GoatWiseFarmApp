@@ -10,7 +10,7 @@ import {
 } from '@/components/ui';
 import { formatDate, calculateAge } from '@/lib/utils';
 import { Shield, Plus, Star, AlertTriangle, Heart, Syringe, ChevronRight, Camera, X, Pencil, Trash2 } from 'lucide-react';
-import { format, addDays, parseISO } from 'date-fns';
+import { format, addDays, parseISO, startOfToday } from 'date-fns';
 
 const PREDATION_PHOTO_CATEGORIES = [
   { value: 'injury', label: 'Injury/Attack' },
@@ -212,6 +212,7 @@ export default function GuardiansPage() {
       queryClient.invalidateQueries({ queryKey: ['guardian_health_records'] });
       queryClient.invalidateQueries({ queryKey: ['guardian_vaccinations'] });
     },
+    onError: (e: any) => alert(`Could not delete the guardian: ${e?.message || 'please try again.'}`),
   });
 
   const createHealthRecord = useMutation({
@@ -237,6 +238,7 @@ export default function GuardiansPage() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_health_records'] }),
+    onError: (e: any) => alert(`Could not delete the health record: ${e?.message || 'please try again.'}`),
   });
 
   const createVaccination = useMutation({
@@ -262,6 +264,7 @@ export default function GuardiansPage() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_vaccinations'] }),
+    onError: (e: any) => alert(`Could not delete the vaccination: ${e?.message || 'please try again.'}`),
   });
 
   const createPredation = useMutation({
@@ -287,6 +290,7 @@ export default function GuardiansPage() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['predation_events'] }),
+    onError: (e: any) => alert(`Could not delete the incident: ${e?.message || 'please try again.'}`),
   });
 
   const activeGuardians = guardians?.filter((g: any) => g.status === 'active').length || 0;
@@ -314,6 +318,7 @@ export default function GuardiansPage() {
   const handleGuardianPhotoUpload = async () => {
     if (guardianPhotos.length === 0 || !user || !selectedGuardian) return;
     setIsUploadingGuardianPhoto(true);
+    let failed = 0;
     try {
       for (const file of guardianPhotos) {
         const ext = file.name.split('.').pop();
@@ -321,9 +326,9 @@ export default function GuardiansPage() {
         const { error: uploadError } = await supabase.storage
           .from('photos')
           .upload(filename, file, { cacheControl: '3600', upsert: false });
-        if (uploadError) { console.error('Upload error:', uploadError); continue; }
+        if (uploadError) { console.error('Upload error:', uploadError); failed++; continue; }
         const { data: urlData } = supabase.storage.from('photos').getPublicUrl(filename);
-        await (supabase as any).from('photos').insert({
+        const { error: insertError } = await (supabase as any).from('photos').insert({
           user_id: user.id,
           guardian_id: selectedGuardian.id,
           category: 'guardian_profile',
@@ -332,12 +337,17 @@ export default function GuardiansPage() {
           url: urlData.publicUrl,
           date_taken: format(new Date(), 'yyyy-MM-dd'),
         });
+        if (insertError) { console.error('Photo insert error:', insertError); failed++; }
       }
       queryClient.invalidateQueries({ queryKey: ['guardian_photos', selectedGuardian.id] });
       setGuardianPhotos([]);
       setGuardianPhotoCaption('');
+      // A silent `continue` on failure told the user the upload succeeded while
+      // photos went missing -- surface how many didn't save.
+      if (failed > 0) alert(`${failed} photo${failed === 1 ? '' : 's'} could not be uploaded. Please try again.`);
     } catch (error) {
       console.error('Upload error:', error);
+      alert('Could not upload the photos. Please try again.');
     } finally {
       setIsUploadingGuardianPhoto(false);
     }
@@ -353,10 +363,14 @@ export default function GuardiansPage() {
     }
   };
 
+  // "Due" means due within the next 30 days OR already overdue -- an overdue
+  // rabies shot is the most important one to surface, and the old lower bound
+  // (due >= new Date()) hid every overdue vaccine and even excluded ones due
+  // today (a local-midnight due date is < a mid-day `now`). Compare on the local
+  // date in whole days so the count doesn't drift with the time of day.
   const vaccinesDueSoon = vaccinations?.filter((v: any) => {
     if (!v.next_due_date) return false;
-    const due = parseISO(v.next_due_date);
-    return due <= addDays(new Date(), 30) && due >= new Date();
+    return parseISO(String(v.next_due_date).slice(0, 10)) <= addDays(startOfToday(), 30);
   }).length || 0;
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -371,6 +385,7 @@ export default function GuardiansPage() {
   const uploadPredationPhotos = async (predationEventId: string) => {
     if (predationPhotos.length === 0 || !user) return;
 
+    let failed = 0;
     for (const file of predationPhotos) {
       const ext = file.name.split('.').pop();
       const filename = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
@@ -381,6 +396,7 @@ export default function GuardiansPage() {
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
+        failed++;
         continue;
       }
 
@@ -389,7 +405,7 @@ export default function GuardiansPage() {
       // Link to the predation event via its own FK. This used to write
       // inspection_id (a FK to inspections), which violated the constraint and
       // silently dropped every predation photo while leaving an orphaned file.
-      await (supabase as any).from('photos').insert({
+      const { error: insertError } = await (supabase as any).from('photos').insert({
         user_id: user.id,
         predation_event_id: predationEventId,
         category: predationPhotoCategory,
@@ -397,9 +413,12 @@ export default function GuardiansPage() {
         url: urlData.publicUrl,
         date_taken: newPredation.date,
       });
+      if (insertError) { console.error('Photo insert error:', insertError); failed++; }
     }
 
     queryClient.invalidateQueries({ queryKey: ['photos'] });
+    // The incident itself already saved; let the user know if photos didn't.
+    if (failed > 0) alert(`The incident was saved, but ${failed} photo${failed === 1 ? '' : 's'} could not be uploaded.`);
   };
 
   const openCreateGuardian = () => {
@@ -547,6 +566,10 @@ export default function GuardiansPage() {
 
   const handleCreatePredation = async () => {
     if (!newPredation.predator_type) return;
+    if (!newPredation.description.trim()) {
+      alert('Please add a description of the incident.');
+      return;
+    }
 
     const fields = {
       ...newPredation, animals_lost: parseInt(newPredation.animals_lost) || 0,
@@ -557,6 +580,11 @@ export default function GuardiansPage() {
     try {
       if (editingPredationId) {
         await updatePredation.mutateAsync({ id: editingPredationId, ...fields });
+        // The photo picker is shown in edit mode too, so upload any newly added
+        // photos here as well -- otherwise they were silently discarded on save.
+        if (predationPhotos.length > 0) {
+          await uploadPredationPhotos(editingPredationId);
+        }
       } else {
         const result = await createPredation.mutateAsync(fields);
         if (predationPhotos.length > 0 && result?.id) {
@@ -567,8 +595,9 @@ export default function GuardiansPage() {
       setEditingPredationId(null);
       setShowPredationModal(false);
       resetPredationForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving predation event:', error);
+      alert(`Could not save the incident: ${error?.message || 'please try again.'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -742,6 +771,7 @@ export default function GuardiansPage() {
           <Select label="Assigned Herd" options={[{value:'',label:'None'},...(herds?.map(h=>({value:h.id,label:h.name}))||[])]} value={newGuardian.herd_id} onChange={e => setNewGuardian({...newGuardian, herd_id: e.target.value})} />
           <Input label="Weight (lbs)" type="number" value={newGuardian.weight} onChange={e => setNewGuardian({...newGuardian, weight: e.target.value})} />
           <div><label className="block text-sm font-medium mb-2">Effectiveness</label><RatingStars rating={newGuardian.effectiveness_rating} onChange={r => setNewGuardian({...newGuardian, effectiveness_rating: r})} /></div>
+          <div><label className="block text-sm font-medium mb-1">Notes</label><textarea className="w-full rounded-lg border px-3 py-2 text-sm" rows={2} value={newGuardian.notes} onChange={e => setNewGuardian({...newGuardian, notes: e.target.value})} /></div>
         </div>
       </Modal>
 
@@ -779,6 +809,7 @@ export default function GuardiansPage() {
             <Input label="Next Due" type="date" value={newVaccine.next_due_date} onChange={e => setNewVaccine({...newVaccine, next_due_date: e.target.value})} />
           </div>
           <Input label="Administered By" value={newVaccine.administered_by} onChange={e => setNewVaccine({...newVaccine, administered_by: e.target.value})} />
+          <Input label="Notes" value={newVaccine.notes} onChange={e => setNewVaccine({...newVaccine, notes: e.target.value})} />
         </div>
       </Modal>
 
@@ -953,8 +984,26 @@ export default function GuardiansPage() {
             </div>
 
             <div className="flex gap-2 pt-4 border-t">
-              <Button variant="secondary" className="flex-1" onClick={() => { setEditingHealthRecordId(null); setNewHealthRecord({...newHealthRecord, guardian_id: selectedGuardian.id}); setShowDetailModal(false); setShowHealthModal(true); }}><Plus className="h-4 w-4 mr-2" />Add Health Record</Button>
-              <Button variant="secondary" className="flex-1" onClick={() => { setEditingVaccineId(null); setNewVaccine({...newVaccine, guardian_id: selectedGuardian.id}); setShowDetailModal(false); setShowVaccineModal(true); }}><Syringe className="h-4 w-4 mr-2" />Add Vaccine</Button>
+              {/* Start from fresh defaults (with this guardian preselected) rather
+                  than spreading the previous form state -- carrying over the last
+                  entry's medication/date/cost would misattribute it to this
+                  guardian under a stale date. */}
+              <Button variant="secondary" className="flex-1" onClick={() => {
+                setEditingHealthRecordId(null);
+                setNewHealthRecord({
+                  guardian_id: selectedGuardian.id, type: 'vaccination', date: format(new Date(), 'yyyy-MM-dd'),
+                  description: '', medication: '', dosage: '', vet_name: '', follow_up_date: '', cost: '', notes: '',
+                });
+                setShowDetailModal(false); setShowHealthModal(true);
+              }}><Plus className="h-4 w-4 mr-2" />Add Health Record</Button>
+              <Button variant="secondary" className="flex-1" onClick={() => {
+                setEditingVaccineId(null);
+                setNewVaccine({
+                  guardian_id: selectedGuardian.id, vaccine_name: '', date_given: format(new Date(), 'yyyy-MM-dd'),
+                  next_due_date: '', administered_by: '', notes: '',
+                });
+                setShowDetailModal(false); setShowVaccineModal(true);
+              }}><Syringe className="h-4 w-4 mr-2" />Add Vaccine</Button>
             </div>
           </div>
         )}

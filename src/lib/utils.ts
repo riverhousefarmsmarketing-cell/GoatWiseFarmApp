@@ -58,7 +58,12 @@ export function formatRelativeDate(date: string | Date): string {
  * Calculate age from birth date
  */
 export function calculateAge(birthDate: string | Date): string {
-  const birth = new Date(birthDate);
+  // Parse date-only strings as LOCAL midnight; `new Date('YYYY-MM-DD')` is UTC
+  // midnight, which lands on the previous local day west of UTC and rounds the
+  // age up by a day/period at boundaries (a guardian born today reading "1d").
+  const birth = typeof birthDate === 'string'
+    ? (/^\d{4}-\d{2}-\d{2}$/.test(birthDate) ? parseISO(birthDate) : new Date(birthDate))
+    : birthDate;
   const now = new Date();
   
   const years = differenceInYears(now, birth);
