@@ -13,7 +13,16 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { formatDate, weightToLbs } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { milkAmountToLbs } from '@/hooks/useMilk';
+import { format, parseISO, subDays } from 'date-fns';
+
+// Escape user-entered text before it goes into the printed certificate HTML.
+// Names/addresses routinely contain & (e.g. "Smith & Sons Farm") or quotes, which
+// would otherwise render as broken markup on what is meant to be a legal document.
+const esc = (v: unknown): string =>
+  String(v ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string)
+  );
 import {
   FileText,
   Printer,
@@ -47,8 +56,11 @@ export default function CertificatesPage() {
 
 
   // Fetch animals
+  // Distinct key: this list must include sold/deceased animals (you print a Bill
+  // of Sale for a sold animal). Other pages cache ['animals'] filtered to active
+  // only, so sharing the key would drop exactly the animals this page needs.
   const { data: animals, isLoading: animalsLoading, isError: animalsError, refetch: refetchAnimals } = useQuery({
-    queryKey: ['animals'],
+    queryKey: ['animals', 'certificates-all'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('animals')
@@ -62,7 +74,7 @@ export default function CertificatesPage() {
   });
 
   // Fetch health records for selected animal
-  const { data: healthRecords } = useQuery({
+  const { data: healthRecords, isLoading: healthLoading, isError: healthErr } = useQuery({
     queryKey: ['health_records', selectedAnimal],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -77,7 +89,7 @@ export default function CertificatesPage() {
   });
 
   // Fetch weight records for selected animal
-  const { data: weightRecords } = useQuery({
+  const { data: weightRecords, isLoading: weightLoading, isError: weightErr } = useQuery({
     queryKey: ['weight_records', selectedAnimal],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -93,16 +105,16 @@ export default function CertificatesPage() {
   });
 
   // Fetch milk records for selected animal (last 30 days average)
-  const { data: milkRecords } = useQuery({
+  const { data: milkRecords, isLoading: milkLoading, isError: milkErr } = useQuery({
     queryKey: ['milk_records', selectedAnimal],
     queryFn: async () => {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      // Local date -- toISOString() is UTC, so an evening print west of UTC rolled
+      // the cutoff a day forward and dropped the boundary day from the average.
       const { data, error } = await supabase
         .from('milk_records')
         .select('*')
         .eq('animal_id', selectedAnimal)
-        .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
+        .gte('date', format(subDays(new Date(), 30), 'yyyy-MM-dd'));
       if (error) throw error;
       return data;
     },
@@ -151,7 +163,9 @@ export default function CertificatesPage() {
     const currentWeightLbs = latestWeight ? weightToLbs(latestWeight.weight, latestWeight.weight_unit) : null;
     const currentWeight = currentWeightLbs != null ? Math.round(currentWeightLbs) : null;
     const milkList = (milkRecords as any[]) || [];
-    const totalMilk = milkList.reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
+    // Normalize to lbs -- the certificate prints "<n> lbs/day", but a record may be
+    // stored in kg/liters/gallons/quarts.
+    const totalMilk = milkList.reduce((sum: number, r: any) => sum + milkAmountToLbs(r.amount, r.amount_unit), 0);
     const milkDays = new Set(milkList.map((r: any) => r.date)).size;
     const avgDailyMilk = milkDays > 0 ? totalMilk / milkDays : null;
 
@@ -176,7 +190,12 @@ export default function CertificatesPage() {
     if (!birthDate) return 'Unknown';
     const birth = parseISO(birthDate);
     const now = new Date();
-    const months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+    let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+    // Don't count the current month until its day-of-month is reached (born Jan 30,
+    // today Feb 1 is not yet "1 month"), and never show a negative age for a
+    // future date of birth.
+    if (now.getDate() < birth.getDate()) months -= 1;
+    if (months < 0) return 'Unknown';
     if (months < 12) return `${months} months`;
     const years = Math.floor(months / 12);
     const remainingMonths = months % 12;
@@ -209,7 +228,7 @@ export default function CertificatesPage() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>${certificateType.charAt(0).toUpperCase() + certificateType.slice(1)} Certificate - ${animal.name}</title>
+        <title>${certificateType.charAt(0).toUpperCase() + certificateType.slice(1)} Certificate - ${esc(animal.name)}</title>
         <style>
           @page { margin: 0.5in; }
           body { 
@@ -396,12 +415,12 @@ export default function CertificatesPage() {
         </div>
         
         <div class="farm-info">
-          <strong>${farmName}</strong><br>
-          ${farmAddress}${farmPhone ? ` • ${farmPhone}` : ''}${farmEmail ? ` • ${farmEmail}` : ''}
+          <strong>${esc(farmName)}</strong><br>
+          ${esc(farmAddress)}${farmPhone ? ` • ${esc(farmPhone)}` : ''}${farmEmail ? ` • ${esc(farmEmail)}` : ''}
         </div>
 
         <div class="animal-name">
-          ${animal.name}
+          ${esc(animal.name)}
         </div>
 
         <div class="section">
@@ -409,19 +428,19 @@ export default function CertificatesPage() {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Registration #:</span>
-              <span class="info-value">${animal.registration_number || 'N/A'}</span>
+              <span class="info-value">${esc(animal.registration_number || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Tag #:</span>
-              <span class="info-value">${animal.tag_number || 'N/A'}</span>
+              <span class="info-value">${esc(animal.tag_number || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Breed:</span>
-              <span class="info-value">${animal.breed || 'N/A'}</span>
+              <span class="info-value">${esc(animal.breed || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Sex:</span>
-              <span class="info-value">${animal.sex.charAt(0).toUpperCase() + animal.sex.slice(1)}</span>
+              <span class="info-value">${esc(animal.sex ? animal.sex.charAt(0).toUpperCase() + animal.sex.slice(1) : 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Date of Birth:</span>
@@ -433,7 +452,7 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Color/Markings:</span>
-              <span class="info-value">${animal.color_markings || 'N/A'}</span>
+              <span class="info-value">${esc(animal.color_markings || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Current Weight:</span>
@@ -447,11 +466,11 @@ export default function CertificatesPage() {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Dam:</span>
-              <span class="info-value">${parentData.dam?.name || 'Unknown'}</span>
+              <span class="info-value">${esc(parentData.dam?.name || 'Unknown')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Sire:</span>
-              <span class="info-value">${parentData.sire?.name || 'Unknown'}</span>
+              <span class="info-value">${esc(parentData.sire?.name || 'Unknown')}</span>
             </div>
           </div>
         </div>
@@ -465,7 +484,7 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Sale Price:</span>
-              <span class="info-value">${salePrice ? `$${salePrice}` : 'N/A'}</span>
+              <span class="info-value">${salePrice ? `$${esc(salePrice)}` : 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -474,11 +493,11 @@ export default function CertificatesPage() {
           <h3>Buyer Information</h3>
           <div class="info-item" style="grid-column: span 2;">
             <span class="info-label">Name:</span>
-            <span class="info-value">${buyerName || '________________________'}</span>
+            <span class="info-value">${esc(buyerName) || '________________________'}</span>
           </div>
           <div class="info-item" style="grid-column: span 2; margin-top: 10px;">
             <span class="info-label">Address:</span>
-            <span class="info-value">${buyerAddress || '________________________'}</span>
+            <span class="info-value">${esc(buyerAddress) || '________________________'}</span>
           </div>
         </div>
 
@@ -505,18 +524,18 @@ export default function CertificatesPage() {
   const generateHealthCertificate = () => {
     const vaccinations = stats.recentVaccinations.map((v: any) => `
       <tr>
-        <td>${formatDate(v.date)}</td>
-        <td>${v.medication || v.treatment || 'Vaccination'}</td>
-        <td>${v.dosage ? `${v.dosage} ${v.dosage_unit || ''}` : 'N/A'}</td>
-        <td>${v.administered_by || 'Owner'}</td>
+        <td>${esc(formatDate(v.date))}</td>
+        <td>${esc(v.medication || v.treatment || 'Vaccination')}</td>
+        <td>${v.dosage ? `${esc(v.dosage)} ${esc(v.dosage_unit || '')}` : 'N/A'}</td>
+        <td>${esc(v.administered_by || 'Owner')}</td>
       </tr>
     `).join('') || '<tr><td colspan="4">No vaccination records</td></tr>';
 
     const dewormings = stats.recentDeworming.map((d: any) => `
       <tr>
-        <td>${formatDate(d.date)}</td>
-        <td>${d.medication || d.treatment || 'Dewormer'}</td>
-        <td>${d.dosage ? `${d.dosage} ${d.dosage_unit || ''}` : 'N/A'}</td>
+        <td>${esc(formatDate(d.date))}</td>
+        <td>${esc(d.medication || d.treatment || 'Dewormer')}</td>
+        <td>${d.dosage ? `${esc(d.dosage)} ${esc(d.dosage_unit || '')}` : 'N/A'}</td>
       </tr>
     `).join('') || '<tr><td colspan="3">No deworming records</td></tr>';
 
@@ -528,12 +547,12 @@ export default function CertificatesPage() {
         </div>
         
         <div class="farm-info">
-          <strong>${farmName}</strong><br>
-          ${farmAddress}${farmPhone ? ` • ${farmPhone}` : ''}
+          <strong>${esc(farmName)}</strong><br>
+          ${esc(farmAddress)}${farmPhone ? ` • ${esc(farmPhone)}` : ''}
         </div>
 
         <div class="animal-name">
-          ${animal.name}
+          ${esc(animal.name)}
         </div>
 
         <div class="section">
@@ -541,19 +560,19 @@ export default function CertificatesPage() {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Registration #:</span>
-              <span class="info-value">${animal.registration_number || 'N/A'}</span>
+              <span class="info-value">${esc(animal.registration_number || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Tag #:</span>
-              <span class="info-value">${animal.tag_number || 'N/A'}</span>
+              <span class="info-value">${esc(animal.tag_number || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Breed:</span>
-              <span class="info-value">${animal.breed || 'N/A'}</span>
+              <span class="info-value">${esc(animal.breed || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Sex:</span>
-              <span class="info-value">${animal.sex.charAt(0).toUpperCase() + animal.sex.slice(1)}</span>
+              <span class="info-value">${esc(animal.sex ? animal.sex.charAt(0).toUpperCase() + animal.sex.slice(1) : 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Date of Birth:</span>
@@ -565,7 +584,7 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Color/Markings:</span>
-              <span class="info-value">${animal.color_markings || 'N/A'}</span>
+              <span class="info-value">${esc(animal.color_markings || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Current Weight:</span>
@@ -646,12 +665,12 @@ export default function CertificatesPage() {
         </div>
         
         <div class="farm-info">
-          <strong>${farmName}</strong><br>
-          ${farmAddress}
+          <strong>${esc(farmName)}</strong><br>
+          ${esc(farmAddress)}
         </div>
 
         <div class="animal-name">
-          ${animal.name}
+          ${esc(animal.name)}
         </div>
 
         <div class="section">
@@ -659,19 +678,19 @@ export default function CertificatesPage() {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Registration #:</span>
-              <span class="info-value">${animal.registration_number || 'Pending'}</span>
+              <span class="info-value">${esc(animal.registration_number || 'Pending')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Tag/Tattoo #:</span>
-              <span class="info-value">${animal.tag_number || 'N/A'}</span>
+              <span class="info-value">${esc(animal.tag_number || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Microchip #:</span>
-              <span class="info-value">${animal.microchip_id || 'N/A'}</span>
+              <span class="info-value">${esc(animal.microchip_id || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Breed:</span>
-              <span class="info-value">${animal.breed || 'N/A'}</span>
+              <span class="info-value">${esc(animal.breed || 'N/A')}</span>
             </div>
           </div>
         </div>
@@ -681,7 +700,7 @@ export default function CertificatesPage() {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Sex:</span>
-              <span class="info-value">${animal.sex.charAt(0).toUpperCase() + animal.sex.slice(1)}</span>
+              <span class="info-value">${esc(animal.sex ? animal.sex.charAt(0).toUpperCase() + animal.sex.slice(1) : 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Date of Birth:</span>
@@ -689,7 +708,7 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Color/Pattern:</span>
-              <span class="info-value">${animal.color_markings || 'N/A'}</span>
+              <span class="info-value">${esc(animal.color_markings || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Horn Status:</span>
@@ -703,11 +722,11 @@ export default function CertificatesPage() {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Dam:</span>
-              <span class="info-value">${parentData.dam?.name || 'Unknown'}${parentData.dam?.registration_number ? ` (${parentData.dam.registration_number})` : ''}</span>
+              <span class="info-value">${esc(parentData.dam?.name || 'Unknown')}${parentData.dam?.registration_number ? ` (${esc(parentData.dam.registration_number)})` : ''}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Sire:</span>
-              <span class="info-value">${parentData.sire?.name || 'Unknown'}${parentData.sire?.registration_number ? ` (${parentData.sire.registration_number})` : ''}</span>
+              <span class="info-value">${esc(parentData.sire?.name || 'Unknown')}${parentData.sire?.registration_number ? ` (${esc(parentData.sire.registration_number)})` : ''}</span>
             </div>
           </div>
         </div>
@@ -717,11 +736,11 @@ export default function CertificatesPage() {
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Breeder:</span>
-              <span class="info-value">${farmName}</span>
+              <span class="info-value">${esc(farmName)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Current Owner:</span>
-              <span class="info-value">${farmName}</span>
+              <span class="info-value">${esc(farmName)}</span>
             </div>
           </div>
         </div>
@@ -762,10 +781,10 @@ export default function CertificatesPage() {
     const formatAnimalCell = (a: any) => {
       if (!a) return '<span style="color: #999;">Unknown</span>';
       return `
-        <span class="pedigree-name">${a.name}</span><br>
+        <span class="pedigree-name">${esc(a.name)}</span><br>
         <span class="pedigree-details">
-          ${a.registration_number ? `Reg: ${a.registration_number}<br>` : ''}
-          ${a.breed || ''} ${a.color_markings ? `• ${a.color_markings}` : ''}
+          ${a.registration_number ? `Reg: ${esc(a.registration_number)}<br>` : ''}
+          ${esc(a.breed || '')} ${a.color_markings ? `• ${esc(a.color_markings)}` : ''}
         </span>
       `;
     };
@@ -778,15 +797,15 @@ export default function CertificatesPage() {
         </div>
         
         <div class="farm-info">
-          <strong>${farmName}</strong><br>
-          ${farmAddress}
+          <strong>${esc(farmName)}</strong><br>
+          ${esc(farmAddress)}
         </div>
 
         <div class="animal-name">
-          ${animal.name}
+          ${esc(animal.name)}
           <div style="font-size: 14px; font-weight: normal; color: #666; margin-top: 5px;">
-            ${animal.registration_number ? `Registration: ${animal.registration_number}` : ''}
-            ${animal.breed ? ` • ${animal.breed}` : ''}
+            ${animal.registration_number ? `Registration: ${esc(animal.registration_number)}` : ''}
+            ${animal.breed ? ` • ${esc(animal.breed)}` : ''}
           </div>
         </div>
 
@@ -799,15 +818,15 @@ export default function CertificatesPage() {
             </div>
             <div class="info-item">
               <span class="info-label">Sex:</span>
-              <span class="info-value">${animal.sex.charAt(0).toUpperCase() + animal.sex.slice(1)}</span>
+              <span class="info-value">${esc(animal.sex ? animal.sex.charAt(0).toUpperCase() + animal.sex.slice(1) : 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Color/Markings:</span>
-              <span class="info-value">${animal.color_markings || 'N/A'}</span>
+              <span class="info-value">${esc(animal.color_markings || 'N/A')}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Breeder:</span>
-              <span class="info-value">${farmName}</span>
+              <span class="info-value">${esc(farmName)}</span>
             </div>
           </div>
         </div>
@@ -816,7 +835,7 @@ export default function CertificatesPage() {
           <h3>Pedigree</h3>
           <table class="pedigree-table">
             <tr>
-              <td class="gen-label" rowspan="4">Sire<br>Side</td>
+              <td class="gen-label" rowspan="2">Sire<br>Side</td>
               <td rowspan="2">${formatAnimalCell(parentData.sire)}</td>
               <td>${formatAnimalCell(parentData.sireSire)}</td>
             </tr>
@@ -824,7 +843,7 @@ export default function CertificatesPage() {
               <td>${formatAnimalCell(parentData.sireDam)}</td>
             </tr>
             <tr>
-              <td class="gen-label" rowspan="4">Dam<br>Side</td>
+              <td class="gen-label" rowspan="2">Dam<br>Side</td>
               <td rowspan="2">${formatAnimalCell(parentData.dam)}</td>
               <td>${formatAnimalCell(parentData.damSire)}</td>
             </tr>
@@ -849,11 +868,18 @@ export default function CertificatesPage() {
 
         <div class="footer">
           Generated by GoatSteward by RiverHouse Dairy • ${new Date().toLocaleDateString()}<br>
-          This pedigree is based on records maintained by ${farmName}
+          This pedigree is based on records maintained by ${esc(farmName)}
         </div>
       </div>
     `;
   };
+
+  // The subject animal's detail queries (health/weight/milk) feed sections of the
+  // printed certificate. Printing while they're still loading yields silently
+  // empty sections; an error does the same. Gate/flag on these so a cert isn't
+  // produced from half-loaded data mistaken for "this animal has no records".
+  const detailsLoading = !!selectedAnimal && (healthLoading || weightLoading || milkLoading);
+  const detailsError = !!selectedAnimal && (healthErr || weightErr || milkErr);
 
   if (animalsLoading) {
     return (
@@ -1024,15 +1050,18 @@ export default function CertificatesPage() {
           <div>
             <h3 className="font-medium text-gray-900">Ready to Generate</h3>
             <p className="text-sm text-gray-500">
-              {selectedAnimal 
-                ? `Generate ${certificateType} certificate for ${animal?.name}`
-                : 'Select an animal to generate a certificate'
-              }
+              {!selectedAnimal
+                ? 'Select an animal to generate a certificate'
+                : detailsLoading
+                ? 'Loading this animal’s records…'
+                : detailsError
+                ? 'Some of this animal’s records failed to load — the certificate may be missing sections. Please refresh before printing.'
+                : `Generate ${certificateType} certificate for ${animal?.name}`}
             </p>
           </div>
           <Button
             onClick={printCertificate}
-            disabled={!selectedAnimal}
+            disabled={!selectedAnimal || detailsLoading}
             leftIcon={<Printer className="h-4 w-4" />}
             size="lg"
           >
