@@ -3,10 +3,11 @@
 import { useState, useMemo } from 'react';
 import { useTodaysMilk, useMilkStats, useTopProducers, useCreateMilkRecord, useUpdateMilkRecord, useDeleteMilkRecord } from '@/hooks/useMilk';
 import { useAnimals } from '@/hooks/useAnimals';
+import { useActiveWithdrawals } from '@/hooks/useHealth';
 import { categoryIs } from '@/lib/animalVocab';
 import { Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, LoadingSpinner, AnimalLink, ErrorState } from '@/components/ui';
 import { formatDate, formatWeight } from '@/lib/utils';
-import { Milk, Plus, TrendingUp, TrendingDown, Droplets, Calendar, Pencil, Trash2 } from 'lucide-react';
+import { Milk, Plus, TrendingUp, TrendingDown, Droplets, Calendar, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -53,6 +54,20 @@ export default function MilkPage() {
   const { data: milkStats } = useMilkStats(7);
   const { data: topProducers } = useTopProducers(7);
   const { data: activeAnimals } = useAnimals({ status: 'active' });
+  const { data: activeWithdrawals } = useActiveWithdrawals();
+
+  // Map animal_id -> the latest active drug-withdrawal end date, so we can warn
+  // before milk from a treated animal is logged/sold (a food-safety guard).
+  const withdrawalByAnimal = useMemo(() => {
+    const map: Record<string, string> = {};
+    (activeWithdrawals as any[] | undefined)?.forEach((w) => {
+      if (w.animal_id && (!map[w.animal_id] || w.withdrawalEndDate > map[w.animal_id])) {
+        map[w.animal_id] = w.withdrawalEndDate;
+      }
+    });
+    return map;
+  }, [activeWithdrawals]);
+  const selectedWithdrawalEnd = newRecord.animal_id ? withdrawalByAnimal[newRecord.animal_id] : undefined;
   const milkingDoes = useMemo(
     () => activeAnimals?.filter(a => categoryIs(a, 'milking_female')) || [],
     [activeAnimals]
@@ -377,9 +392,27 @@ export default function MilkPage() {
               ...(milkingDoes?.map(a => ({ value: a.id, label: a.name })) || []),
             ]}
             value={newRecord.animal_id}
-            onChange={(e) => setNewRecord({ ...newRecord, animal_id: e.target.value })}
+            onChange={(e) => {
+              const animalId = e.target.value;
+              const end = animalId ? withdrawalByAnimal[animalId] : undefined;
+              // Default to discarded when the animal is under an active drug
+              // withdrawal, so the milk isn't accidentally counted as saleable.
+              setNewRecord(prev => end
+                ? { ...prev, animal_id: animalId, discarded: true, discard_reason: prev.discard_reason || `Drug withdrawal until ${end}` }
+                : { ...prev, animal_id: animalId });
+            }}
             required
           />
+          {selectedWithdrawalEnd && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                This animal is under a drug withdrawal until{' '}
+                <strong>{formatDate(selectedWithdrawalEnd)}</strong>. Its milk should be
+                discarded, not sold, until then.
+              </span>
+            </div>
+          )}
           <Input
             label="Date"
             type="date"
