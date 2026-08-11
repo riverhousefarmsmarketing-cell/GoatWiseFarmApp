@@ -253,50 +253,70 @@ export default function ImportPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Parse CSV file
+  // Parse CSV file. Scans the whole text as one pass so a quoted field may
+  // contain commas AND newlines -- splitting on newlines first (the old approach)
+  // tore any quoted field with an embedded line break across two malformed rows,
+  // which is exactly what this app's own export produces for multi-line notes.
   const parseCSV = (text: string): ImportPreview => {
-    const lines = text.split(/\r?\n/).filter(line => line.trim());
-    if (lines.length === 0) throw new Error('Empty file');
+    const rows = parseCSVText(text);
+    if (rows.length === 0) throw new Error('Empty file');
 
-    const headers = parseCSVLine(lines[0]);
-    // Parse ALL data rows. processImport() iterates this array, and the preview
-    // table slices to the first 10 for display -- so capping here silently
-    // dropped every row past the 100th while still reporting the full count.
-    const rows = lines.slice(1).map(line => parseCSVLine(line));
-
+    const [headers, ...dataRows] = rows;
     return {
       headers,
-      rows,
-      totalRows: lines.length - 1,
+      rows: dataRows,
+      totalRows: dataRows.length,
     };
   };
 
-  // Parse a single CSV line (handles quoted values)
-  const parseCSVLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
+  // Full CSV tokenizer. Fields are comma-separated and row-separated by newlines,
+  // except inside double quotes where commas/newlines are literal and "" is an
+  // escaped quote. Whitespace is preserved inside quotes; unquoted fields are
+  // trimmed. Fully-empty rows (blank lines) are dropped.
+  const parseCSVText = (text: string): string[][] => {
+    const rows: string[][] = [];
+    let field = '';
+    let row: string[] = [];
     let inQuotes = false;
+    let quoted = false;
 
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
+    const endField = () => {
+      row.push(quoted ? field : field.trim());
+      field = '';
+      quoted = false;
+    };
+    const endRow = () => {
+      endField();
+      if (row.some(cell => cell !== '')) rows.push(row);
+      row = [];
+    };
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (inQuotes) {
+        if (char === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else { inQuotes = false; }
         } else {
-          inQuotes = !inQuotes;
+          field += char;
         }
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
+      } else if (char === '"') {
+        inQuotes = true;
+        quoted = true;
+      } else if (char === ',') {
+        endField();
+      } else if (char === '\n') {
+        endRow();
+      } else if (char === '\r') {
+        // ignore; the paired \n ends the row
       } else {
-        current += char;
+        field += char;
       }
     }
-    result.push(current.trim());
-    
-    return result;
+    // Flush the final field/row if the file didn't end with a newline.
+    if (field !== '' || row.length > 0 || quoted) endRow();
+
+    return rows;
   };
 
   // Handle file upload
@@ -469,11 +489,14 @@ export default function ImportPage() {
       }
 
       // Validate required fields
+      const isMissing = (v: any) => v === undefined || v === null || v === '';
       const missingRequired = config.requiredFields.filter(field => {
-        if (field === 'animal_name') return !record['animal_id'];
-        if (field === 'doe_name') return !record['doe_id'];
-        if (field === 'buck_name') return !record['buck_id'];
-        return !record[field];
+        if (field === 'animal_name') return isMissing(record['animal_id']);
+        if (field === 'doe_name') return isMissing(record['doe_id']);
+        if (field === 'buck_name') return isMissing(record['buck_id']);
+        // Use an emptiness check, not falsiness -- a valid numeric 0 (e.g. amount)
+        // must not be treated as a missing required field.
+        return isMissing(record[field]);
       });
 
       if (missingRequired.length > 0) {

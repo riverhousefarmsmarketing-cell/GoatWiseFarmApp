@@ -69,6 +69,7 @@ const SAMPLE_DATA_TABLES = [
   'guardian_health_records',
   'guardian_vaccinations',
   'predation_events',
+  'kid_records',
   'kidding_records',
   'breeding_records',
   'breeding_plans',
@@ -121,8 +122,10 @@ function SampleDataSection() {
     setProgress(prev => [...prev, message]);
   };
 
-  /** Removes every row this user owns across the sample tables. */
-  const wipeUserData = async (announce: boolean) => {
+  /** Removes every row this user owns across the sample tables. Returns the
+   *  number of tables that failed to clear so callers can report honestly. */
+  const wipeUserData = async (announce: boolean): Promise<number> => {
+    let failures = 0;
     for (const table of SAMPLE_DATA_TABLES) {
       if (announce) addProgress(`Deleting ${table}...`);
       const { error: delError } = await (supabase.from(table) as any)
@@ -130,10 +133,12 @@ function SampleDataSection() {
         .eq('user_id', user!.id);
       // Surface failures instead of swallowing them -- a table that silently
       // refuses to clear is how duplicates creep back in.
-      if (delError && announce) {
-        addProgress(`   ⚠ ${table}: ${delError.message}`);
+      if (delError) {
+        failures++;
+        if (announce) addProgress(`   ⚠ ${table}: ${delError.message}`);
       }
     }
+    return failures;
   };
 
   const loadSampleData = async () => {
@@ -152,24 +157,30 @@ function SampleDataSection() {
       // Refuse to run on an account that already holds data. Without this the
       // loader happily ran a second time and stacked another full set of herds
       // on top of the first, which is exactly what happened in beta.
+      //
+      // Check EVERY table the rollback would wipe, not just animals/herds: the
+      // failure path deletes all sample tables wholesale on the premise that the
+      // account was empty, so an account with (say) transactions but no animals
+      // must also be rejected or that data could be destroyed on a failed load.
       addProgress('Checking for existing data...');
-      const [{ count: animalCount }, { count: herdCount }] = await Promise.all([
-        supabase
-          .from('animals')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id),
-        supabase
-          .from('herds')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id),
-      ]);
+      const existing = await Promise.all(
+        SAMPLE_DATA_TABLES.map(async (table) => {
+          const { count, error: countErr } = await (supabase.from(table) as any)
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+          // A count error (e.g. a table that isn't present) shouldn't block the
+          // loader; treat it as empty, same as before this check existed.
+          return { table, count: countErr ? 0 : (count ?? 0) };
+        })
+      );
+      const nonEmpty = existing.filter((t) => t.count > 0);
 
-      if ((animalCount ?? 0) > 0 || (herdCount ?? 0) > 0) {
+      if (nonEmpty.length > 0) {
+        const summary = nonEmpty.map((t) => `${t.count} ${t.table}`).join(', ');
         throw new Error(
-          `This account already has ${animalCount ?? 0} animal(s) and ` +
-            `${herdCount ?? 0} herd(s). Sample data can only be loaded into an ` +
-            `empty account -- use "Clear All Data" first if you want to start over. ` +
-            `Nothing has been changed.`
+          `This account already has data (${summary}). Sample data can only be ` +
+            `loaded into an empty account -- use "Clear All Data" first if you want ` +
+            `to start over. Nothing has been changed.`
         );
       }
 
@@ -624,13 +635,19 @@ function SampleDataSection() {
       // Was a separate hand-maintained list that named feed_logs (no such
       // table) and omitted weight_records, transactions, paddocks and others,
       // so "Clear All Data" quietly left rows behind.
-      await wipeUserData(true);
+      const failures = await wipeUserData(true);
 
       addProgress('');
-      addProgress('✓ All data cleared successfully!');
-      
-      queryClient.invalidateQueries();
-      setShowDeleteModal(false);
+      if (failures > 0) {
+        // Don't claim success when some tables refused to clear.
+        addProgress(`⚠ Cleared with ${failures} table(s) failing — see the warnings above.`);
+        setError(`${failures} table(s) could not be fully cleared. Some data may remain; please try again.`);
+        queryClient.invalidateQueries();
+      } else {
+        addProgress('✓ All data cleared successfully!');
+        queryClient.invalidateQueries();
+        setShowDeleteModal(false);
+      }
 
     } catch (err: any) {
       console.error('Error clearing data:', err);
@@ -863,6 +880,9 @@ export default function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       queryClient.invalidateQueries({ queryKey: ['user_settings'] });
+    },
+    onError: (e: any) => {
+      alert(`Could not save your settings: ${e?.message || 'please try again.'}`);
     },
   });
 
