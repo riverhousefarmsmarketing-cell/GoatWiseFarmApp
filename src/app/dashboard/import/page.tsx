@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -387,14 +388,45 @@ export default function ImportPage() {
 
           // Type conversion
           if (config.fieldTypes[field] === 'number') {
-            value = parseFloat(value) || 0;
-          } else if (config.fieldTypes[field] === 'date') {
-            // Try to parse date
-            const date = new Date(value);
-            if (!isNaN(date.getTime())) {
-              value = date.toISOString().split('T')[0];
+            // Strip currency symbols and thousands separators before parsing.
+            // parseFloat("$1,200.50") => NaN and parseFloat("1,200.50") => 1,
+            // both of which silently corrupted the stored amount.
+            const cleaned = String(value).replace(/[$,\s]/g, '');
+            const parsed = parseFloat(cleaned);
+            if (isNaN(parsed)) {
+              // Non-empty cell that isn't a number: fail the row instead of
+              // storing 0. (Empty cells never reach here -- see the row[idx]
+              // guard above -- so they keep their existing null/0 behaviour.)
+              result.errors.push(`Row ${i + 2}: "${value}" is not a valid number`);
+              hasError = true;
             } else {
-              value = null;
+              value = parsed;
+            }
+          } else if (config.fieldTypes[field] === 'date') {
+            const raw = String(value).trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+              // Already ISO -- keep as-is, no timezone round-trip.
+              value = raw;
+            } else {
+              const date = new Date(value);
+              if (!isNaN(date.getTime())) {
+                // Format in LOCAL time. toISOString() converts to UTC and
+                // shifts MM/DD/YYYY dates back a day for negative-offset users.
+                value = format(date, 'yyyy-MM-dd');
+              } else {
+                value = null;
+              }
+            }
+          } else if (importType === 'financial' && field === 'type') {
+            // transactions.type has CHECK (type IN ('income','expense')).
+            // Normalize common casings (Income/EXPENSE/...) so PostgREST does
+            // not reject the whole row; reject anything else per-row.
+            const normalized = value.trim().toLowerCase();
+            if (normalized !== 'income' && normalized !== 'expense') {
+              result.errors.push(`Row ${i + 2}: type "${value}" must be income or expense`);
+              hasError = true;
+            } else {
+              value = normalized;
             }
           } else if (field === 'tax_deductible') {
             value = value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'yes';

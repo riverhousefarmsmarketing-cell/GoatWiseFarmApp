@@ -151,9 +151,17 @@ export default function ExportPage() {
         if (key === 'doe_name' && row.doe) value = row.doe.name || '';
         if (key === 'buck_name' && row.buck) value = row.buck.name || '';
         
-        // Escape commas and quotes
-        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-          value = `"${value.replace(/"/g, '""')}"`;
+        // Escape for CSV
+        if (typeof value === 'string') {
+          // Prevent CSV formula injection in spreadsheet apps
+          if (/^[=+\-@]/.test(value)) {
+            value = `'${value}`;
+          }
+          // Quote (and double up internal quotes) when the value contains
+          // a comma, double-quote, or newline/carriage return
+          if (/[",\n\r]/.test(value)) {
+            value = `"${value.replace(/"/g, '""')}"`;
+          }
         }
         return value;
       });
