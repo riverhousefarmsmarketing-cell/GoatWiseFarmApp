@@ -19,6 +19,28 @@ export const milkKeys = {
 };
 
 // ==========================================
+// UNIT NORMALIZATION
+// ==========================================
+
+// All production stats are shown in lbs, but amount_unit may be kg/liters/
+// gallons/quarts (the CSV import can introduce them). Normalize to lbs before
+// summing so totals/averages/rankings don't add incomparable units. Volume
+// conversions use milk's approximate density (~8.6 lb/US gal).
+const MILK_TO_LBS: Record<string, number> = {
+  lbs: 1,
+  kg: 2.20462,
+  liters: 2.27,
+  gallons: 8.6,
+  quarts: 2.15,
+};
+
+export function milkAmountToLbs(amount: number | null | undefined, unit?: string | null): number {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return 0;
+  return n * (MILK_TO_LBS[unit || 'lbs'] ?? 1);
+}
+
+// ==========================================
 // HOOKS
 // ==========================================
 
@@ -27,7 +49,8 @@ export function useTodaysMilk() {
   const today = format(new Date(), 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: milkKeys.today(),
+    // Include the date so "Today's Records" refetches when the day rolls over.
+    queryKey: [...milkKeys.today(), today],
     queryFn: async () => {
       const { data, error } = await supabase.from('milk_records')
         .select('*, animals(name)')
@@ -58,27 +81,28 @@ export function useMilkStats(days: number = 7) {
 
       const records = data as MilkRecord[];
 
-      // Group by date
+      // Group by date (normalized to lbs)
       const byDate = records.reduce((acc, record) => {
         if (!acc[record.date]) {
           acc[record.date] = { total: 0, discarded: 0 };
         }
+        const lbs = milkAmountToLbs(record.amount, record.amount_unit);
         if (record.discarded) {
-          acc[record.date].discarded += record.amount;
+          acc[record.date].discarded += lbs;
         } else {
-          acc[record.date].total += record.amount;
+          acc[record.date].total += lbs;
         }
         return acc;
       }, {} as Record<string, { total: number; discarded: number }>);
 
-      // Calculate totals
+      // Calculate totals (normalized to lbs)
       const totalAmount = records
         .filter((r) => !r.discarded)
-        .reduce((sum, r) => sum + Number(r.amount), 0);
+        .reduce((sum, r) => sum + milkAmountToLbs(r.amount, r.amount_unit), 0);
 
       const discardedAmount = records
         .filter((r) => r.discarded)
-        .reduce((sum, r) => sum + Number(r.amount), 0);
+        .reduce((sum, r) => sum + milkAmountToLbs(r.amount, r.amount_unit), 0);
 
       const dailyAverage = totalAmount / days;
 
@@ -125,13 +149,13 @@ export function useTopProducers(days: number = 7) {
     queryKey: ['milk', 'top-producers', days],
     queryFn: async () => {
       const { data, error } = await supabase.from('milk_records')
-        .select('animal_id, amount, animals(name)')
+        .select('animal_id, amount, amount_unit, animals(name)')
         .gte('date', startDate)
         .eq('discarded', false);
 
       if (error) throw error;
 
-      // Group by animal
+      // Group by animal (normalized to lbs)
       const byAnimal = (data as (MilkRecord & { animals: { name: string } | null })[]).reduce((acc: Record<string, { animalId: string; name: string; total: number }>, record) => {
         if (!acc[record.animal_id]) {
           acc[record.animal_id] = {
@@ -140,7 +164,7 @@ export function useTopProducers(days: number = 7) {
             total: 0,
           };
         }
-        acc[record.animal_id].total += record.amount;
+        acc[record.animal_id].total += milkAmountToLbs(record.amount, record.amount_unit);
         return acc;
       }, {} as Record<string, { animalId: string; name: string; total: number }>);
 
@@ -206,6 +230,9 @@ export function useDeleteMilkRecord() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: milkKeys.all });
+    },
+    onError: (e: any) => {
+      alert(`Could not delete the milk record: ${e?.message || 'please try again.'}`);
     },
   });
 }

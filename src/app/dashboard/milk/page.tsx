@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useTodaysMilk, useMilkStats, useTopProducers, useCreateMilkRecord, useUpdateMilkRecord, useDeleteMilkRecord } from '@/hooks/useMilk';
+import { useTodaysMilk, useMilkStats, useTopProducers, useCreateMilkRecord, useUpdateMilkRecord, useDeleteMilkRecord, milkAmountToLbs } from '@/hooks/useMilk';
 import { useAnimals } from '@/hooks/useAnimals';
 import { useActiveWithdrawals } from '@/hooks/useHealth';
 import { categoryIs } from '@/lib/animalVocab';
@@ -46,6 +46,7 @@ export default function MilkPage() {
     date: format(new Date(), 'yyyy-MM-dd'),
     session: 'AM' as const,
     amount: '',
+    amount_unit: 'lbs',
     discarded: false,
     discard_reason: '',
   });
@@ -114,9 +115,9 @@ export default function MilkPage() {
     },
   };
 
-  // Calculate today's total
-  const todaysTotal = todaysMilk?.reduce((sum: number, r: any) => 
-    r.discarded ? sum : sum + r.amount, 0
+  // Calculate today's total (in lbs; a record may be in another unit)
+  const todaysTotal = todaysMilk?.reduce((sum: number, r: any) =>
+    r.discarded ? sum : sum + milkAmountToLbs(r.amount, r.amount_unit), 0
   ) || 0;
 
   const resetForm = () => {
@@ -125,6 +126,7 @@ export default function MilkPage() {
       date: format(new Date(), 'yyyy-MM-dd'),
       session: 'AM',
       amount: '',
+      amount_unit: 'lbs',
       discarded: false,
       discard_reason: '',
     });
@@ -143,6 +145,7 @@ export default function MilkPage() {
       date: record.date ?? format(new Date(), 'yyyy-MM-dd'),
       session: (record.session ?? 'AM') as any,
       amount: String(record.amount ?? ''),
+      amount_unit: record.amount_unit ?? 'lbs',
       discarded: record.discarded ?? false,
       discard_reason: record.discard_reason ?? '',
     });
@@ -155,14 +158,16 @@ export default function MilkPage() {
   };
 
   const handleRecordMilk = async () => {
-    if (!newRecord.animal_id || !newRecord.amount || parseFloat(newRecord.amount) <= 0) return;
+    // Number.isFinite also rejects NaN from a non-numeric amount.
+    if (!newRecord.animal_id || !(Number.isFinite(parseFloat(newRecord.amount)) && parseFloat(newRecord.amount) > 0)) return;
 
     const fields = {
       animal_id: newRecord.animal_id,
       date: newRecord.date,
       session: newRecord.session,
       amount: parseFloat(newRecord.amount),
-      amount_unit: 'lbs',
+      // Preserve the record's own unit on edit; new records default to lbs.
+      amount_unit: newRecord.amount_unit || 'lbs',
       discarded: newRecord.discarded,
       discard_reason: newRecord.discarded ? newRecord.discard_reason : null,
     };
