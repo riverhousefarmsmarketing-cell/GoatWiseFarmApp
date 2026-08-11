@@ -34,7 +34,7 @@ import {
   CheckCircle,
   X,
 } from 'lucide-react';
-import { addDays, subDays, format, differenceInDays, parseISO } from 'date-fns';
+import { addDays, subDays, format, differenceInDays, differenceInCalendarDays, startOfToday, parseISO } from 'date-fns';
 import Link from 'next/link';
 
 const GESTATION_DAYS_STANDARD = 150;
@@ -176,6 +176,14 @@ export default function BreedingPage() {
     return doe?.species === 'sheep' ? '147' : '150';
   };
 
+  // The kidding page (/dashboard/kidding) reads the same breeding_records under a
+  // different query key. Invalidate both so an edit on one page doesn't leave the
+  // other showing stale rows.
+  const invalidateBreeding = () => {
+    queryClient.invalidateQueries({ queryKey: ['breeding_records'] });
+    queryClient.invalidateQueries({ queryKey: ['breeding_records_with_details'] });
+  };
+
   // Mutations
   const createBreeding = useMutation({
     mutationFn: async (data: any) => {
@@ -187,10 +195,13 @@ export default function BreedingPage() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['breeding_records'] });
+      invalidateBreeding();
       setShowBreedingModal(false);
       setShowPlanModal(false);
       resetForms();
+    },
+    onError: (e: any) => {
+      alert(`Could not save the breeding record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -205,11 +216,14 @@ export default function BreedingPage() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['breeding_records'] });
+      invalidateBreeding();
       queryClient.invalidateQueries({ queryKey: ['animals'] });
       setShowKiddingModal(false);
       setSelectedRecord(null);
       setEditingRecord(null);
+    },
+    onError: (e: any) => {
+      alert(`Could not update the breeding record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -219,7 +233,10 @@ export default function BreedingPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['breeding_records'] });
+      invalidateBreeding();
+    },
+    onError: (e: any) => {
+      alert(`Could not delete the breeding record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -675,8 +692,8 @@ export default function BreedingPage() {
                   </thead>
                   <tbody className="divide-y">
                     {pregnantDoes.map((record) => {
-                      const daysUntil = record.due_date 
-                        ? differenceInDays(parseISO(record.due_date.slice(0, 10)), new Date())
+                      const daysUntil = record.due_date
+                        ? differenceInCalendarDays(parseISO(record.due_date.slice(0, 10)), startOfToday())
                         : null;
                       const isOverdue = daysUntil !== null && daysUntil < 0;
                       const isDueSoon = daysUntil !== null && daysUntil >= 0 && daysUntil <= 7;
@@ -728,7 +745,15 @@ export default function BreedingPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => updateBreeding.mutate({ id: record.id, status: 'open' })}
+                                onClick={() => {
+                                  // Confirm: this removes the doe from the pregnant
+                                  // list (open/aborted records aren't shown on this
+                                  // page). Clear the due_date too so we don't leave a
+                                  // "not pregnant" record still carrying a due date.
+                                  if (confirm(`Mark ${record.doe?.name || 'this doe'} as not pregnant? This clears the due date and removes it from the pregnant list.`)) {
+                                    updateBreeding.mutate({ id: record.id, status: 'open', due_date: null });
+                                  }
+                                }}
                               >
                                 Not Pregnant
                               </Button>
@@ -785,7 +810,7 @@ export default function BreedingPage() {
                 icon={<ClipboardList className="h-12 w-12" />}
                 title="No breeding plans"
                 description="Plan your breeding season by setting target kidding dates"
-                action={<Button onClick={() => setShowPlanModal(true)}>Plan a Breeding</Button>}
+                action={<Button onClick={() => { resetForms(); setShowPlanModal(true); }}>Plan a Breeding</Button>}
               />
             </Card>
           ) : (
@@ -804,7 +829,7 @@ export default function BreedingPage() {
                   </thead>
                   <tbody className="divide-y">
                     {plannedBreedings.map((record) => {
-                      const daysUntilBreed = differenceInDays(parseISO(record.breeding_date.slice(0, 10)), new Date());
+                      const daysUntilBreed = differenceInCalendarDays(parseISO(record.breeding_date.slice(0, 10)), startOfToday());
                       const isOverdue = daysUntilBreed < 0;
                       const isSoon = daysUntilBreed >= 0 && daysUntilBreed <= 14;
 
