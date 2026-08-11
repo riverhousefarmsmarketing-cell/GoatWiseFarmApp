@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   useHerdsWithStats, 
   useCreateHerd, 
@@ -236,13 +236,28 @@ export default function HerdManagementPage() {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   // When set, the feed modal is editing this existing feed item instead of creating.
   const [editingFeedId, setEditingFeedId] = useState<string | null>(null);
+  // On-hand total captured when the edit modal opened, so a changed "Quantity on
+  // Hand" can be reconciled with a single inventory adjustment (the delta).
+  const [editingFeedOnHand, setEditingFeedOnHand] = useState(0);
 
   // Data hooks
   const { data: herds, isLoading: herdsLoading, error: herdsError } = useHerdsWithStats();
   const { data: animals } = useAnimals({ status: 'active' });
   const { data: transfers } = useHerdTransfers(transferFilter);
   const { data: feedInventory } = useFeedTypes();
+  const { data: inventoryLots } = useFeedInventory();
   const { data: feedSchedules } = useFeedSchedules();
+
+  // On-hand quantity per feed type = sum of its inventory lots. feed_types has
+  // no quantity column, so stock lives in feed_inventory rows keyed by
+  // feed_type_id. This backs both the low-stock indicator and the list display.
+  const onHandByType = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const lot of inventoryLots || []) {
+      map[lot.feed_type_id] = (map[lot.feed_type_id] || 0) + (lot.quantity || 0);
+    }
+    return map;
+  }, [inventoryLots]);
 
   // Mutations
   const createHerd = useCreateHerd();
@@ -253,6 +268,7 @@ export default function HerdManagementPage() {
   const createFeedItem = useCreateFeedType();
   const updateFeedItem = useUpdateFeedType();
   const deleteFeedItem = useDeleteFeedType();
+  const createFeedInventory = useCreateFeedInventory();
   const createSchedule = useCreateFeedSchedule();
   const updateSchedule = useUpdateFeedSchedule();
   const deleteSchedule = useDeleteFeedSchedule();
@@ -261,7 +277,11 @@ export default function HerdManagementPage() {
   const totalAnimals = herds?.reduce((sum: number, h: any) => sum + h.animalCount, 0) || 0;
   const totalHerds = herds?.filter((h: any) => h.id !== 'unassigned').length || 0;
   const pendingTransfers = transfers?.filter((t: any) => t.status === 'pending').length || 0;
-  const lowStockItems = 0; // TODO: Implement with feed_inventory + feed_types join
+  // A feed type is low when it has a reorder point and its on-hand total has
+  // fallen to or below it.
+  const lowStockItems = (feedInventory || []).filter(
+    (t: any) => t.reorder_point != null && (onHandByType[t.id] || 0) <= t.reorder_point
+  ).length;
 
   // Handlers - WITH ERROR HANDLING
   const handleCreateHerd = async () => {
@@ -282,6 +302,7 @@ export default function HerdManagementPage() {
 
   const resetFeedForm = () => {
     setEditingFeedId(null);
+    setEditingFeedOnHand(0);
     setNewFeed({ feed_type: '', brand: '', quantity_on_hand: '', unit: 'lbs', unit_cost: '', low_stock_threshold: '', supplier: '', storage_location: '' });
   };
 
@@ -299,10 +320,15 @@ export default function HerdManagementPage() {
     const brandFromNotes = typeof item.notes === 'string' && item.notes.startsWith('Brand: ')
       ? item.notes.slice('Brand: '.length)
       : '';
+    // Quantity on hand lives in feed_inventory, not on the feed_type row --
+    // seed the field from the computed on-hand total and remember it so a save
+    // only writes an adjustment when the number actually changed.
+    const onHand = onHandByType[item.id] || 0;
+    setEditingFeedOnHand(onHand);
     setNewFeed({
       feed_type: item.name || '',
       brand: brandFromNotes,
-      quantity_on_hand: item.quantity_on_hand != null ? String(item.quantity_on_hand) : '',
+      quantity_on_hand: String(onHand),
       unit: item.unit || 'lbs',
       unit_cost: item.cost_per_unit != null ? String(item.cost_per_unit) : '',
       low_stock_threshold: item.reorder_point != null ? String(item.reorder_point) : '',
@@ -328,15 +354,43 @@ export default function HerdManagementPage() {
       notes: newFeed.brand ? `Brand: ${newFeed.brand}` : null,
     };
 
+    // Quantity on hand is stored as feed_inventory rows, not on the feed_type.
+    // Parse once so both the create and edit paths can persist it (previously
+    // this value was silently dropped).
+    const enteredQty = newFeed.quantity_on_hand.trim() === '' ? NaN : parseFloat(newFeed.quantity_on_hand);
+
     try {
       if (editingFeedId) {
         await updateFeedItem.mutateAsync({ id: editingFeedId, ...fields });
+        // Reconcile the on-hand total with a single adjustment row for the delta
+        // (positive or negative). No change -> no row written.
+        if (Number.isFinite(enteredQty)) {
+          const delta = enteredQty - editingFeedOnHand;
+          if (delta !== 0) {
+            await createFeedInventory.mutateAsync({
+              feed_type_id: editingFeedId,
+              quantity: delta,
+              purchase_date: format(new Date(), 'yyyy-MM-dd'),
+              notes: 'Adjustment via Herd Management',
+            } as any);
+          }
+        }
       } else {
-        await createFeedItem.mutateAsync(fields);
+        const created = await createFeedItem.mutateAsync(fields) as { id?: string } | null;
+        // Seed initial stock so the entered quantity isn't lost.
+        if (created?.id && Number.isFinite(enteredQty) && enteredQty > 0) {
+          await createFeedInventory.mutateAsync({
+            feed_type_id: created.id,
+            quantity: enteredQty,
+            purchase_date: format(new Date(), 'yyyy-MM-dd'),
+            notes: 'Initial stock',
+          } as any);
+        }
       }
       setShowAddFeedModal(false);
       setNewFeed({ feed_type: '', brand: '', quantity_on_hand: '', unit: 'lbs', unit_cost: '', low_stock_threshold: '', supplier: '', storage_location: '' });
       setEditingFeedId(null);
+      setEditingFeedOnHand(0);
     } catch (error: any) {
       console.error('Failed to save feed item:', error);
       alert(`Failed to save feed item: ${error?.message || JSON.stringify(error)}`);
@@ -700,7 +754,8 @@ export default function HerdManagementPage() {
               ) : (
                 <div className="divide-y">
                   {feedInventory.map((item: any) => {
-                    const isLow = item.reorder_point && false; // TODO: check actual inventory quantity
+                    const onHand = onHandByType[item.id] || 0;
+                    const isLow = item.reorder_point != null && onHand <= item.reorder_point;
                     return (
                       <div key={item.id} className={`p-4 flex items-center justify-between ${isLow ? 'bg-amber-50' : ''}`}>
                         <div className="flex items-center gap-4">
@@ -720,8 +775,11 @@ export default function HerdManagementPage() {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <p className={`font-semibold ${isLow ? 'text-amber-700' : ''}`}>
-                              {item.unit}
+                              {onHand} {item.unit}
                             </p>
+                            {item.reorder_point != null && (
+                              <p className="text-xs text-gray-400">Reorder at {item.reorder_point}</p>
+                            )}
                             {isLow && (
                               <p className="text-xs text-amber-600">Low stock!</p>
                             )}
