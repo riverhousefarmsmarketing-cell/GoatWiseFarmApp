@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { useAuth } from './useAuth';
+import { differenceInCalendarDays, parseISO, startOfToday, addDays, format } from 'date-fns';
 
 // ============================================================
 // TYPES
@@ -31,24 +32,25 @@ export interface PaddockMove {
 
 export type ParasiteRisk = 'green' | 'yellow' | 'red';
 
+// moved_in_at/out are date-only values the form wrote, stored as UTC midnight.
+// Comparing that UTC instant against local "now" inflated the day count by the
+// UTC offset every evening -- so the parasite "Move Now" badge and the rest-day
+// countdown fired a full day early for US farms. Measure in CALENDAR days on the
+// local date portion instead.
+const toLocalDate = (v: string) => parseISO(String(v).slice(0, 10));
+
 export function getParasiteRisk(movedInAt: string): { risk: ParasiteRisk; daysIn: number } {
-  const today = new Date();
-  const moveIn = new Date(movedInAt);
-  const daysIn = Math.floor((today.getTime() - moveIn.getTime()) / (1000 * 60 * 60 * 24));
+  const daysIn = differenceInCalendarDays(startOfToday(), toLocalDate(movedInAt));
   const risk: ParasiteRisk = daysIn >= 4 ? 'red' : daysIn === 3 ? 'yellow' : 'green';
   return { risk, daysIn };
 }
 
 export function getSafeReturnDate(movedOutAt: string): string {
-  const d = new Date(movedOutAt);
-  d.setDate(d.getDate() + 40);
-  return d.toISOString().split('T')[0];
+  return format(addDays(toLocalDate(movedOutAt), 40), 'yyyy-MM-dd');
 }
 
 export function getDaysResting(movedOutAt: string): number {
-  const today = new Date();
-  const moveOut = new Date(movedOutAt);
-  return Math.floor((today.getTime() - moveOut.getTime()) / (1000 * 60 * 60 * 24));
+  return differenceInCalendarDays(startOfToday(), toLocalDate(movedOutAt));
 }
 
 // ============================================================
@@ -112,7 +114,14 @@ export function useDeletePaddock() {
       const { error } = await supabase.from('paddocks').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['paddocks'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paddocks'] });
+      // Deleting a paddock cascades its moves; refresh the move caches too.
+      queryClient.invalidateQueries({ queryKey: ['paddock_moves'] });
+    },
+    onError: (e: any) => {
+      alert(`Could not delete the paddock: ${e?.message || 'please try again.'}`);
+    },
   });
 }
 
@@ -225,6 +234,9 @@ export function useDeletePaddockMove() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['paddock_moves'] });
+    },
+    onError: (e: any) => {
+      alert(`Could not delete the move record: ${e?.message || 'please try again.'}`);
     },
   });
 }
