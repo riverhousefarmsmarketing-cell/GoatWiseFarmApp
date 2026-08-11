@@ -12,7 +12,7 @@ import {
   AnimalLink,
   ErrorState,
 } from '@/components/ui';
-import { formatDate } from '@/lib/utils';
+import { formatDate, weightToLbs } from '@/lib/utils';
 import {
   Users,
   Heart,
@@ -291,8 +291,8 @@ export default function DashboardPage() {
       }
       weightByAnimal[id].weights.push({
         // Normalize to lbs so the weight-loss signal compares like with like and
-        // reports the drop in lbs even when a record was entered in kg.
-        weight: w.weight_unit === 'kg' ? w.weight * 2.20462 : w.weight,
+        // reports the drop in lbs even when a record was entered in kg/oz/g.
+        weight: weightToLbs(w.weight, w.weight_unit) ?? 0,
         date: new Date(w.date),
       });
     });
@@ -448,12 +448,16 @@ export default function DashboardPage() {
         const recent = sorted.slice(0, 3);
         const isDecline = recent[0].weight < recent[1].weight && recent[1].weight < recent[2].weight;
         
-        if (isDecline) {
-          const oldestWeight = recent[2].weight;
-          const newestWeight = recent[0].weight;
-          const percentLoss = ((oldestWeight - newestWeight) / oldestWeight) * 100;
-          const daysBetween = Math.ceil((recent[0].date.getTime() - recent[2].date.getTime()) / (1000 * 60 * 60 * 24));
+        const oldestWeight = recent[2].weight;
+        const newestWeight = recent[0].weight;
+        const percentLoss = oldestWeight > 0 ? ((oldestWeight - newestWeight) / oldestWeight) * 100 : 0;
+        const daysBetween = Math.ceil((recent[0].date.getTime() - recent[2].date.getTime()) / (1000 * 60 * 60 * 24));
 
+        // Only treat it as a real decline when the readings span more than a day
+        // (same-day re-weighs are scale/handling jitter, not a trend). The gradual
+        // signal also needs a >=2% total drop so normal weigh-to-weigh drift across
+        // three readings doesn't raise a false alarm.
+        if (isDecline && daysBetween > 0) {
           if (percentLoss > 5 && daysBetween < 30) {
             signals.push({
               id: `weight-rapid-${animal.animalId}`,
@@ -471,7 +475,7 @@ export default function DashboardPage() {
               timestamp: new Date(),
               evidence: `Lost ${percentLoss.toFixed(1)}% in ${daysBetween} days`,
             });
-          } else if (isDecline) {
+          } else if (percentLoss >= 2) {
             signals.push({
               id: `weight-slow-${animal.animalId}`,
               scope: 'animal',
@@ -483,7 +487,7 @@ export default function DashboardPage() {
               system: 'weight',
               ruleId: 'weight-slow-loss',
               timestamp: new Date(),
-              evidence: `Declined across 3 weigh-ins`,
+              evidence: `Declined ${percentLoss.toFixed(1)}% across 3 weigh-ins over ${daysBetween} days`,
             });
           }
         }

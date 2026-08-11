@@ -12,7 +12,7 @@ import {
   LoadingSpinner,
   ErrorState,
 } from '@/components/ui';
-import { formatDate } from '@/lib/utils';
+import { formatDate, weightToLbs } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import {
   FileText,
@@ -145,7 +145,11 @@ export default function CertificatesPage() {
 
   // Calculate stats
   const stats = useMemo(() => {
-    const currentWeight = (weightRecords as any[])?.[0]?.weight || null;
+    // Certificates print "<n> lbs", so normalize the latest reading (it may be
+    // stored in kg/oz) instead of printing the raw number under an lbs label.
+    const latestWeight = (weightRecords as any[])?.[0];
+    const currentWeightLbs = latestWeight ? weightToLbs(latestWeight.weight, latestWeight.weight_unit) : null;
+    const currentWeight = currentWeightLbs != null ? Math.round(currentWeightLbs) : null;
     const milkList = (milkRecords as any[]) || [];
     const totalMilk = milkList.reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
     const milkDays = new Set(milkList.map((r: any) => r.date)).size;
