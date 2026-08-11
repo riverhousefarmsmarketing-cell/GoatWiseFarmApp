@@ -122,19 +122,32 @@ export default function GroupsPage() {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['animal_groups'] });
     },
+    onError: (e: any) => alert(`Could not delete the group: ${e?.message || 'please try again.'}`),
   });
 
   const assignAnimals = useMutation({
-    mutationFn: async ({ groupId, animalIds }: { groupId: string; animalIds: string[] }) => {
-      // First remove existing assignments for this group
-      await supabase.from('animal_groups').delete().eq('group_id', groupId);
+    mutationFn: async ({ groupId, animalIds, currentIds }: { groupId: string; animalIds: string[]; currentIds: string[] }) => {
+      // Apply only the delta -- add the newly-selected, remove the deselected.
+      // The old approach deleted ALL members first and then re-inserted; if that
+      // insert failed (RLS/network/one bad id) the group was left empty. A diff
+      // never wipes membership, and both writes are error-checked.
+      const toAdd = animalIds.filter((id) => !currentIds.includes(id));
+      const toRemove = currentIds.filter((id) => !animalIds.includes(id));
 
-      // Then add new assignments
-      if (animalIds.length > 0) {
+      if (toRemove.length > 0) {
+        const { error } = await supabase
+          .from('animal_groups')
+          .delete()
+          .eq('group_id', groupId)
+          .in('animal_id', toRemove);
+        if (error) throw error;
+      }
+
+      if (toAdd.length > 0) {
         const { error } = await (supabase.from('animal_groups') as any).insert(
-          animalIds.map(animalId => ({
+          toAdd.map((animal_id) => ({
             group_id: groupId,
-            animal_id: animalId,
+            animal_id,
             user_id: user?.id,
           }))
         );
@@ -224,10 +237,15 @@ export default function GroupsPage() {
   const handleAssignAnimals = async () => {
     if (!selectedGroup) return;
 
+    const currentIds: string[] = assignments
+      ?.filter((a: any) => a.group_id === selectedGroup.id)
+      .map((a: any) => a.animal_id) || [];
+
     try {
       await assignAnimals.mutateAsync({
         groupId: selectedGroup.id,
         animalIds: selectedAnimals,
+        currentIds,
       });
     } catch (e: any) {
       alert(`Could not assign animals: ${e?.message || 'please try again.'}`);
@@ -463,7 +481,7 @@ export default function GroupsPage() {
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => setSelectedAnimals(allAnimals?.map(a => a.id) || [])}
+              onClick={() => setSelectedAnimals((prev) => Array.from(new Set([...prev, ...(allAnimals?.map(a => a.id) || [])])))}
             >
               Select All
             </Button>

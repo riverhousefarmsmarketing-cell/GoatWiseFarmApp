@@ -228,11 +228,29 @@ export default function AddAnimalPage() {
           console.error('Could not create intake weight record:', err);
         }
       }
+
+      // Group membership lives in the animal_groups join table -- what the Groups
+      // page and herd detail actually read. The animals.group_ids array is read
+      // nowhere, so an intake assignment was silently lost; write the join rows.
+      if (created?.id && Array.isArray(data.group_ids) && data.group_ids.length > 0) {
+        try {
+          await (supabase.from('animal_groups') as any).insert(
+            data.group_ids.map((group_id: string) => ({
+              group_id,
+              animal_id: created.id,
+              user_id: user?.id,
+            }))
+          );
+        } catch (err) {
+          console.error('Could not assign groups:', err);
+        }
+      }
       return result;
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['animals'] });
       queryClient.invalidateQueries({ queryKey: ['weight_records'] });
+      queryClient.invalidateQueries({ queryKey: ['animal_groups'] });
       router.push(`/dashboard/herd/${data.id}`);
     },
     onError: (e: any) => {
