@@ -12,6 +12,7 @@ import {
   LoadingSpinner,
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { milkAmountToLbs } from '@/hooks/useMilk';
 import { isFemale, isIntactMale } from '@/lib/animalVocab';
 import {
   Download,
@@ -413,15 +414,17 @@ export default function ExportPage() {
       }));
       exportToCSV(data, 'goatwise_milk_records', headers);
     } else {
-      const totalMilk = records.reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
+      // Normalize to lbs -- the report labels everything "lbs", but records may be
+      // stored in kg/oz/ml/liters/gallons/quarts.
+      const totalMilk = records.reduce((sum: number, r: any) => sum + milkAmountToLbs(r.amount, r.amount_unit), 0);
       const uniqueDates = new Set(records.map((r: any) => r.date)).size;
       const avgDaily = uniqueDates > 0 ? totalMilk / uniqueDates : 0;
-      
-      // Group by date for report
+
+      // Group by date for report (normalized to lbs)
       const byDate: Record<string, number> = {};
       records.forEach((r: any) => {
         if (!byDate[r.date]) byDate[r.date] = 0;
-        byDate[r.date] += r.amount || 0;
+        byDate[r.date] += milkAmountToLbs(r.amount, r.amount_unit);
       });
 
       let tableRows = Object.entries(byDate)
@@ -545,7 +548,8 @@ export default function ExportPage() {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const recentMilk = milkList.filter((m: any) => new Date(m.date) >= thirtyDaysAgo);
-    const totalMilk = recentMilk.reduce((sum: number, m: any) => sum + (m.amount || 0), 0);
+    // Normalized to lbs; the summary card is labeled "lbs".
+    const totalMilk = recentMilk.reduce((sum: number, m: any) => sum + milkAmountToLbs(m.amount, m.amount_unit), 0);
 
     // Financial stats (last 30 days)
     const recentTrans = transactionsList.filter((t: any) => new Date(t.date) >= thirtyDaysAgo);
