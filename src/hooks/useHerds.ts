@@ -60,7 +60,8 @@ export function useHerdsWithStats() {
       // Get animal counts per herd
       const { data: rawAnimals, error: animalsError } = await supabase.from('animals')
         .select('id, herd_id, category, status')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('is_reference', false); // outside animals aren't herd members
 
       if (animalsError) throw animalsError;
 
@@ -147,6 +148,7 @@ export function useHerdAnimals(herdId: string) {
       let query = supabase.from('animals')
         .select('*')
         .eq('status', 'active')
+        .eq('is_reference', false) // outside animals aren't herd members
         .order('name');
 
       if (herdId === 'unassigned') {

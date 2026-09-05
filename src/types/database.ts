@@ -104,6 +104,7 @@ export interface Database {
           disbudded_date: string | null;
           castration_date: string | null;
           genetic_traits: Record<string, unknown> | null;
+          is_reference: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -146,6 +147,7 @@ export interface Database {
           disbudded_date?: string | null;
           castration_date?: string | null;
           genetic_traits?: Record<string, unknown> | null;
+          is_reference?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -186,6 +188,7 @@ export interface Database {
           disbudded_date?: string | null;
           castration_date?: string | null;
           genetic_traits?: Record<string, unknown> | null;
+          is_reference?: boolean;
           updated_at?: string;
       };
     };

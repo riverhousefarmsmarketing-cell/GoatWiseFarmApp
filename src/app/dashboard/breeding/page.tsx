@@ -95,6 +95,12 @@ export default function BreedingPage() {
   const [selectedRecord, setSelectedRecord] = useState<BreedingRecord | null>(null);
   const [editingRecord, setEditingRecord] = useState<BreedingRecord | null>(null);
 
+  // "Add outside buck" — record a sire from another herd (not owned) so it can be
+  // selected here and flow into the kids' pedigree.
+  const [showAddBuckModal, setShowAddBuckModal] = useState(false);
+  const [addBuckTarget, setAddBuckTarget] = useState<'breeding' | 'plan'>('breeding');
+  const [newBuck, setNewBuck] = useState({ name: '', registration_number: '', breed: '' });
+
   // Form states
   const [breedingForm, setBreedingForm] = useState({
     doe_id: '',
@@ -159,8 +165,10 @@ export default function BreedingPage() {
   // Accept both the goat and species-neutral vocabularies via the shared helper
   // (src/lib/animalVocab.ts). Current code writes 'female'/'male', but legacy
   // rows still use 'doe'/'buck'; filtering on only one left these dropdowns empty.
+  // Does you breed are your own; outside animals are only ever sires, so keep
+  // reference animals out of the doe picker but include them in the buck picker.
   const does = useMemo(() =>
-    (animals as any[])?.filter(isFemale) || [],
+    (animals as any[])?.filter((a) => isFemale(a) && !a.is_reference) || [],
     [animals]
   );
 
@@ -239,6 +247,61 @@ export default function BreedingPage() {
       alert(`Could not delete the breeding record: ${e?.message || 'please try again.'}`);
     },
   });
+
+  // Record an outside buck (a sire from another herd). It's stored as a normal
+  // animal flagged is_reference=true: selectable as a sire and carried onto the
+  // kids' pedigree, but excluded from herd counts and rosters everywhere else.
+  const createReferenceBuck = useMutation({
+    mutationFn: async (b: { name: string; registration_number: string; breed: string }) => {
+      const { data, error } = await (supabase.from('animals') as any)
+        .insert({
+          user_id: user!.id,
+          name: b.name.trim(),
+          sex: 'male',
+          category: 'male',
+          status: 'active',
+          is_reference: true,
+          registration_number: b.registration_number.trim() || null,
+          breed: b.breed.trim() || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (created: any) => {
+      queryClient.invalidateQueries({ queryKey: ['animals_for_breeding'] });
+      queryClient.invalidateQueries({ queryKey: ['animals'] });
+      // Auto-select the new buck in whichever form opened the modal.
+      if (addBuckTarget === 'plan') {
+        setPlanForm(prev => ({ ...prev, buck_id: created.id }));
+      } else {
+        setBreedingForm(prev => ({ ...prev, buck_id: created.id }));
+      }
+      setShowAddBuckModal(false);
+      setNewBuck({ name: '', registration_number: '', breed: '' });
+    },
+    onError: (e: any) => {
+      alert(`Could not save the outside buck: ${e?.message || 'please try again.'}`);
+    },
+  });
+
+  const openAddBuck = (target: 'breeding' | 'plan') => {
+    setAddBuckTarget(target);
+    setNewBuck({ name: '', registration_number: '', breed: '' });
+    setShowAddBuckModal(true);
+  };
+
+  const handleSaveOutsideBuck = () => {
+    if (!newBuck.name.trim()) { alert("Please enter the buck's name."); return; }
+    createReferenceBuck.mutate(newBuck);
+  };
+
+  // Buck dropdown options, tagging outside (reference) sires so they're obvious.
+  const buckOptions = (withUnknownLabel: string) => [
+    { value: '', label: withUnknownLabel },
+    ...bucks.map((a: any) => ({ value: a.id, label: a.is_reference ? `${a.name} (outside)` : a.name })),
+  ];
 
   // Create animal records for kids
   const createKidAnimals = async (
@@ -1032,12 +1095,21 @@ export default function BreedingPage() {
             value={breedingForm.doe_id}
             onChange={(e) => setBreedingForm(prev => ({ ...prev, doe_id: e.target.value, gestation_days: gestationForDoe(e.target.value) }))}
           />
-          <Select
-            label="Buck"
-            options={[{ value: '', label: 'Unknown' }, ...bucks.map(a => ({ value: a.id, label: a.name }))]}
-            value={breedingForm.buck_id}
-            onChange={(e) => setBreedingForm(prev => ({ ...prev, buck_id: e.target.value }))}
-          />
+          <div>
+            <Select
+              label="Buck"
+              options={buckOptions('Unknown')}
+              value={breedingForm.buck_id}
+              onChange={(e) => setBreedingForm(prev => ({ ...prev, buck_id: e.target.value }))}
+            />
+            <button
+              type="button"
+              onClick={() => openAddBuck('breeding')}
+              className="mt-1 text-sm font-medium text-green-700 hover:text-green-800"
+            >
+              + Add outside buck
+            </button>
+          </div>
           <Input
             label="Breeding Date"
             type="date"
@@ -1072,6 +1144,44 @@ export default function BreedingPage() {
         </div>
       </Modal>
 
+      {/* ADD OUTSIDE BUCK MODAL */}
+      <Modal
+        open={showAddBuckModal}
+        onClose={() => setShowAddBuckModal(false)}
+        title="Add an outside buck"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowAddBuckModal(false)}>Cancel</Button>
+            <Button onClick={handleSaveOutsideBuck} loading={createReferenceBuck.isPending}>Save buck</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Record a buck from another herd (an outside sire). He&apos;ll be selectable here
+            and carried onto the kids&apos; pedigree, but kept out of your herd counts.
+          </p>
+          <Input
+            label="Buck name"
+            required
+            value={newBuck.name}
+            onChange={(e) => setNewBuck(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="e.g. Smith Farm's Thunder"
+          />
+          <Input
+            label="Registration # (optional)"
+            value={newBuck.registration_number}
+            onChange={(e) => setNewBuck(prev => ({ ...prev, registration_number: e.target.value }))}
+            placeholder="Registry / herdbook number"
+          />
+          <Input
+            label="Breed (optional)"
+            value={newBuck.breed}
+            onChange={(e) => setNewBuck(prev => ({ ...prev, breed: e.target.value }))}
+          />
+        </div>
+      </Modal>
+
       {/* PLAN BREEDING MODAL */}
       <Modal
         open={showPlanModal}
@@ -1092,12 +1202,21 @@ export default function BreedingPage() {
             value={planForm.doe_id}
             onChange={(e) => setPlanForm(prev => ({ ...prev, doe_id: e.target.value, gestation_days: gestationForDoe(e.target.value) }))}
           />
-          <Select
-            label="Buck (can decide later)"
-            options={[{ value: '', label: 'To be determined' }, ...bucks.map(a => ({ value: a.id, label: a.name }))]}
-            value={planForm.buck_id}
-            onChange={(e) => setPlanForm(prev => ({ ...prev, buck_id: e.target.value }))}
-          />
+          <div>
+            <Select
+              label="Buck (can decide later)"
+              options={buckOptions('To be determined')}
+              value={planForm.buck_id}
+              onChange={(e) => setPlanForm(prev => ({ ...prev, buck_id: e.target.value }))}
+            />
+            <button
+              type="button"
+              onClick={() => openAddBuck('plan')}
+              className="mt-1 text-sm font-medium text-green-700 hover:text-green-800"
+            >
+              + Add outside buck
+            </button>
+          </div>
           <Input
             label="Target Kidding Date"
             type="date"

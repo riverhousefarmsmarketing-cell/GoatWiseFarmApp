@@ -101,6 +101,7 @@ export default function WeightTrackingPage() {
         .select('*')
         .eq('user_id', user!.id)
         .eq('status', 'active')
+        .eq('is_reference', false) // don't track weight for outside animals
         .order('name');
       if (error) throw error;
       return data;

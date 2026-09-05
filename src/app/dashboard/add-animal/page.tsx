@@ -111,7 +111,9 @@ export default function AddAnimalPage() {
 
   const { data: herds } = useHerds();
   const { data: groups } = useGroups();
-  const { data: allAnimals } = useAnimals();
+  // Include reference (outside) animals so an external buck/doe can be picked as
+  // a sire/dam. allAnimals here feeds only the pedigree pickers below.
+  const { data: allAnimals } = useAnimals({ includeReference: true });
 
   // Species state — drives all terminology, categories, and breed list
   const [species, setSpecies] = useState<Species>('goat');
@@ -675,7 +677,7 @@ export default function AddAnimalPage() {
               label="Dam (Mother)"
               options={[
                 { value: '', label: 'Unknown / Not in system' },
-                ...does.map(d => ({ value: d.id, label: d.name })),
+                ...does.map(d => ({ value: d.id, label: d.is_reference ? `${d.name} (outside)` : d.name })),
               ]}
               value={form.dam_id}
               onChange={(e) => updateForm('dam_id', e.target.value)}
@@ -684,7 +686,7 @@ export default function AddAnimalPage() {
               label="Sire (Father)"
               options={[
                 { value: '', label: 'Unknown / Not in system' },
-                ...bucks.map(b => ({ value: b.id, label: b.name })),
+                ...bucks.map(b => ({ value: b.id, label: b.is_reference ? `${b.name} (outside)` : b.name })),
               ]}
               value={form.sire_id}
               onChange={(e) => updateForm('sire_id', e.target.value)}

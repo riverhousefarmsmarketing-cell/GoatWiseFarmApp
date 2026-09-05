@@ -61,7 +61,8 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id);
+        .eq('user_id', user!.id)
+        .eq('is_reference', false); // exclude outside animals from herd counts
       if (error) throw error;
       return data;
     },
