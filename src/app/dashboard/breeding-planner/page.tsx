@@ -66,9 +66,10 @@ export default function BreedingPlannerPage() {
     notes: '',
   });
 
-  // Fetch data
+  // Fetch data. The buck picker includes reference (outside) animals so an
+  // external sire can be planned; the doe picker stays owned-herd only.
   const { data: does } = useAnimals({ status: 'active' });
-  const { data: activeAnimals } = useAnimals({ status: 'active' });
+  const { data: activeAnimals } = useAnimals({ status: 'active', includeReference: true });
 
   const breedableDoes = does?.filter(a => isFemale(a));
   const bucks = activeAnimals?.filter(a => isIntactMale(a));

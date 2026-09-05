@@ -27,6 +27,10 @@ interface UseAnimalsOptions {
   category?: string;
   herdId?: string;
   search?: string;
+  // Reference (outside) animals are excluded from every list/roster by default
+  // so they never skew herd views or counts. Opt in only where they belong,
+  // e.g. sire/dam pickers.
+  includeReference?: boolean;
 }
 
 export function useAnimals(options: UseAnimalsOptions = {}) {
@@ -39,6 +43,9 @@ export function useAnimals(options: UseAnimalsOptions = {}) {
         .select('*')
         .order('name');
 
+      if (!options.includeReference) {
+        query = query.eq('is_reference', false);
+      }
       if (options.status && options.status !== 'all') {
         query = query.eq('status', options.status);
       }
@@ -85,7 +92,9 @@ export function useAnimalStats() {
     queryKey: animalKeys.stats(),
     queryFn: async () => {
       const { data, error } = await supabase.from('animals')
-        .select('status, category, sex');
+        .select('status, category, sex')
+        // Herd counts never include outside/reference animals.
+        .eq('is_reference', false);
 
       if (error) throw error;
 

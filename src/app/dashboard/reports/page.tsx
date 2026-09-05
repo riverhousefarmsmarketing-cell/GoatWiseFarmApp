@@ -64,7 +64,8 @@ export default function ReportsPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id);
+        .eq('user_id', user!.id)
+        .eq('is_reference', false); // reports cover owned herd only
       if (error) throw error;
       return data;
     },

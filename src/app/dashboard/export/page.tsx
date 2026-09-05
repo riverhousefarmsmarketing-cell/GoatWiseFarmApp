@@ -49,6 +49,7 @@ export default function ExportPage() {
         .from('animals')
         .select('*')
         .eq('user_id', user!.id)
+        .eq('is_reference', false) // export the owned herd, not outside animals
         .order('name');
       if (error) throw error;
       return data;
