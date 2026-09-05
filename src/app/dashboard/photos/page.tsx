@@ -100,6 +100,7 @@ export default function PhotoGalleryPage() {
         .from('animals')
         .select('*')
         .eq('user_id', user!.id)
+        .eq('is_reference', false) // outside animals aren't part of the herd
         .order('name');
       if (error) throw error;
       return data;

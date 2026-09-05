@@ -165,6 +165,10 @@ export default function AddAnimalPage() {
     weight: '',
     status: 'active',
     health_status: 'healthy',
+    // Outside/reference animal — a sire/dam from another herd, kept for pedigree
+    // only and excluded from herd counts. The breeding "+ Add outside buck" flow
+    // is the usual entry point; this lets you add an outside dam too.
+    is_reference: false,
 
     // Registry Information
     registry_name: '',
@@ -216,7 +220,8 @@ export default function AddAnimalPage() {
       // on the Weight/growth page (which reads only weight_records). Best-effort:
       // the animal is already created, so a failure here shouldn't block success.
       const created = result as { id?: string } | null;
-      if (created?.id && data.weight != null) {
+      // Outside/reference animals aren't tracked, so skip the intake weight record.
+      if (!data.is_reference && created?.id && data.weight != null) {
         try {
           await (supabase.from('weight_records') as any).insert({
             user_id: user?.id,
@@ -309,10 +314,13 @@ export default function AddAnimalPage() {
         ? (form.castration_date || null)
         : null,
 
+      // Outside/reference animals never belong to a herd or group.
+      is_reference: form.is_reference,
+
       // Farm. Purchase details only apply to animals NOT born on the farm; drop
       // them if that box is (re-)checked so a home-bred animal carries no cost.
-      herd_id: form.herd_id || null,
-      group_ids: form.group_ids.length > 0 ? form.group_ids : null,
+      herd_id: form.is_reference ? null : (form.herd_id || null),
+      group_ids: (!form.is_reference && form.group_ids.length > 0) ? form.group_ids : null,
       born_on_farm: form.born_on_farm,
       purchase_date: form.born_on_farm ? null : (form.purchase_date || null),
       purchase_cost: form.born_on_farm ? null : (form.purchase_cost ? parseFloat(form.purchase_cost) : null),
@@ -544,6 +552,23 @@ export default function AddAnimalPage() {
                 className="rounded border-gray-300"
               />
               <span className="text-sm">Registered/Pedigreed</span>
+            </label>
+          </div>
+          <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.is_reference}
+                onChange={(e) => updateForm('is_reference', e.target.checked)}
+                className="mt-0.5 rounded border-gray-300"
+              />
+              <span className="text-sm text-amber-900">
+                <span className="font-medium">Outside animal (not part of my herd)</span>
+                <span className="block text-amber-700">
+                  A sire/dam from another herd — selectable as a parent and shown on pedigree,
+                  but kept out of your herd counts, milk, health, and reports.
+                </span>
+              </span>
             </label>
           </div>
         </Section>

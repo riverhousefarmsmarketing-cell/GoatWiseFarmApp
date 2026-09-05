@@ -465,7 +465,15 @@ export default function AnimalDetailPage() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">{animal.name}</h1>
               <Badge className={getStatusColor(animal.status)}>{animal.status}</Badge>
+              {animal.is_reference && (
+                <Badge className="bg-amber-100 text-amber-800">Outside animal</Badge>
+              )}
             </div>
+            {animal.is_reference && (
+              <p className="text-sm text-amber-700 mt-1">
+                An outside sire/dam from another herd — used for pedigree only, not part of your herd counts.
+              </p>
+            )}
             <p className="text-gray-500 mt-1">
               {animal.breed} • {getCategoryDisplay(animal.category, animal.species)}
             </p>
