@@ -94,7 +94,8 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
       const { data } = await supabase
         .from('animals')
         .select('id, name, breed, category, status')
-        .eq('user_id', user!.id);
+        .eq('user_id', user!.id)
+        .eq('is_reference', false); // keep outside animals out of herd search
       return data || [];
     },
     enabled: !!user && open,
