@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -24,6 +24,7 @@ import { format } from 'date-fns';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
 import { isFemale, isIntactMale, categoriesForSex, isCategoryConsistentWithSex, type CanonicalCategory } from '@/lib/animalVocab';
 import { BREEDS } from '@/lib/breedData';
+import { normalizeMicrochip, findAnimalByMicrochip } from '@/lib/microchip';
 
 // ==========================================
 // STATIC OPTIONS (species-independent)
@@ -154,6 +155,7 @@ export default function AddAnimalPage() {
     // Basic Information
     name: '',
     tag_number: '',
+    microchip_id: '',
     tattoo: '',
     breed: '',
     secondary_breed: '',
@@ -205,6 +207,14 @@ export default function AddAnimalPage() {
     // Notes
     notes: '',
   });
+
+  // Pre-fill the chip when arriving from the Herd page's "scan chip" box
+  // (/dashboard/add-animal?microchip=...). Read window.location rather than
+  // useSearchParams so the page needs no Suspense boundary at build time.
+  useEffect(() => {
+    const chip = new URLSearchParams(window.location.search).get('microchip');
+    if (chip) setForm((prev) => ({ ...prev, microchip_id: normalizeMicrochip(chip) }));
+  }, []);
 
   // Create mutation
   const createAnimal = useMutation({
@@ -278,11 +288,26 @@ export default function AddAnimalPage() {
       return;
     }
 
+    // A chip identifies exactly one animal. Warn (but allow an override, e.g.
+    // re-entering an animal) if another record already carries this number.
+    const microchip = normalizeMicrochip(form.microchip_id);
+    if (microchip) {
+      try {
+        const owner = await findAnimalByMicrochip(microchip);
+        if (owner && !confirm(`Microchip ${microchip} is already assigned to ${owner.name}. Save anyway?`)) {
+          return;
+        }
+      } catch (err) {
+        console.error('Could not check for a duplicate microchip:', err);
+      }
+    }
+
     const animalData = {
       // Basic
       name: form.name.trim(),
       species,
       tag_number: form.tag_number || null,
+      microchip_id: microchip || null,
       tattoo: form.tattoo || null,
       breed: form.breed || null,
       secondary_breed: form.secondary_breed || null,
@@ -440,6 +465,19 @@ export default function AddAnimalPage() {
               placeholder="e.g., 001"
             />
           </div>
+          <Input
+            label="Microchip Number"
+            value={form.microchip_id}
+            onChange={(e) => updateForm('microchip_id', e.target.value)}
+            // Bluetooth scanners in keyboard mode send Enter after the number;
+            // don't let that submit a half-filled form.
+            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+            onBlur={(e) => updateForm('microchip_id', normalizeMicrochip(e.target.value))}
+            placeholder="Tap here, then scan the chip — or type it"
+            hint="Pair your scanner with this device as a keyboard; the number fills in when you scan."
+            inputMode="text"
+            autoComplete="off"
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Breed"

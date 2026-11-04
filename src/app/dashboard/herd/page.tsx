@@ -5,7 +5,8 @@ import { useAnimals, useAnimalStats, useCreateAnimal, useDeleteAnimal } from '@/
 import { Card, Button, Input, Select, Badge, Modal, EmptyState, ErrorState, LoadingSpinner } from '@/components/ui';
 import { formatDate, calculateAge, getStatusColor, getCategoryDisplay } from '@/lib/utils';
 import { categoryIs, categoriesForSex, isCategoryConsistentWithSex, type CanonicalCategory } from '@/lib/animalVocab';
-import { Plus, Search, Filter, Users, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Users, MoreVertical, Edit, Trash2, ScanLine } from 'lucide-react';
+import { normalizeMicrochip, findAnimalByMicrochip } from '@/lib/microchip';
 import Link from 'next/link';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
 import { BREEDS } from '@/lib/breedData';
@@ -26,6 +27,31 @@ export default function HerdPage() {
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState('active');
   const [showAddModal, setShowAddModal] = useState(false);
+  // Scan-to-find: a Bluetooth scanner paired as a keyboard types the chip
+  // number into this box and presses Enter.
+  const [scanValue, setScanValue] = useState('');
+  const [scanLookingUp, setScanLookingUp] = useState(false);
+  const [scanNotFound, setScanNotFound] = useState<string | null>(null);
+
+  const handleScan = async () => {
+    const chip = normalizeMicrochip(scanValue);
+    if (!chip) return;
+    setScanLookingUp(true);
+    setScanNotFound(null);
+    try {
+      const owner = await findAnimalByMicrochip(chip);
+      if (owner) {
+        router.push(`/dashboard/herd/${owner.id}`);
+        return;
+      }
+      setScanNotFound(chip);
+    } catch (e: any) {
+      alert(`Could not look up the microchip: ${e?.message || 'please try again.'}`);
+    } finally {
+      setScanLookingUp(false);
+      setScanValue('');
+    }
+  };
   const [newAnimal, setNewAnimal] = useState({
     name: '',
     breed: '',
@@ -161,6 +187,40 @@ export default function HerdPage() {
         </Card>
       </div>
 
+      {/* Scan a microchip to jump to the animal */}
+      <Card padding="sm">
+        <form
+          onSubmit={(e) => { e.preventDefault(); handleScan(); }}
+          className="flex flex-col sm:flex-row gap-3 sm:items-center"
+        >
+          <div className="relative flex-1">
+            <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              aria-label="Scan or enter a microchip number"
+              placeholder="Scan microchip — tap here, then scan"
+              value={scanValue}
+              onChange={(e) => { setScanValue(e.target.value); setScanNotFound(null); }}
+              autoComplete="off"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+          <Button type="submit" variant="secondary" loading={scanLookingUp}>Find</Button>
+        </form>
+        {scanNotFound && (
+          <p className="mt-2 text-sm text-gray-600">
+            No animal has microchip <span className="font-mono">{scanNotFound}</span>.{' '}
+            <Link
+              href={`/dashboard/add-animal?microchip=${encodeURIComponent(scanNotFound)}`}
+              className="font-medium text-rhf-forest-mid underline"
+            >
+              Add a new animal with this chip
+            </Link>{' '}
+            or open an existing animal and enter it under Edit.
+          </p>
+        )}
+      </Card>
+
       {/* Search + Category + Status filters */}
       <Card padding="sm">
         <div className="flex flex-col sm:flex-row gap-3">
@@ -169,7 +229,7 @@ export default function HerdPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search animals..."
+                placeholder="Search by name, tag or microchip..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"

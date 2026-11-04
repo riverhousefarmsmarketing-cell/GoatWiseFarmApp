@@ -56,7 +56,15 @@ export function useAnimals(options: UseAnimalsOptions = {}) {
         query = query.eq('herd_id', options.herdId);
       }
       if (options.search) {
-        query = query.ilike('name', `%${options.search}%`);
+        // Match name, tag or microchip so a scanned/typed chip finds the animal.
+        // Strip characters that would break PostgREST's or() filter syntax.
+        const term = options.search.replace(/[,()*%]/g, ' ').trim();
+        if (term) {
+          const chip = term.replace(/[\s\-._]/g, '');
+          query = query.or(
+            `name.ilike.%${term}%,tag_number.ilike.%${term}%,microchip_id.ilike.%${chip || term}%`
+          );
+        }
       }
 
       const { data, error } = await query;
