@@ -7,6 +7,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
 import { BREEDS } from '@/lib/breedData';
+import { normalizeMicrochip, findAnimalByMicrochip } from '@/lib/microchip';
 import {
   Card,
   Button,
@@ -317,6 +318,17 @@ export default function AnimalDetailPage() {
 
   const handleSaveEdit = async () => {
     if (!editData?.name?.trim()) return;
+    const microchip = normalizeMicrochip(editData.microchip_id);
+    if (microchip && microchip !== normalizeMicrochip(animal?.microchip_id)) {
+      try {
+        const owner = await findAnimalByMicrochip(microchip, animalId);
+        if (owner && !confirm(`Microchip ${microchip} is already assigned to ${owner.name}. Save anyway?`)) {
+          return;
+        }
+      } catch (err) {
+        console.error('Could not check for a duplicate microchip:', err);
+      }
+    }
     // date_of_birth is a Postgres `date` column: an empty string is rejected
     // ("invalid input syntax for type date"), which blocked saving edits on any
     // animal without a birth date (bucks, purchased animals). Send null instead.
@@ -324,6 +336,7 @@ export default function AnimalDetailPage() {
       ...editData,
       name: editData.name.trim(),
       date_of_birth: editData.date_of_birth || null,
+      microchip_id: microchip || null,
     });
   };
 
@@ -1233,6 +1246,10 @@ export default function AnimalDetailPage() {
               label="Microchip ID"
               value={editData.microchip_id}
               onChange={(e) => setEditData({ ...editData, microchip_id: e.target.value })}
+              // Keyboard-mode scanners send Enter after the number.
+              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+              placeholder="Tap here, then scan the chip — or type it"
+              autoComplete="off"
             />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
