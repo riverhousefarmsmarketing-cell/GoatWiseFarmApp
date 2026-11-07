@@ -53,6 +53,13 @@ export const TABLE_LABELS: Record<string, string> = {
   restock_requests: 'Restock item',
   farm_emergency_info: 'Emergency info',
   emergency_contacts: 'Emergency contact',
+  medicines: 'Medicine',
+  medicine_lots: 'Medicine lot',
+  treatment_courses: 'Treatment',
+  course_doses: 'Treatment dose',
+  health_protocols: 'Health rule',
+  concern_reports: 'Concern',
+  lab_tests: 'Lab test',
 };
 
 export function tableLabel(table: string): string {
@@ -86,7 +93,7 @@ export function formatValue(value: unknown): string {
 /** A short name for the record, from whichever naming field it has. */
 export function recordName(entry: Pick<AuditEntry, 'old_data' | 'new_data'>): string | null {
   const row = entry.new_data ?? entry.old_data ?? {};
-  for (const key of ['name', 'item_name', 'title', 'tag_number', 'description', 'treatment', 'body', 'label', 'role']) {
+  for (const key of ['name', 'item_name', 'medication', 'title', 'lot_number', 'tag_number', 'description', 'treatment', 'body', 'label', 'role']) {
     const v = row[key];
     if (typeof v === 'string' && v.trim()) return v.length > 60 ? v.slice(0, 57) + '…' : v;
   }

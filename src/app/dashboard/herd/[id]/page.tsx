@@ -56,6 +56,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { deleteOrRequest } from '@/lib/deleteRecord';
 import { AnimalHistory, PendingDeletionBanner } from '@/components/farm/RecordHistory';
+import { AnimalHealthPanel } from '@/components/farm/AnimalHealthPanel';
 
 // Photo categories for animal profile
 const ANIMAL_PHOTO_CATEGORIES = [
@@ -624,6 +625,9 @@ export default function AnimalDetailPage() {
           </div>
         </Card>
       )}
+
+      {/* Watch list / sick pen, concerns, treatments, lab results, death record */}
+      {animal && <AnimalHealthPanel animal={animal as any} />}
 
       {/* Tabs */}
       <div className="border-b border-gray-200">

@@ -84,6 +84,11 @@ const primaryNavigation = [
     description: 'Health records & treatments',
     subItems: [
       { name: 'Health Center', href: '/dashboard/health' },
+      { name: 'Health Schedule', href: '/dashboard/health-schedule' },
+      { name: 'Treatments', href: '/dashboard/treatments' },
+      { name: 'Sick Pen & Concerns', href: '/dashboard/sick-pen' },
+      { name: 'Medicine Cabinet', href: '/dashboard/medicines' },
+      { name: 'Lab Tests', href: '/dashboard/lab-tests' },
     ]
   },
   { 
