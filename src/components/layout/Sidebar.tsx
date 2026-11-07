@@ -44,6 +44,8 @@ MapPin,
   ShieldCheck,
   History,
   ArrowLeftRight,
+  ListChecks,
+  Wheat,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useFarm, ROLE_LABELS } from '@/hooks/useFarm';
@@ -114,6 +116,9 @@ const primaryNavigation = [
 const farmNavigation = [
   { name: 'Farm Updates', href: '/dashboard/updates', icon: Megaphone },
   { name: 'Assignments', href: '/dashboard/assignments', icon: ClipboardList },
+  { name: 'Chores', href: '/dashboard/chores', icon: ListChecks },
+  { name: 'Care Plans', href: '/dashboard/care-plans', icon: Wheat },
+  { name: 'Minerals', href: '/dashboard/minerals', icon: Sparkles },
   { name: 'Approvals', href: '/dashboard/approvals', icon: ShieldCheck },
   { name: 'Change History', href: '/dashboard/history', icon: History },
   { name: 'Team', href: '/dashboard/team', icon: UserPlus },

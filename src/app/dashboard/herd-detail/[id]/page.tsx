@@ -7,7 +7,6 @@ import {
   useHerdAnimals,
   useUpdateHerd,
   useAssignAnimalToHerd,
-  useFeedSchedules,
   useHerdsWithStats,
 } from '@/hooks/useHerds';
 import { useAnimals } from '@/hooks/useAnimals';
@@ -37,6 +36,9 @@ import {
   ArrowRightLeft,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useCarePlans } from '@/hooks/useCare';
+import { KIND_ICON } from '@/components/farm/careIcons';
+import { describeSchedule } from '@/lib/chores';
 
 // Keyed by canonical (neutral) category; look up via toCanonicalCategory so
 // both goat and neutral vocabularies resolve to the same color.
@@ -78,7 +80,8 @@ export default function HerdDetailPage() {
   const { data: herdAnimals, isLoading: animalsLoading } = useHerdAnimals(herdId) as any;
   const { data: allAnimals } = useAnimals({ status: 'active' });
   const { data: allHerds } = useHerdsWithStats();
-  const { data: feedSchedules } = useFeedSchedules(herdId !== 'unassigned' ? herdId : undefined);
+  const { data: carePlans = [] } = useCarePlans();
+  const herdPlans = carePlans.filter((p) => p.herd_id === herdId);
 
   // Mutations
   const updateHerd = useUpdateHerd();
@@ -255,25 +258,29 @@ export default function HerdDetailPage() {
         </div>
       </Card>
 
-      {/* Feed Schedules for this herd */}
-      {herdId !== 'unassigned' && feedSchedules && feedSchedules.length > 0 && (
+      {/* Care plans for this herd (feeding, watering, instructions) */}
+      {herdId !== 'unassigned' && (
         <Card className="p-4">
-          <h2 className="font-semibold mb-3">Feeding Schedule</h2>
-          <div className="space-y-2">
-            {feedSchedules.map((schedule: any) => (
-              <div key={schedule.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{schedule.feed_type}</p>
-                  <p className="text-sm text-gray-500">
-                    {schedule.quantity_per_feeding} {schedule.unit} at {schedule.feeding_times?.join(' & ')}
-                  </p>
-                </div>
-                <Badge variant={schedule.status === 'active' ? 'success' : 'default'}>
-                  {schedule.status}
-                </Badge>
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold">Care plan</h2>
+            <Link href="/dashboard/care-plans" className="text-sm text-[#105040] hover:underline">Manage care plans</Link>
           </div>
+          {herdPlans.length === 0 ? (
+            <p className="text-sm text-gray-500">No feeding, watering or special instructions set for this herd.</p>
+          ) : (
+            <div className="space-y-2">
+              {herdPlans.map((p) => (
+                <div key={p.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <span className="mt-0.5">{KIND_ICON[p.kind]}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">{p.title}{p.amount !== null ? ` — ${p.amount} ${p.unit ?? ''}` : ''}</p>
+                    <p className="text-sm text-gray-500">{describeSchedule(p)}</p>
+                  </div>
+                  {!p.active && <Badge>Paused</Badge>}
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       )}
 
