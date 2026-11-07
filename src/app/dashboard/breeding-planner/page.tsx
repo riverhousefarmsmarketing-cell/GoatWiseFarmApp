@@ -33,6 +33,7 @@ import {
   Target,
 } from 'lucide-react';
 import { format, addDays, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, parseISO } from 'date-fns';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 const gestationOptions = [
   { value: '150', label: 'Standard Breed (150 days)' },
@@ -84,7 +85,6 @@ export default function BreedingPlannerPage() {
           doe:animals!breeding_plans_doe_id_fkey(id, name),
           buck:animals!breeding_plans_buck_id_fkey(id, name)
         `)
-        .eq('user_id', user?.id ?? '')
         .order('planned_breeding_date', { ascending: true });
       if (error) throw error;
       return data;
@@ -126,7 +126,7 @@ export default function BreedingPlannerPage() {
 
   const deletePlan = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('breeding_plans').delete().eq('id', id);
+      const { error } = await deleteOrRequest('breeding_plans', id);
       if (error) throw error;
     },
     onSuccess: () => {

@@ -48,7 +48,6 @@ export default function ExportPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id)
         .eq('is_reference', false) // export the owned herd, not outside animals
         .order('name');
       if (error) throw error;
@@ -63,7 +62,6 @@ export default function ExportPage() {
       const { data, error } = await supabase
         .from('health_records')
         .select(`*, animal:animals(name)`)
-        .eq('user_id', user!.id)
         .order('date', { ascending: false });
       if (error) throw error;
       return data;
@@ -81,7 +79,6 @@ export default function ExportPage() {
           doe:animals!breeding_records_doe_id_fkey(name),
           buck:animals!breeding_records_buck_id_fkey(name)
         `)
-        .eq('user_id', user!.id)
         .order('breeding_date', { ascending: false });
       if (error) throw error;
       return data;
@@ -95,7 +92,6 @@ export default function ExportPage() {
       const { data, error } = await supabase
         .from('milk_records')
         .select(`*, animal:animals(name)`)
-        .eq('user_id', user!.id)
         .order('date', { ascending: false });
       if (error) throw error;
       return data;
@@ -109,7 +105,6 @@ export default function ExportPage() {
       const { data, error } = await supabase
         .from('transactions')
         .select(`*, animal:animals(name)`)
-        .eq('user_id', user!.id)
         .order('date', { ascending: false });
       if (error) throw error;
       return data;

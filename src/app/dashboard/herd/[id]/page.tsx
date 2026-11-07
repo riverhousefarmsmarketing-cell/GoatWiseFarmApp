@@ -50,9 +50,12 @@ import {
   X,
   ZoomIn,
   Upload,
+  History,
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { deleteOrRequest } from '@/lib/deleteRecord';
+import { AnimalHistory, PendingDeletionBanner } from '@/components/farm/RecordHistory';
 
 // Photo categories for animal profile
 const ANIMAL_PHOTO_CATEGORIES = [
@@ -80,7 +83,7 @@ export default function AnimalDetailPage() {
   const supabase = getSupabaseClient();
   const animalId = params.id as string;
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'health' | 'breeding' | 'milk' | 'lineage' | 'photos'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'health' | 'breeding' | 'milk' | 'lineage' | 'photos' | 'history'>('overview');
   const [showEditModal, setShowEditModal] = useState(false);
   const [editData, setEditData] = useState<any>(null);
 
@@ -255,7 +258,7 @@ export default function AnimalDetailPage() {
       // single delete cleans up correctly. Manually deleting breeding_records by
       // buck_id (as this did before) would DESTROY the doe's breeding history
       // for that sire, which the schema instead preserves via SET NULL.
-      const { error } = await (supabase.from('animals') as any).delete().eq('id', animalId);
+      const { error } = await deleteOrRequest('animals', animalId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -270,16 +273,16 @@ export default function AnimalDetailPage() {
   // Delete photo mutation
   const deletePhoto = useMutation({
     mutationFn: async (photo: any) => {
+      // Delete (or, for workers, request deletion of) the record first; only
+      // remove the file once the record is really gone.
+      const { error: dbError, outcome } = await deleteOrRequest('photos', photo.id, 'this photo');
+      if (dbError) throw dbError;
+      if (outcome !== 'deleted') return;
+
       const { error: storageError } = await supabase.storage
         .from('photos')
         .remove([photo.filename]);
       if (storageError) console.error('Storage delete error:', storageError);
-
-      const { error: dbError } = await (supabase as any)
-        .from('photos')
-        .delete()
-        .eq('id', photo.id);
-      if (dbError) throw dbError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['animal_photos', animalId] });
@@ -461,6 +464,8 @@ export default function AnimalDetailPage() {
         Back to Herd
       </Link>
 
+      <PendingDeletionBanner table="animals" recordId={animalId} />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div className="flex items-start gap-4">
@@ -630,6 +635,7 @@ export default function AnimalDetailPage() {
             { id: 'milk', label: 'Milk Production', icon: Milk },
             { id: 'lineage', label: 'Lineage', icon: Users },
             { id: 'photos', label: 'Photos', icon: Camera, badge: photoCount },
+            { id: 'history', label: 'History', icon: History },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1095,6 +1101,8 @@ export default function AnimalDetailPage() {
           </div>
         </div>
       )}
+
+      {activeTab === 'history' && <AnimalHistory animalId={animalId} />}
 
       {/* Photos Tab */}
       {activeTab === 'photos' && (

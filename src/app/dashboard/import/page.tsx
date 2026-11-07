@@ -384,8 +384,7 @@ export default function ImportPage() {
     if (['health', 'breeding', 'milk', 'financial'].includes(importType)) {
       const { data: animals } = await supabase
         .from('animals')
-        .select('id, name')
-        .eq('user_id', user.id);
+        .select('id, name');
       
       if (animals) {
         animals.forEach((a: any) => {

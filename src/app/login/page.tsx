@@ -24,7 +24,10 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
       } else {
-        router.push('/dashboard');
+        // ?next=/join/<token> brings an invited person back to accept the
+        // invite. Only same-site paths are followed.
+        const next = new URLSearchParams(window.location.search).get('next');
+        router.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
       }
     } catch (err) {
       setError('An unexpected error occurred');

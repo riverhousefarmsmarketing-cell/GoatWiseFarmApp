@@ -64,7 +64,6 @@ export default function ReportsPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id)
         .eq('is_reference', false); // reports cover owned herd only
       if (error) throw error;
       return data;
@@ -78,7 +77,6 @@ export default function ReportsPage() {
       const { data, error } = await supabase
         .from('milk_records')
         .select('*')
-        .eq('user_id', user!.id)
         .gte('date', dateRange.start)
         .lte('date', dateRange.end)
         .order('date', { ascending: true });
@@ -94,7 +92,6 @@ export default function ReportsPage() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user!.id)
         .gte('date', dateRange.start)
         .lte('date', dateRange.end)
         .order('date', { ascending: true });
@@ -113,7 +110,6 @@ export default function ReportsPage() {
       const { data, error } = await supabase
         .from('breeding_records')
         .select('*')
-        .eq('user_id', user!.id)
         .gte('breeding_date', dateRange.start)
         .lte('breeding_date', dateRange.end);
       if (error) throw error;

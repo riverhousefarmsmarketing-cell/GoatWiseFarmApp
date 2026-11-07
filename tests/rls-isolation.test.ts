@@ -174,6 +174,22 @@ describeIfConfigured('RLS: cross-farm isolation', () => {
     expect(error).not.toBeNull();
   });
 
+  it('farm B cannot add a row to farm A by naming farm A', async () => {
+    // Shared farms (migration 019): rows belong to a farm, not a person.
+    const { data: farms, error: farmsError } = await (farmA.client as any).rpc('get_my_farms');
+    expect(farmsError).toBeNull();
+    const { error } = await (farmB.client.from('animals') as any).insert({
+      farm_id: farms[0].farm_id,
+      user_id: farmB.userId,
+      name: 'Planted',
+      sex: 'doe',
+      category: 'milking_doe',
+      species: 'goat',
+    });
+
+    expect(error).not.toBeNull();
+  });
+
   it('farm B sees an empty herd list of its own', async () => {
     const { data, error } = await farmB.client.from('herds').select('id');
 

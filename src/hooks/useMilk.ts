@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import type { MilkRecord, MilkRecordInsert } from '@/types/database';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 // ==========================================
 // QUERY KEYS
@@ -222,9 +223,7 @@ export function useDeleteMilkRecord() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('milk_records')
-        .delete()
-        .eq('id', id);
+      const { error } = await deleteOrRequest('milk_records', id);
 
       if (error) throw error;
     },

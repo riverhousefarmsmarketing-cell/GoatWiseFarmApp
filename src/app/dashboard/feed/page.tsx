@@ -35,6 +35,7 @@ import {
   Layers,
   Clipboard,
 } from 'lucide-react';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 interface FeedType {
   id: string;
@@ -121,7 +122,6 @@ export default function FeedInventoryPage() {
       const { data, error } = await supabase
         .from('feed_types')
         .select('*')
-        .eq('user_id', user!.id)
         .order('name');
       if (error) throw error;
       return data as FeedType[];
@@ -136,7 +136,6 @@ export default function FeedInventoryPage() {
       const { data, error } = await supabase
         .from('feed_inventory')
         .select('*')
-        .eq('user_id', user!.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as FeedInventory[];
@@ -179,10 +178,7 @@ export default function FeedInventoryPage() {
   // Delete feed type mutation
   const deleteTypeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from('feed_types')
-        .delete()
-        .eq('id', id);
+      const { error } = await deleteOrRequest('feed_types', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -223,10 +219,7 @@ export default function FeedInventoryPage() {
   // Delete inventory mutation
   const deleteInventoryMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from('feed_inventory')
-        .delete()
-        .eq('id', id);
+      const { error } = await deleteOrRequest('feed_inventory', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -241,7 +234,6 @@ export default function FeedInventoryPage() {
       const { data, error } = await supabase
         .from('feed_usage')
         .select('*, feed_types(name, unit, cost_per_unit, category), herds(name)')
-        .eq('user_id', user!.id)
         .order('date', { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -268,10 +260,7 @@ export default function FeedInventoryPage() {
   // Delete feed usage mutation
   const deleteUsageMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from('feed_usage')
-        .delete()
-        .eq('id', id);
+      const { error } = await deleteOrRequest('feed_usage', id);
       if (error) throw error;
     },
     onSuccess: () => {

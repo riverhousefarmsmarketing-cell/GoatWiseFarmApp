@@ -49,6 +49,7 @@ import {
   categoryIs,
   toCanonicalCategory,
 } from '@/lib/animalVocab';
+import { FarmTodayPanel } from '@/components/farm/FarmTodayPanel';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -61,7 +62,6 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id)
         .eq('is_reference', false); // exclude outside animals from herd counts
       if (error) throw error;
       return data;
@@ -78,8 +78,7 @@ export default function DashboardPage() {
         .select(`
           *,
           doe:animals!breeding_records_doe_id_fkey(id, name)
-        `)
-        .eq('user_id', user!.id);
+        `);
       if (error) throw error;
       return data;
     },
@@ -100,7 +99,6 @@ export default function DashboardPage() {
           *,
           animal:animals(id, name)
         `)
-        .eq('user_id', user!.id)
         .gte('date', format(ninetyDaysAgo, 'yyyy-MM-dd'))
         .order('date', { ascending: false });
       if (error) throw error;
@@ -123,7 +121,6 @@ export default function DashboardPage() {
           *,
           animal:animals(id, name)
         `)
-        .eq('user_id', user!.id)
         .gte('date', format(oneYearAgo, 'yyyy-MM-dd'))
         .order('date', { ascending: false });
       if (error) throw error;
@@ -141,7 +138,6 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('milk_records')
         .select('*, animal:animals(id, name)')
-        .eq('user_id', user!.id)
         .gte('date', sevenDaysAgo.toISOString().split('T')[0])
         .order('date', { ascending: false });
       if (error) throw error;
@@ -164,7 +160,6 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('weight_records')
         .select('*, animal:animals(id, name)')
-        .eq('user_id', user!.id)
         .gte('date', format(oneYearAgo, 'yyyy-MM-dd'))
         .order('date', { ascending: false });
       if (error) throw error;
@@ -182,7 +177,6 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user!.id)
         .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
         .order('date', { ascending: false });
       if (error) throw error;
@@ -200,7 +194,6 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user!.id)
         .gte('date', sixMonthsAgo.toISOString().split('T')[0]);
       if (error) throw error;
       return data;
@@ -217,7 +210,6 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('predation_events')
         .select('*')
-        .eq('user_id', user!.id)
         .order('date', { ascending: false });
       if (error) throw error;
       return data;
@@ -600,6 +592,9 @@ export default function DashboardPage() {
           </p>
         </div>
       )}
+
+      {/* Farm updates, my assignments, pending approvals */}
+      <FarmTodayPanel />
 
       {/* ============================================ */}
       {/* DECISION LAYER - Farm Status Summary */}

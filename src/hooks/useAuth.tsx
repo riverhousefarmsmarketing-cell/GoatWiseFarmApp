@@ -10,7 +10,12 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, farmName?: string) => Promise<{ error: Error | null; needsEmailConfirmation?: boolean }>;
+  signUp: (
+    email: string,
+    password: string,
+    farmName?: string,
+    extra?: { inviteToken?: string; displayName?: string }
+  ) => Promise<{ error: Error | null; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
 }
@@ -66,7 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, farmName?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    farmName?: string,
+    extra?: { inviteToken?: string; displayName?: string }
+  ) => {
     const supabase = getSupabaseClient();
     // The profile row is created by the handle_new_user() trigger, which reads
     // farm_name straight out of this metadata (see migration 011). Inserting it
@@ -75,8 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
+        // handle_new_user() (migration 019) reads these: with a valid
+        // invite_token the new login joins that farm; otherwise it starts a
+        // new farm named farm_name.
         data: {
           farm_name: farmName,
+          invite_token: extra?.inviteToken,
+          display_name: extra?.displayName,
         },
       },
     });

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { format, subDays, addDays, parseISO } from 'date-fns';
 import type { HealthRecord, HealthRecordInsert, Inspection, InspectionInsert } from '@/types/database';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 // ==========================================
 // QUERY KEYS
@@ -276,9 +277,7 @@ export function useDeleteInspection() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await mutationFrom('inspections')
-        .delete()
-        .eq('id', id);
+      const { error } = await deleteOrRequest('inspections', id);
 
       if (error) throw error;
     },

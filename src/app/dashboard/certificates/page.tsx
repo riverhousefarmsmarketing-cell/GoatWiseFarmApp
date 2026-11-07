@@ -65,7 +65,6 @@ export default function CertificatesPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id)
         .order('name');
       if (error) throw error;
       return data;
@@ -127,8 +126,7 @@ export default function CertificatesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('animals')
-        .select('*')
-        .eq('user_id', user!.id);
+        .select('*');
       if (error) throw error;
       return data;
     },

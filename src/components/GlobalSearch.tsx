@@ -94,7 +94,6 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
       const { data } = await supabase
         .from('animals')
         .select('id, name, breed, category, status')
-        .eq('user_id', user!.id)
         .eq('is_reference', false); // keep outside animals out of herd search
       return data || [];
     },
@@ -107,7 +106,6 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
       const { data } = await supabase
         .from('health_records')
         .select('id, type, treatment, date, animal:animals(id, name)')
-        .eq('user_id', user!.id)
         .order('date', { ascending: false })
         .limit(100);
       return data || [];
@@ -121,7 +119,6 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
       const { data } = await supabase
         .from('breeding_records')
         .select('id, status, date, due_date, doe:animals!breeding_records_doe_id_fkey(id, name), buck:animals!breeding_records_buck_id_fkey(id, name)')
-        .eq('user_id', user!.id)
         .order('date', { ascending: false })
         .limit(100);
       return data || [];
@@ -134,8 +131,7 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
     queryFn: async () => {
       const { data } = await supabase
         .from('guardians')
-        .select('id, name, type, breed, status')
-        .eq('user_id', user!.id);
+        .select('id, name, type, breed, status');
       return data || [];
     },
     enabled: !!user && open,
@@ -147,7 +143,6 @@ export function GlobalSearchDialog({ open, onClose }: GlobalSearchDialogProps) {
       const { data } = await supabase
         .from('transactions')
         .select('id, type, category, description, amount, date')
-        .eq('user_id', user!.id)
         .order('date', { ascending: false })
         .limit(100);
       return data || [];

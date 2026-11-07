@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 import { differenceInCalendarDays, parseISO, startOfToday, addDays, format } from 'date-fns';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 // ============================================================
 // TYPES
@@ -111,7 +112,7 @@ export function useDeletePaddock() {
   const supabase = getSupabaseClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('paddocks').delete().eq('id', id);
+      const { error } = await deleteOrRequest('paddocks', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -229,7 +230,7 @@ export function useDeletePaddockMove() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await mutationFrom('paddock_moves').delete().eq('id', id);
+      const { error } = await deleteOrRequest('paddock_moves', id);
       if (error) throw error;
     },
     onSuccess: () => {
