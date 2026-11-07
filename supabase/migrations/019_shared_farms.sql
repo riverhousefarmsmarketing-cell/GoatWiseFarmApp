@@ -222,6 +222,12 @@ begin
   end loop;
 end $$;
 
+-- Paddock names were unique per person; on a shared farm they must be unique
+-- per farm (two workers must not each create a "North Pasture"). Each farm
+-- starts with one person's paddocks, so no existing names collide.
+drop index if exists public.paddocks_user_name_idx;
+create unique index if not exists paddocks_farm_name_idx on public.paddocks (farm_id, name);
+
 -- Taking an animal out of a group removes its animal_groups link row. That is
 -- an edit to the group, not deleting a farm record, so any member may do it
 -- (it is still recorded in the change history).

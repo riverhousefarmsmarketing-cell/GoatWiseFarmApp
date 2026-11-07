@@ -59,6 +59,8 @@ select pg_temp.raises($$update farms set complimentary = true$$, 'nobody can set
 select pg_temp.ok((select count(*) from audit_log where table_name='animals' and action='update' and changed_by = :W and 'notes' = any(changed_fields)) = 1, 'history records worker edit with field name');
 
 select pg_temp.raises($$insert into herds (name, user_id) values ('Forged', '00000000-0000-0000-0000-00000000000a')$$, 'cannot stamp a record as created by someone else');
+insert into paddocks (name) values ('North Pasture');
+select pg_temp.raises($$insert into paddocks (name) values ('North Pasture')$$, 'paddock names are unique per farm');
 -- Owner approves
 select pg_temp.as_user(:A);
 select pg_temp.ok((select count(*) from deletion_requests where status='pending') = 1, 'owner sees pending request');
