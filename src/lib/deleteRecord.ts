@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '@/lib/supabase';
 import { getFarmSessionRole, isFarmManagerRole } from '@/lib/farmSession';
 import { notify } from '@/components/ui/toast';
+import { pokeDispatch } from '@/lib/push';
 
 export type DeleteOutcome = 'deleted' | 'requested' | 'already_requested' | 'cancelled';
 
@@ -44,6 +45,7 @@ export async function deleteOrRequest(
   if (error) return { error: new Error(error.message) };
 
   if (data === 'requested') {
+    pokeDispatch();
     notify('Sent for approval. It will be deleted once the owner or a manager approves it.');
     return { error: null, outcome: 'requested' };
   }

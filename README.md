@@ -131,6 +131,44 @@ Migration 022 adds the following:
 
 All of these are farm-scoped and recorded in the change history.
 
+## 🩺 Animal Health, Notifications & Offline
+
+Migrations 024–029 add the following.
+
+**Health**
+
+- **Medicine cabinet** (`medicines`, `medicine_lots`): default doses, withdrawal periods, lots with expiry dates and amounts left. Health records can link the lot that was used.
+- **Treatment courses** (`treatment_courses`, `course_doses`): every scheduled dose is ticked off or skipped, stamped with who and when.
+  - Starting a course writes one health record, dated the course's last day, so the existing withdrawal tracking covers the whole course.
+  - Stopping early moves that record to the last dose actually given.
+- **Herd health schedule** (`health_protocols`): rules that repeat at an interval, at set ages, or once a year. Which animals are due is worked out in `src/lib/healthSchedule.ts` (unit tested). Recording a rule writes health records with `protocol_id`.
+- **Watch list / sick pen**: `animals.care_status` (stamped who and when).
+- **Concerns** (`concern_reports`): anyone reports a problem; owners and managers acknowledge and resolve it.
+- **Lab tests** (`lab_tests`), and **death records** on the animal itself.
+
+**Farm**
+
+- **Money is owner/manager only.**
+- **Emergency page**: contacts, address, and where medicine and supplies are kept.
+
+**Notifications (migration 029)**
+
+- **In-app**: the bell and the Notifications page work with no setup.
+- **Time-based alerts** (late doses, late chores, overdue assignments) are created every 10 minutes by `generate_due_notifications()` via `pg_cron`. Turn it on in Supabase → Database → Extensions, then re-run the scheduling block at the end of migration 029.
+- **Phone and browser push**: set these in the hosting environment, then redeploy.
+  - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `VAPID_PUBLIC_KEY` (same value), and `VAPID_PRIVATE_KEY`. Generate them with `npx web-push generate-vapid-keys`.
+  - `VAPID_SUBJECT`, e.g. `mailto:you@yourfarm.com`.
+  - `SUPABASE_SERVICE_ROLE_KEY`. Server only, never `NEXT_PUBLIC_`.
+  - `CRON_SECRET`, any long random string.
+- **Scheduled push**: to also push the time-based alerts (not just ones triggered by someone's action), call `GET /api/notifications/dispatch` with `Authorization: Bearer <CRON_SECRET>` every 10 minutes. Use Vercel Cron on a plan that allows it, or Supabase `pg_cron` + `pg_net`.
+- **iPhone**: notifications need GoatWise added to the home screen first (Share → Add to Home Screen).
+
+**Poor signal (offline)**
+
+- The service worker (`public/sw.js`) keeps the app's pages, so it opens with no connection.
+- The last loaded data is kept on the device for 3 days, and cleared on sign-out.
+- Ticking chores and doses, flagging restock items, logging minerals and reporting concerns (without a photo) are saved on the device and sent when the connection returns (`src/lib/offline.ts`, unit tested). Each row carries its own id, so retries never duplicate.
+
 ## 📊 Features
 
 ### Dashboard

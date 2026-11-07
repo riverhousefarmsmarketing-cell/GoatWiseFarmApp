@@ -17,6 +17,7 @@ seeded=0
 for f in ../migrations/0*.sql; do
   n=$(basename "$f" | cut -c1-3)
   if [ "$n" -ge 019 ] && [ "$seeded" = 0 ]; then
+    $PSQL -d goatwise_test -f 05_live_schema_drift.sql
     $PSQL -d goatwise_test -f 10_seed_pre_019.sql
     seeded=1
   fi

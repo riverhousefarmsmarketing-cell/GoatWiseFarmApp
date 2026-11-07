@@ -43,6 +43,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { format, parseISO, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { deleteOrRequest } from '@/lib/deleteRecord';
+import { useFarm } from '@/hooks/useFarm';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -80,6 +81,19 @@ const paymentMethods = [
 ];
 
 export default function FinancesPage() {
+  const { isManager } = useFarm();
+  if (!isManager) {
+    return (
+      <div className="max-w-lg">
+        <h1 className="text-2xl font-bold text-gray-900">Money</h1>
+        <p className="text-gray-600 mt-2">Income and expenses are only visible to the farm owner and managers.</p>
+      </div>
+    );
+  }
+  return <FinancesContent />;
+}
+
+function FinancesContent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();

@@ -6,6 +6,7 @@ import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { Megaphone, ClipboardList, Pin, CheckCircle2, ShieldCheck, ListChecks, Sparkles, PackageMinus } from 'lucide-react';
 import { useChoresForDay } from '@/hooks/useTodaysChores';
 import { useRestockRequests } from '@/hooks/useRestock';
+import { HealthTodayPanel } from '@/components/farm/HealthTodayPanel';
 import { latestRefills, useMineralRefills, useMinerals } from '@/hooks/useCare';
 import { usePaddocks } from '@/hooks/useGrazing';
 import { daysBetween, formatSlot, isLate, localISODate } from '@/lib/chores';
@@ -75,6 +76,7 @@ export function FarmTodayPanel() {
 
   return (
     <div className="space-y-4">
+      <HealthTodayPanel />
       {isManager && pendingApprovals > 0 && (
         <Link
           href="/dashboard/approvals"

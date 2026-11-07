@@ -20,6 +20,12 @@ export const metadata: Metadata = {
   description: 'Track your herd\'s health, breeding, milk production, and finances. FAMACHA scoring, kidding calendars, Schedule F tax export, and 14 breed profiles — built by a goat farmer, for goat farmers.',
   icons: {
     icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'GoatWise',
+    statusBarStyle: 'default',
   },
   openGraph: {
     title: 'GoatWise — Farm Management Built by a Goat Farmer',

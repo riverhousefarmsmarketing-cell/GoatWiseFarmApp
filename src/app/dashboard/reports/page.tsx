@@ -30,11 +30,14 @@ import {
   PieChart,
   Activity,
 } from 'lucide-react';
+import { useFarm } from '@/hooks/useFarm';
 
 type TimeRange = '7d' | '30d' | '90d' | '1y' | 'all';
 
 export default function ReportsPage() {
   const { user } = useAuth();
+  // Money is owner/manager only (migration 024).
+  const { isManager } = useFarm();
   const supabase = getSupabaseClient();
 
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
@@ -390,7 +393,7 @@ export default function ReportsPage() {
       {/* Report Tabs */}
       <div className="border-b border-gray-200">
         <nav className="flex gap-4 -mb-px overflow-x-auto">
-          {reports.map((report) => (
+          {reports.filter((r) => isManager || r.id !== 'financial').map((report) => (
             <button
               key={report.id}
               onClick={() => setActiveReport(report.id)}
@@ -416,6 +419,7 @@ export default function ReportsPage() {
               <p className="text-2xl font-bold">{milkStats?.totalMilk.toFixed(1) || '0'}</p>
               <p className="text-sm text-gray-500">lbs Milk</p>
             </Card>
+            {isManager && (
             <Card padding="sm" className="text-center">
               <DollarSign className="h-6 w-6 mx-auto mb-2 text-blue-600" />
               <p className={`text-2xl font-bold ${(financialStats?.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -423,6 +427,7 @@ export default function ReportsPage() {
               </p>
               <p className="text-sm text-gray-500">{(financialStats?.profit || 0) >= 0 ? 'Profit' : 'Loss'}</p>
             </Card>
+            )}
             <Card padding="sm" className="text-center">
               <Baby className="h-6 w-6 mx-auto mb-2 text-purple-600" />
               <p className="text-2xl font-bold">{breedingStats?.totalKids || 0}</p>
@@ -482,6 +487,7 @@ export default function ReportsPage() {
               </div>
             </Card>
 
+            {isManager && (
             <Card>
               <div className="p-4 border-b flex justify-between items-center">
                 <h3 className="font-semibold">Financial Summary</h3>
@@ -512,6 +518,7 @@ export default function ReportsPage() {
                 )}
               </div>
             </Card>
+            )}
 
             <Card>
               <div className="p-4 border-b flex justify-between items-center">
@@ -669,7 +676,7 @@ export default function ReportsPage() {
       )}
 
       {/* Financial Report */}
-      {activeReport === 'financial' && (
+      {activeReport === 'financial' && isManager && (
         <div className="space-y-6">
           {financialLoading ? (
             <div className="flex justify-center py-12">

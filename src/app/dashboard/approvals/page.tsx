@@ -9,6 +9,7 @@ import { useFarm, useFarmMembers, memberName } from '@/hooks/useFarm';
 import { getSupabaseClient } from '@/lib/supabase';
 import { tableLabel, recordName, visibleFields, fieldLabel, formatValue } from '@/lib/history';
 import { Badge, Button, Card, EmptyState, LoadingSpinner } from '@/components/ui';
+import { pokeDispatch } from '@/lib/push';
 
 interface DeletionRequest {
   id: string;
@@ -60,6 +61,7 @@ export default function ApprovalsPage() {
   });
 
   const invalidate = () => {
+    pokeDispatch();
     queryClient.invalidateQueries({ queryKey: ['deletion_requests'] });
     // An approval deletes a record somewhere; refresh every list.
     queryClient.invalidateQueries();

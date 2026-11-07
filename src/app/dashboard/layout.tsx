@@ -8,6 +8,7 @@ import { DashboardLayout } from '@/components/layout/Sidebar';
 import { Button, Card, Input, LoadingPage } from '@/components/ui';
 import { Toaster } from '@/components/ui/toast';
 import { getSupabaseClient } from '@/lib/supabase';
+import { OfflineSync } from '@/hooks/useOffline';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -28,12 +29,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <FarmProvider>
-      <FarmGate>
-        <DashboardLayout>{children}</DashboardLayout>
-      </FarmGate>
-      <Toaster />
-    </FarmProvider>
+    <OfflineSync userId={user.id}>
+      <FarmProvider>
+        <FarmGate>
+          <DashboardLayout>{children}</DashboardLayout>
+        </FarmGate>
+        <Toaster />
+      </FarmProvider>
+    </OfflineSync>
   );
 }
 

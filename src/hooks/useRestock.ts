@@ -4,6 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useFarm } from '@/hooks/useFarm';
+import { pokeDispatch } from '@/lib/push';
+import { insertOrQueue } from '@/lib/offline';
+import { notify } from '@/components/ui/toast';
 
 const db = () => getSupabaseClient() as any;
 
@@ -70,7 +73,7 @@ export function useFlagRestock() {
       item_name: string; feed_type_id: string | null; category: RestockCategory; level: RestockLevel;
       quantity_note: string; note: string;
     }) => {
-      const { error } = await db().from('restock_requests').insert({
+      const result = await insertOrQueue('restock_requests', [{
         item_name: r.item_name.trim(),
         feed_type_id: r.feed_type_id || null,
         category: r.category,
@@ -78,10 +81,10 @@ export function useFlagRestock() {
         quantity_note: r.quantity_note.trim() || null,
         note: r.note.trim() || null,
         user_id: user!.id,
-      });
-      if (error) throw error;
+      }], `Restock: ${r.item_name.trim()}`);
+      if (result === 'queued') notify('No signal: saved on this device. It will be added to the list when you’re back online.');
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: restockKeys.all }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: restockKeys.all }); pokeDispatch(); },
   });
 }
 

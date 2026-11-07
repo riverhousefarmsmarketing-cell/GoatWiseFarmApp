@@ -1,11 +1,15 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useFarm } from '@/hooks/useFarm';
 import { deleteOrRequest } from '@/lib/deleteRecord';
 import type { CareKind, CarePlan, ChoreCompletion } from '@/lib/chores';
+import { insertOrQueue } from '@/lib/offline';
+import { notify } from '@/components/ui/toast';
+import { usePendingRows } from '@/hooks/useOffline';
 
 const db = () => getSupabaseClient() as any;
 
@@ -126,7 +130,8 @@ export function useDeleteCarePlan() {
 
 export function useChoreCompletions(isoDate: string) {
   const { farm } = useFarm();
-  return useQuery<ChoreCompletion[]>({
+  const pending = usePendingRows<ChoreCompletion>('chore_completions');
+  const query = useQuery<ChoreCompletion[]>({
     queryKey: [...careKeys.completions, farm?.farm_id, isoDate],
     queryFn: async () => {
       const { data, error } = await db().from('chore_completions').select('*').eq('chore_date', isoDate);
@@ -136,6 +141,14 @@ export function useChoreCompletions(isoDate: string) {
     enabled: !!farm,
     refetchInterval: 60_000,
   });
+  // Ticks saved on this device but not sent yet still show as done.
+  const data = useMemo(() => {
+    const sent = query.data ?? [];
+    const extra = pending.filter((p) => p.chore_date === isoDate && !sent.some((s) => s.care_plan_id === p.care_plan_id && s.slot === p.slot))
+      .map((p) => ({ ...p, done_at: p.done_at ?? new Date().toISOString() }));
+    return [...sent, ...extra];
+  }, [query.data, pending, isoDate]);
+  return { ...query, data };
 }
 
 export function useTickChore() {
@@ -143,11 +156,10 @@ export function useTickChore() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (c: { care_plan_id: string; chore_date: string; slot: string; note?: string | null }) => {
-      const { error } = await db()
-        .from('chore_completions')
-        .insert({ ...c, note: c.note?.trim() || null, user_id: user!.id });
-      // Someone else ticked it a moment ago: that's fine, just refresh.
-      if (error && error.code !== '23505') throw error;
+      // Works with no signal too: kept on the device and sent later. Someone
+      // else ticking it a moment ago is fine ("already there").
+      const result = await insertOrQueue('chore_completions', [{ ...c, note: c.note?.trim() || null, user_id: user!.id }], 'Chore ticked off');
+      if (result === 'queued') notify('No signal: ticked off on this device. It will be sent when you’re back online.');
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: careKeys.completions }),
   });
@@ -271,8 +283,8 @@ export function useLogRefills() {
           user_id: user!.id,
         }));
       if (rows.length === 0) throw new Error('Add at least one mineral with an amount.');
-      const { error } = await db().from('mineral_refills').insert(rows);
-      if (error) throw error;
+      const result = await insertOrQueue('mineral_refills', rows, `Mineral refill (${rows.length})`);
+      if (result === 'queued') notify('No signal: saved on this device. It will be sent when you’re back online.');
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: careKeys.refills }),
   });

@@ -50,9 +50,12 @@ import {
   toCanonicalCategory,
 } from '@/lib/animalVocab';
 import { FarmTodayPanel } from '@/components/farm/FarmTodayPanel';
+import { useFarm } from '@/hooks/useFarm';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  // Money is owner/manager only (migration 024).
+  const { isManager } = useFarm();
   const supabase = getSupabaseClient();
 
   // Fetch animals
@@ -633,6 +636,8 @@ export default function DashboardPage() {
           <p className="text-2xl font-bold">{stats.avgDailyMilk.toFixed(1)}</p>
           <p className="text-xs text-gray-500">lbs/day avg</p>
         </Card>
+        {isManager && (
+          <>
         <Card padding="sm" className="text-center">
           <TrendingUp className="h-5 w-5 mx-auto mb-1 text-green-600" />
           <p className="text-2xl font-bold text-green-600">${stats.income.toFixed(0)}</p>
@@ -643,6 +648,8 @@ export default function DashboardPage() {
           <p className="text-2xl font-bold text-red-500">${stats.expenses.toFixed(0)}</p>
           <p className="text-xs text-gray-500">Expenses (30d)</p>
         </Card>
+          </>
+        )}
       </div>
 
       {/* Main Content Grid */}
@@ -732,11 +739,13 @@ export default function DashboardPage() {
                 Record Breeding
               </Button>
             </Link>
+            {isManager && (
             <Link href="/dashboard/finances" className="block">
               <Button variant="outline" className="w-full justify-start" leftIcon={<DollarSign className="h-4 w-4" />}>
                 Add Transaction
               </Button>
             </Link>
+            )}
           </div>
         </Card>
       </div>

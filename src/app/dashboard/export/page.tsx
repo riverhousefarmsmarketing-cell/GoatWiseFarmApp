@@ -28,12 +28,15 @@ import {
   Calendar,
   ClipboardList,
 } from 'lucide-react';
+import { useFarm } from '@/hooks/useFarm';
 
 type ExportFormat = 'csv' | 'pdf';
 type ExportType = 'animals' | 'health' | 'breeding' | 'milk' | 'financial' | 'herd_summary';
 
 export default function ExportPage() {
   const { user } = useAuth();
+  // Money is owner/manager only (migration 024).
+  const { isManager } = useFarm();
   const supabase = getSupabaseClient();
 
   const [selectedExport, setSelectedExport] = useState<ExportType | null>(null);
@@ -586,8 +589,8 @@ export default function ExportPage() {
       <h2>Last 30 Days</h2>
       <div class="summary">
         <div class="summary-item"><span class="summary-value">${totalMilk.toFixed(1)} lbs</span><br>Milk Produced</div>
-        <div class="summary-item"><span class="summary-value" style="color: #10b981">$${income.toFixed(0)}</span><br>Income</div>
-        <div class="summary-item"><span class="summary-value" style="color: #ef4444">$${expenses.toFixed(0)}</span><br>Expenses</div>
+        ${isManager ? `<div class="summary-item"><span class="summary-value" style="color: #10b981">$${income.toFixed(0)}</span><br>Income</div>
+        <div class="summary-item"><span class="summary-value" style="color: #ef4444">$${expenses.toFixed(0)}</span><br>Expenses</div>` : ''}
       </div>
     `;
     
@@ -698,7 +701,7 @@ export default function ExportPage() {
 
       {/* Export Options Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {exportOptions.map((option) => (
+        {exportOptions.filter((o) => isManager || o.id !== 'financial').map((option) => (
           <Card key={option.id} className="p-5">
             <div className="flex items-start gap-4">
               <div className={`w-12 h-12 rounded-xl ${option.bgColor} flex items-center justify-center`}>
