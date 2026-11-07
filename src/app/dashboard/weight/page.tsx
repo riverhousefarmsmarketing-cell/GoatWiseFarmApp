@@ -35,6 +35,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 interface WeightRecord {
   id: string;
@@ -99,7 +100,6 @@ export default function WeightTrackingPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id)
         .eq('status', 'active')
         .eq('is_reference', false) // don't track weight for outside animals
         .order('name');
@@ -116,7 +116,6 @@ export default function WeightTrackingPage() {
       const { data, error } = await supabase
         .from('weight_records')
         .select('*')
-        .eq('user_id', user!.id)
         .order('date', { ascending: false });
       if (error) throw error;
       return data as WeightRecord[];
@@ -164,10 +163,7 @@ export default function WeightTrackingPage() {
   // Delete weight record mutation
   const deleteWeightMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from('weight_records')
-        .delete()
-        .eq('id', id);
+      const { error } = await deleteOrRequest('weight_records', id);
       if (error) throw error;
     },
     onSuccess: () => {

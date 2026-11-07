@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 import type { Group } from '@/types/database';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 // Re-export for consumers
 export type { Group } from '@/types/database';
@@ -72,7 +73,7 @@ export function useDeleteGroup() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('groups').delete().eq('id', id);
+      const { error } = await deleteOrRequest('groups', id);
       if (error) throw error;
     },
     onSuccess: () => {

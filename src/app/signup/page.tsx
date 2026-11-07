@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getSupabaseClient } from '@/lib/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +17,20 @@ export default function SignUpPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  // Arriving from an invite link: /signup?invite=<token>
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [invite, setInvite] = useState<{ farm_name: string; role: string; valid: boolean } | null>(null);
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('invite');
+    if (!token) return;
+    setInviteToken(token);
+    (getSupabaseClient() as any)
+      .rpc('get_invite_info', { p_token: token })
+      .then(({ data }: { data: { farm_name: string; role: string; valid: boolean }[] | null }) => setInvite(data?.[0] ?? null));
+  }, []);
+  const joining = !!inviteToken && !!invite?.valid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +49,9 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const { error, needsEmailConfirmation } = await signUp(email, password, farmName);
+      const { error, needsEmailConfirmation } = joining
+        ? await signUp(email, password, undefined, { inviteToken: inviteToken!, displayName })
+        : await signUp(email, password, farmName);
       if (error) {
         setError(error.message);
       } else if (needsEmailConfirmation) {
@@ -77,8 +94,15 @@ export default function SignUpPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
             <span className="text-3xl">🐐</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-          <p className="text-gray-500 mt-1">Start managing your goat farm today</p>
+          <h1 className="text-2xl font-bold text-gray-900">{joining ? `Join ${invite!.farm_name}` : 'Create your account'}</h1>
+          <p className="text-gray-500 mt-1">
+            {joining ? `Create your own login. You'll join as a ${invite!.role}.` : 'Start managing your goat farm today'}
+          </p>
+          {inviteToken && invite && !invite.valid && (
+            <p className="mt-3 p-3 rounded-lg bg-amber-50 text-amber-800 text-sm">
+              This invite link has expired or was already used. Ask the farm owner for a new one, or sign up to start your own farm.
+            </p>
+          )}
         </div>
 
         <Card className="p-6">
@@ -89,13 +113,26 @@ export default function SignUpPage() {
               </div>
             )}
 
-            <Input
-              label="Farm Name"
-              type="text"
-              value={farmName}
-              onChange={(e) => setFarmName(e.target.value)}
-              placeholder="Happy Goat Farm"
-            />
+            {joining ? (
+              <Input
+                label="Your name"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Jake Smith"
+                hint="So the team knows who made each change."
+                required
+                autoComplete="name"
+              />
+            ) : (
+              <Input
+                label="Farm Name"
+                type="text"
+                value={farmName}
+                onChange={(e) => setFarmName(e.target.value)}
+                placeholder="Happy Goat Farm"
+              />
+            )}
 
             <Input
               label="Email"
@@ -138,7 +175,7 @@ export default function SignUpPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link href="/login" className="text-primary-600 hover:underline font-medium">
+              <Link href={joining ? `/login?next=${encodeURIComponent(`/join/${inviteToken}`)}` : '/login'} className="text-primary-600 hover:underline font-medium">
                 Sign in
               </Link>
             </p>

@@ -42,6 +42,7 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { format, parseISO, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -171,7 +172,7 @@ export default function FinancesPage() {
   // Delete transaction mutation
   const deleteTransaction = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      const { error } = await deleteOrRequest('transactions', id);
       if (error) throw error;
     },
     onSuccess: () => {

@@ -3,6 +3,7 @@ import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 import { categoryIs } from '@/lib/animalVocab';
 import type { Herd, Animal, FeedSchedule as DBFeedSchedule, FeedInventoryRecord, FeedType } from '@/types/database';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 // Type aliases for convenience
 type FeedInventory = FeedInventoryRecord;
@@ -214,13 +215,10 @@ export function useDeleteHerd() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // First, unassign all animals from this herd
-      await mutationFrom('animals')
-        .update({ herd_id: null })
-        .eq('herd_id', id);
-
-      // Then delete the herd
-      const { error } = await supabase.from('herds').delete().eq('id', id);
+      // animals.herd_id is ON DELETE SET NULL, so the database unassigns the
+      // animals when the herd is actually deleted. (Unassigning them here first
+      // would also run when a worker's delete only becomes a request.)
+      const { error } = await deleteOrRequest('herds', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -443,7 +441,7 @@ export function useDeleteFeedType() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await mutationFrom('feed_types').delete().eq('id', id);
+      const { error } = await deleteOrRequest('feed_types', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -522,7 +520,7 @@ export function useDeleteFeedInventory() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('feed_inventory').delete().eq('id', id);
+      const { error } = await deleteOrRequest('feed_inventory', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -609,7 +607,7 @@ export function useDeleteFeedSchedule() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('feed_schedules').delete().eq('id', id);
+      const { error } = await deleteOrRequest('feed_schedules', id);
       if (error) throw error;
     },
     onSuccess: () => {

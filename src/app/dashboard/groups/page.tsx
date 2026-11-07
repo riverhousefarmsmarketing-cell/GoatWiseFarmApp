@@ -25,6 +25,7 @@ import {
   Check,
   Pencil,
 } from 'lucide-react';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 const groupTypeOptions = [
   { value: 'breeding', label: 'Breeding Group' },
@@ -115,7 +116,7 @@ export default function GroupsPage() {
 
   const deleteGroup = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('groups').delete().eq('id', id);
+      const { error } = await deleteOrRequest('groups', id);
       if (error) throw error;
     },
     onSuccess: () => {

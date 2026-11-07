@@ -89,6 +89,25 @@ The dashboard uses Supabase Auth, shared with the mobile app:
 - Session persistence
 - Protected routes via middleware
 
+## 👥 Shared Farms, Roles & Approvals
+
+Several people can log in to one farm (migrations 019–021).
+
+| Role | Can do |
+|------|--------|
+| **Owner** | Everything, including inviting managers, changing roles and removing people |
+| **Manager** | Everything except role changes and removing people; approves deletions, posts updates, makes assignments, invites workers |
+| **Worker** | Adds and edits every kind of record; deleting files a request for approval |
+
+- **Invites**: Team page → *Invite someone* creates a one-time link (`/join/<token>`, 14 days). New people sign up from it and land in the farm; people with a login accept it and can switch between farms in the sidebar.
+- **Change history**: a database trigger logs every insert, update and delete (who, when, old and new values) to `audit_log`. See *Change History* and each animal's *History* tab. Clients cannot write to or edit the log.
+- **Delete approval**: only owners and managers can delete. App screens call `deleteOrRequest()` (`src/lib/deleteRecord.ts`), which deletes for managers and files a `deletion_requests` row for workers. Decisions are made on *Approvals*.
+- **Farm updates & assignments**: `farm_posts` (with read receipts) and `assignments` (multiple assignees, due dates, optional repeat; completing a repeating task creates the next one).
+- **Complimentary farms**: `farms.complimentary` marks a farm that must never be charged once billing exists. It can only be set from the database, e.g. `update farms set complimentary = true where id = '…';`
+- **Data access**: every farm table has a `farm_id` (defaulting to the caller's current farm) and RLS of `farm_id = current_farm_id()`. `user_id` now means *created by*. Queries should not filter by `user_id`.
+
+Database tests for all of this: `PGHOST=… PGPORT=… supabase/tests/run.sh` (needs a local Postgres).
+
 ## 📊 Features
 
 ### Dashboard

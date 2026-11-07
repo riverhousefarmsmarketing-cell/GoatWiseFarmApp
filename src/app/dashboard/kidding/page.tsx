@@ -33,6 +33,7 @@ import {
   Filter,
 } from 'lucide-react';
 import Link from 'next/link';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 interface BreedingRecord {
   id: string;
@@ -134,7 +135,6 @@ export default function KiddingPage() {
           doe:animals!breeding_records_doe_id_fkey(id, name, breed),
           buck:animals!breeding_records_buck_id_fkey(id, name, breed)
         `)
-        .eq('user_id', user!.id)
         .order('due_date', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data as BreedingRecord[];
@@ -152,7 +152,6 @@ export default function KiddingPage() {
           *,
           animal:animals(id, name)
         `)
-        .eq('user_id', user!.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as KidRecord[];
@@ -167,7 +166,6 @@ export default function KiddingPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id)
         .eq('status', 'active');
       if (error) throw error;
       return data;
@@ -318,10 +316,7 @@ export default function KiddingPage() {
   // Delete a kid record
   const deleteKid = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from('kid_records')
-        .delete()
-        .eq('id', id);
+      const { error } = await deleteOrRequest('kid_records', id);
       if (error) throw error;
     },
     onSuccess: () => {

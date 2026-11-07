@@ -11,6 +11,7 @@ import {
 import { formatDate, calculateAge } from '@/lib/utils';
 import { Shield, Plus, Star, AlertTriangle, Heart, Syringe, ChevronRight, Camera, X, Pencil, Trash2 } from 'lucide-react';
 import { format, addDays, parseISO, startOfToday } from 'date-fns';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 const PREDATION_PHOTO_CATEGORIES = [
   { value: 'injury', label: 'Injury/Attack' },
@@ -204,7 +205,7 @@ export default function GuardiansPage() {
 
   const deleteGuardian = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('guardians').delete().eq('id', id);
+      const { error } = await deleteOrRequest('guardians', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -234,7 +235,7 @@ export default function GuardiansPage() {
 
   const deleteHealthRecord = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('guardian_health_records').delete().eq('id', id);
+      const { error } = await deleteOrRequest('guardian_health_records', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_health_records'] }),
@@ -260,7 +261,7 @@ export default function GuardiansPage() {
 
   const deleteVaccination = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('guardian_vaccinations').delete().eq('id', id);
+      const { error } = await deleteOrRequest('guardian_vaccinations', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_vaccinations'] }),
@@ -286,7 +287,7 @@ export default function GuardiansPage() {
 
   const deletePredation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('predation_events').delete().eq('id', id);
+      const { error } = await deleteOrRequest('predation_events', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['predation_events'] }),
@@ -355,8 +356,9 @@ export default function GuardiansPage() {
 
   const handleDeleteGuardianPhoto = async (photoId: string, filename: string) => {
     try {
-      await supabase.storage.from('photos').remove([filename]);
-      await supabase.from('photos').delete().eq('id', photoId);
+      const { error, outcome } = await deleteOrRequest('photos', photoId, 'this photo');
+      if (error) throw error;
+      if (outcome === 'deleted') await supabase.storage.from('photos').remove([filename]);
       queryClient.invalidateQueries({ queryKey: ['guardian_photos', selectedGuardian?.id] });
     } catch (error) {
       console.error('Delete photo error:', error);

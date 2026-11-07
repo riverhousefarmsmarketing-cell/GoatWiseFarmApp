@@ -24,6 +24,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
+import { useFarm } from '@/hooks/useFarm';
 
 // ============================================
 // SAMPLE DATA LOADER COMPONENT
@@ -104,6 +105,7 @@ const SAMPLE_GUARDIANS = [
 
 function SampleDataSection() {
   const { user } = useAuth();
+  const { farm } = useFarm();
   const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
   
@@ -122,15 +124,16 @@ function SampleDataSection() {
     setProgress(prev => [...prev, message]);
   };
 
-  /** Removes every row this user owns across the sample tables. Returns the
-   *  number of tables that failed to clear so callers can report honestly. */
+  /** Removes every row on this farm across the sample tables (owners only --
+   *  the database refuses deletes from anyone else). Returns the number of
+   *  tables that failed to clear so callers can report honestly. */
   const wipeUserData = async (announce: boolean): Promise<number> => {
     let failures = 0;
     for (const table of SAMPLE_DATA_TABLES) {
       if (announce) addProgress(`Deleting ${table}...`);
       const { error: delError } = await (supabase.from(table) as any)
         .delete()
-        .eq('user_id', user!.id);
+        .eq('farm_id', farm!.farm_id);
       // Surface failures instead of swallowing them -- a table that silently
       // refuses to clear is how duplicates creep back in.
       if (delError) {
@@ -166,8 +169,7 @@ function SampleDataSection() {
       const existing = await Promise.all(
         SAMPLE_DATA_TABLES.map(async (table) => {
           const { count, error: countErr } = await (supabase.from(table) as any)
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
+            .select('*', { count: 'exact', head: true });
           // A count error (e.g. a table that isn't present) shouldn't block the
           // loader; treat it as empty, same as before this check existed.
           return { table, count: countErr ? 0 : (count ?? 0) };
@@ -818,6 +820,7 @@ function SampleDataSection() {
 // ============================================
 
 export default function SettingsPage() {
+  const { isOwner } = useFarm();
   const { user, signOut } = useAuth();
   const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
@@ -899,7 +902,7 @@ export default function SettingsPage() {
           <Database className="h-5 w-5 text-primary-600" />
           Beta Testing
         </h2>
-        <SampleDataSection />
+        {isOwner && <SampleDataSection />}
       </div>
 
       {/* Farm Settings */}

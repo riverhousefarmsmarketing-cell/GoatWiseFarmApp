@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 interface Photo {
   id: string;
@@ -99,7 +100,6 @@ export default function PhotoGalleryPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id)
         .eq('is_reference', false) // outside animals aren't part of the herd
         .order('name');
       if (error) throw error;
@@ -115,7 +115,6 @@ export default function PhotoGalleryPage() {
       const { data, error } = await supabase
         .from('photos')
         .select('*')
-        .eq('user_id', user!.id)
         .order('date_taken', { ascending: false });
       if (error) throw error;
       return data as Photo[];
@@ -172,20 +171,16 @@ export default function PhotoGalleryPage() {
   // Delete photo mutation
   const deleteMutation = useMutation({
     mutationFn: async (photo: Photo) => {
-      // Delete from storage
+      // Delete (or, for workers, request deletion of) the record first; only
+      // remove the file once the record is really gone.
+      const { error: dbError, outcome } = await deleteOrRequest('photos', photo.id, 'this photo');
+      if (dbError) throw dbError;
+      if (outcome !== 'deleted') return;
+
       const { error: storageError } = await supabase.storage
         .from('photos')
         .remove([photo.filename]);
-      
       if (storageError) console.error('Storage delete error:', storageError);
-
-      // Delete record
-      const { error: dbError } = await (supabase as any)
-        .from('photos')
-        .delete()
-        .eq('id', photo.id);
-
-      if (dbError) throw dbError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['photos'] });

@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { addDays, subDays, format, differenceInDays, differenceInCalendarDays, startOfToday, parseISO } from 'date-fns';
 import Link from 'next/link';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 const GESTATION_DAYS_STANDARD = 150;
 const GESTATION_DAYS_MINI = 145;
@@ -138,7 +139,6 @@ export default function BreedingPage() {
           doe:animals!breeding_records_doe_id_fkey(id, name, breed),
           buck:animals!breeding_records_buck_id_fkey(id, name)
         `)
-        .eq('user_id', user!.id)
         .order('due_date', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data as BreedingRecord[];
@@ -153,7 +153,6 @@ export default function BreedingPage() {
       const { data, error } = await supabase
         .from('animals')
         .select('*')
-        .eq('user_id', user!.id)
         .eq('status', 'active')
         .order('name');
       if (error) throw error;
@@ -237,7 +236,7 @@ export default function BreedingPage() {
 
   const deleteBreeding = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from('breeding_records') as any).delete().eq('id', id);
+      const { error } = await deleteOrRequest('breeding_records', id);
       if (error) throw error;
     },
     onSuccess: () => {

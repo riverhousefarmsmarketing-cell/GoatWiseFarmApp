@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { categoryIs, isFemale } from '@/lib/animalVocab';
 import type { Animal, AnimalInsert, AnimalUpdate } from '@/types/database';
+import { deleteOrRequest } from '@/lib/deleteRecord';
 
 // ==========================================
 // QUERY KEYS
@@ -181,9 +182,7 @@ export function useDeleteAnimal() {
       // manual sweep also did `DELETE FROM breeding_records WHERE buck_id = id`,
       // which DESTROYED the doe's breeding history for that sire -- the schema
       // intends buck_id to be SET NULL there (record kept). Let the DB handle it.
-      const { error } = await supabase.from('animals')
-        .delete()
-        .eq('id', id);
+      const { error } = await deleteOrRequest('animals', id);
 
       if (error) throw error;
     },
