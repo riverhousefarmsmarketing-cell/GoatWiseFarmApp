@@ -108,6 +108,29 @@ Several people can log in to one farm (migrations 019–021).
 
 Database tests for all of this: `PGHOST=… PGPORT=… supabase/tests/run.sh` (needs a local Postgres).
 
+## 🌾 Care Plans, Chores & Minerals
+
+Migration 022 adds the following:
+
+- **Care plans** (`care_plans`): feeding, watering and special instructions for a **group**, **pasture** or **herd**.
+  - Each plan has times of day, optional weekdays, an optional yearly season (`MM-DD` to `MM-DD`, which may run over New Year), and can be paused.
+  - Group plans follow the group as it moves between pastures. Pasture plans stay with the pasture.
+  - Owners and managers write plans; everyone can read them. Existing `feed_schedules` were copied in.
+- **Chores** (`chore_completions`): each feeding or watering time becomes a chore for the day (see `src/lib/chores.ts`, unit-tested in `tests/chores.test.ts`).
+  - Anyone on the farm ticks a chore off, with an optional note.
+  - The person who ticked it, or a manager, can undo it.
+  - One check-off per plan, day and time.
+- **Minerals** (`mineral_refills`): which loose mineral went into which pasture, how much, when, and who did it.
+  - Minerals are `feed_types` with category `mineral`.
+  - An optional `check_every_days` flags pastures that are due.
+  - Deleting a refill follows the normal approval rules.
+
+- **Restock list** (`restock_requests`, migration 023): anyone flags an item as low or out (optionally linked to a feed type or mineral), marks it ordered, or marks it restocked.
+  - Each step is stamped with who and when by a trigger, and the stamps can't be edited from the app.
+  - Only owners and managers can delete finished entries.
+
+All of these are farm-scoped and recorded in the change history.
+
 ## 📊 Features
 
 ### Dashboard

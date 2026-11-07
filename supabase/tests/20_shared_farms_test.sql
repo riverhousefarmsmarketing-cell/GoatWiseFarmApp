@@ -119,4 +119,77 @@ select pg_temp.ok((select count(*) from herds) = 0, 'removed worker loses access
 select pg_temp.ok(create_my_farm('Jake''s Goats') is not null, 'removed worker can start their own farm');
 reset role;
 select pg_temp.ok((select count(*) from herds where name = 'Kids pen') = 1, 'records a removed worker entered stay with the farm');
+
+-- ===================== 022: care plans, chores, minerals =====================
+reset role;
+select pg_temp.ok((select count(*) from care_plans where kind='feeding' and title='Alfalfa hay' and times = array['07:00','17:00']) = 1, 'existing herd feeding schedule copied into care plans (times sorted)');
+set role authenticated;
+\set J '''00000000-0000-0000-0000-0000000000d1'''
+reset role;
+insert into auth.users (id, email) values (:J, 'jo@worker.test');
+insert into farm_members (farm_id, user_id, role) select farm_id, :J, 'worker' from farm_members where user_id = :A;
+update profiles set current_farm_id = (select farm_id from farm_members where user_id = :A) where id = :J;
+set role authenticated;
+
+select pg_temp.as_user(:J);
+select pg_temp.raises($$insert into care_plans (kind, paddock_id, title, user_id) values ('watering', (select id from paddocks limit 1), 'Fill trough', '00000000-0000-0000-0000-0000000000d1')$$, 'worker cannot create care plans');
+select pg_temp.ok((select count(*) from care_plans) >= 1, 'worker can read care plans');
+
+select pg_temp.as_user(:A);
+insert into care_plans (id, kind, paddock_id, title, times, season_start, season_end, user_id)
+values ('50000000-0000-0000-0000-000000000001', 'watering', (select id from paddocks where name='North Pasture'), 'Check and fill troughs', array['07:00','16:00'], '11-01', '03-31', :A);
+select pg_temp.raises($$insert into care_plans (kind, herd_id, title, user_id) values ('feeding', '10000000-0000-0000-0000-000000000002', 'Steal', '00000000-0000-0000-0000-00000000000a')$$, 'cannot attach a plan to another farm''s herd');
+select pg_temp.raises($$insert into care_plans (kind, herd_id, paddock_id, title, user_id) values ('feeding', '10000000-0000-0000-0000-000000000001', (select id from paddocks limit 1), 'Two targets', '00000000-0000-0000-0000-00000000000a')$$, 'a plan has exactly one target');
+select pg_temp.raises($$insert into care_plans (kind, herd_id, title, times, user_id) values ('feeding', '10000000-0000-0000-0000-000000000001', 'Bad time', array['7am'], '00000000-0000-0000-0000-00000000000a')$$, 'times must be HH:MM');
+select pg_temp.raises($$insert into care_plans (kind, herd_id, title, season_start, user_id) values ('feeding', '10000000-0000-0000-0000-000000000001', 'Half season', '11-01', '00000000-0000-0000-0000-00000000000a')$$, 'season needs both start and end');
+
+select pg_temp.as_user(:J);
+insert into chore_completions (care_plan_id, chore_date, slot, note, user_id) values ('50000000-0000-0000-0000-000000000001', '2026-11-07', '07:00', 'Trough was low', :J);
+select pg_temp.raises($$insert into chore_completions (care_plan_id, chore_date, slot, user_id) values ('50000000-0000-0000-0000-000000000001', '2026-11-07', '07:00', '00000000-0000-0000-0000-0000000000d1')$$, 'the same chore cannot be ticked twice');
+select pg_temp.ok((select count(*) from audit_log where table_name='chore_completions' and changed_by=:J) = 1, 'chore check-off is in the change history');
+
+-- W was removed from RiverHouse earlier and now runs their own farm.
+select pg_temp.as_user(:W);
+select pg_temp.raises($$insert into chore_completions (care_plan_id, chore_date, slot, user_id) values ('50000000-0000-0000-0000-000000000001', '2026-11-07', '16:00', '00000000-0000-0000-0000-0000000000c1')$$, 'another farm cannot tick our chores');
+select pg_temp.ok((select count(*) from care_plans) = 0, 'another farm cannot see our care plans');
+
+-- Worker minerals
+select pg_temp.as_user(:A);
+insert into feed_types (id, name, category, unit, check_every_days, user_id) values ('60000000-0000-0000-0000-000000000001', 'Kelp', 'mineral', 'lbs', 14, :A);
+select pg_temp.as_user(:J);
+insert into mineral_refills (id, paddock_id, feed_type_id, amount, unit, refilled_on, user_id)
+values ('70000000-0000-0000-0000-000000000001', (select id from paddocks where name='North Pasture'), '60000000-0000-0000-0000-000000000001', 5, 'lbs', '2026-11-07', :J);
+select pg_temp.ok((select amount from mineral_refills) = 5, 'worker logs a mineral refill');
+select pg_temp.raises($$insert into mineral_refills (paddock_id, feed_type_id, amount, unit, user_id) values ((select id from paddocks limit 1), '60000000-0000-0000-0000-000000000001', 0, 'lbs', '00000000-0000-0000-0000-0000000000d1')$$, 'refill amount must be more than zero');
+delete from mineral_refills;
+select pg_temp.ok((select count(*) from mineral_refills) = 1, 'worker cannot delete a refill directly');
+select pg_temp.ok(delete_or_request('mineral_refills', '70000000-0000-0000-0000-000000000001', 'Kelp refill', 'wrong pasture') = 'requested', 'worker can request deleting a refill');
+select pg_temp.as_user(:A);
+select pg_temp.raises($$delete from feed_types where id = '60000000-0000-0000-0000-000000000001'$$, 'a mineral with refill history cannot be deleted');
+reset role;
+
+-- ===================== 023: restock list =====================
+set role authenticated;
+select pg_temp.as_user(:J);
+insert into restock_requests (id, item_name, feed_type_id, category, level, quantity_note, user_id)
+values ('80000000-0000-0000-0000-000000000001', 'Kelp', '60000000-0000-0000-0000-000000000001', 'mineral', 'low', 'half a bag left', :J);
+select pg_temp.ok((select status from restock_requests) = 'open', 'worker flags an item as low');
+select pg_temp.raises($$insert into restock_requests (item_name, status, user_id) values ('Sneaky', 'restocked', '00000000-0000-0000-0000-0000000000d1')$$, 'new items always start open');
+select pg_temp.as_user(:A);
+update restock_requests set status = 'ordered' where id = '80000000-0000-0000-0000-000000000001';
+select pg_temp.ok((select ordered_by from restock_requests) = :A and (select ordered_at from restock_requests) is not null, 'ordered is stamped with who and when');
+select pg_temp.as_user(:J);
+update restock_requests set status = 'restocked', resolution_note = '2 bags in the shed', user_id = :A where id = '80000000-0000-0000-0000-000000000001';
+select pg_temp.ok((select resolved_by from restock_requests) = :J, 'restocked is stamped with who did it');
+select pg_temp.ok((select user_id from restock_requests) = :J, 'who flagged it cannot be changed');
+select pg_temp.ok((select ordered_by from restock_requests) = :A, 'the ordered stamp is kept');
+update restock_requests set resolved_by = :A;
+select pg_temp.ok((select resolved_by from restock_requests) = :J, 'stamps cannot be forged by editing them');
+delete from restock_requests;
+select pg_temp.ok((select count(*) from restock_requests) = 1, 'worker cannot delete restock items');
+select pg_temp.ok((select count(*) from audit_log where table_name = 'restock_requests') = 3, 'every restock step is in the change history');
+select pg_temp.as_user(:W);
+select pg_temp.ok((select count(*) from restock_requests) = 0, 'another farm cannot see our restock list');
+select pg_temp.raises($$insert into restock_requests (item_name, feed_type_id, user_id) values ('Steal', '60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000c1')$$, 'cannot link another farm''s feed');
+reset role;
 \echo ALL TESTS PASSED

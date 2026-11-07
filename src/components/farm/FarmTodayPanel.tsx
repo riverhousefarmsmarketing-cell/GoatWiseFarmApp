@@ -3,7 +3,12 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { Megaphone, ClipboardList, Pin, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Megaphone, ClipboardList, Pin, CheckCircle2, ShieldCheck, ListChecks, Sparkles, PackageMinus } from 'lucide-react';
+import { useChoresForDay } from '@/hooks/useTodaysChores';
+import { useRestockRequests } from '@/hooks/useRestock';
+import { latestRefills, useMineralRefills, useMinerals } from '@/hooks/useCare';
+import { usePaddocks } from '@/hooks/useGrazing';
+import { daysBetween, formatSlot, isLate, localISODate } from '@/lib/chores';
 import { useAuth } from '@/hooks/useAuth';
 import { useFarm, useFarmMembers, memberName } from '@/hooks/useFarm';
 import { isOverdue, useAssignments, useFarmPosts, useSetAssignmentStatus } from '@/hooks/useFarmWork';
@@ -32,6 +37,31 @@ export function FarmTodayPanel() {
     enabled: !!farm && isManager,
   });
 
+  const today = localISODate();
+  const { chores, hasPlans } = useChoresForDay(today);
+  const choresDone = chores.filter((c) => c.completion).length;
+  const lateChores = chores.filter((c) => isLate(c, today));
+  const nextChore = chores.find((c) => !c.completion);
+
+  // Pastures with a mineral past its "check every N days".
+  const { data: minerals = [] } = useMinerals();
+  const { data: refills = [] } = useMineralRefills();
+  const { data: paddocks = [] } = usePaddocks();
+  const latest = latestRefills(refills);
+  let mineralsDue = 0;
+  for (const p of paddocks) {
+    for (const m of minerals) {
+      if (!m.check_every_days) continue;
+      const last = latest.get(`${p.id}|${m.id}`);
+      // Only nag about minerals that have been used in that pasture before.
+      if (last && daysBetween(last.refilled_on, today) > m.check_every_days) mineralsDue++;
+    }
+  }
+
+  const { data: restock = [] } = useRestockRequests();
+  const needsRestock = restock.filter((r) => r.status === 'open' || r.status === 'ordered');
+  const outCount = needsRestock.filter((r) => r.level === 'out').length;
+
   const unread = posts.filter((p) => !p.farm_post_reads.some((r) => r.user_id === user?.id));
   // Pinned first, then anything unread, then the newest; at most three.
   const featured = [...posts.filter((p) => p.pinned), ...unread.filter((p) => !p.pinned), ...posts]
@@ -55,6 +85,58 @@ export function FarmTodayPanel() {
             {pendingApprovals} delete request{pendingApprovals === 1 ? '' : 's'} waiting for your approval
           </span>
         </Link>
+      )}
+
+      {(hasPlans || mineralsDue > 0 || needsRestock.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {hasPlans && (
+            <Link href="/dashboard/chores" className="block">
+              <Card className="h-full hover:border-[#105040]">
+                <div className="flex items-center gap-3">
+                  <ListChecks className="h-6 w-6 text-[#105040] flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900">
+                      Today&apos;s chores: {choresDone} of {chores.length} done
+                      {lateChores.length > 0 && <span className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-[#9B1C1C] text-white">{lateChores.length} late</span>}
+                    </p>
+                    <p className="text-sm text-gray-500 truncate">
+                      {nextChore ? `Next: ${formatSlot(nextChore.slot)} — ${nextChore.plan.title}` : chores.length ? 'All done for today' : 'Nothing scheduled today'}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          )}
+          {needsRestock.length > 0 && (
+            <Link href="/dashboard/restock" className="block">
+              <Card className="h-full hover:border-[#105040]">
+                <div className="flex items-center gap-3">
+                  <PackageMinus className={`h-6 w-6 flex-shrink-0 ${outCount ? 'text-[#9B1C1C]' : 'text-[#8A5A1E]'}`} />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900">
+                      {needsRestock.length} item{needsRestock.length === 1 ? '' : 's'} to restock
+                      {outCount > 0 && <span className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-[#9B1C1C] text-white">{outCount} out</span>}
+                    </p>
+                    <p className="text-sm text-gray-500 truncate">{needsRestock.slice(0, 3).map((r) => r.item_name).join(', ')}</p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          )}
+          {mineralsDue > 0 && (
+            <Link href="/dashboard/minerals" className="block">
+              <Card className="h-full hover:border-[#105040]">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-6 w-6 text-[#8A5A1E] flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900">{mineralsDue} mineral refill{mineralsDue === 1 ? '' : 's'} overdue</p>
+                    <p className="text-sm text-gray-500">See which pastures need minerals</p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          )}
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

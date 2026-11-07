@@ -47,6 +47,10 @@ export const TABLE_LABELS: Record<string, string> = {
   deletion_requests: 'Deletion request',
   farm_posts: 'Farm update',
   assignments: 'Assignment',
+  care_plans: 'Care plan',
+  chore_completions: 'Chore check-off',
+  mineral_refills: 'Mineral refill',
+  restock_requests: 'Restock item',
 };
 
 export function tableLabel(table: string): string {
@@ -80,11 +84,11 @@ export function formatValue(value: unknown): string {
 /** A short name for the record, from whichever naming field it has. */
 export function recordName(entry: Pick<AuditEntry, 'old_data' | 'new_data'>): string | null {
   const row = entry.new_data ?? entry.old_data ?? {};
-  for (const key of ['name', 'title', 'tag_number', 'description', 'treatment', 'body', 'label', 'role']) {
+  for (const key of ['name', 'item_name', 'title', 'tag_number', 'description', 'treatment', 'body', 'label', 'role']) {
     const v = row[key];
     if (typeof v === 'string' && v.trim()) return v.length > 60 ? v.slice(0, 57) + '…' : v;
   }
-  for (const key of ['date', 'record_date', 'event_date', 'test_date', 'due_date']) {
+  for (const key of ['date', 'record_date', 'event_date', 'test_date', 'due_date', 'refilled_on', 'chore_date']) {
     if (row[key]) return String(row[key]);
   }
   return null;

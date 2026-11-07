@@ -489,9 +489,9 @@ export default function HerdManagementPage() {
         )}
         {activeTab === 'feed' && (
           <div className="flex gap-2">
-            <Button variant="secondary" leftIcon={<Calendar className="h-4 w-4" />} onClick={() => { resetScheduleForm(); setShowScheduleModal(true); }}>
-              Add Schedule
-            </Button>
+            <Link href="/dashboard/care-plans">
+              <Button variant="secondary" leftIcon={<Calendar className="h-4 w-4" />}>Care Plans</Button>
+            </Link>
             <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => { resetFeedForm(); setShowAddFeedModal(true); }}>
               Add Feed Item
             </Button>
@@ -809,66 +809,19 @@ export default function HerdManagementPage() {
             </Card>
           </div>
 
-          {/* Feed Schedules */}
+          {/* Feeding, watering and special instructions now live in Care Plans */}
           <div>
             <h2 className="text-lg font-semibold mb-4">Feeding Schedules</h2>
-            <Card padding="none">
-              {!feedSchedules?.length ? (
-                <EmptyState
-                  icon={<Calendar className="h-8 w-8" />}
-                  title="No feeding schedules"
-                  description="Set up feeding schedules for your herds"
-                  action={<Button onClick={() => { resetScheduleForm(); setShowScheduleModal(true); }}>Create Schedule</Button>}
-                />
-              ) : (
-                <div className="divide-y">
-                  {feedSchedules.map((schedule: any) => (
-                    <div key={schedule.id} className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
-                          style={{ backgroundColor: schedule.herd?.color || '#9ca3af' }}
-                        >
-                          {(schedule.herd as any)?.species === 'sheep' ? '🐑' : '🐐'}
-                        </div>
-                        <div>
-                          <p className="font-medium">{schedule.herd?.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {feedTypes.find((f: any) => f.value === schedule.feed_type)?.label || schedule.feed_type}
-                            {' • '}{schedule.quantity_per_feeding} {schedule.unit} per feeding
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <Badge variant={schedule.status === 'active' ? 'success' : 'default'}>
-                            {schedule.status}
-                          </Badge>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {schedule.feeding_times?.join(', ')}
-                          </p>
-                        </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => openEditSchedule(schedule)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 rounded"
-                            title="Edit schedule"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSchedule(schedule.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-                            title="Delete schedule"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <Card>
+              <p className="text-sm text-gray-700">
+                Feeding, watering and special instructions are now set in <span className="font-medium">Care Plans</span>, by group,
+                pasture or herd, with times, days and seasons. Your existing herd schedules were copied there.
+                Feeding times also appear on Today&apos;s Chores for the team to tick off.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Link href="/dashboard/care-plans"><Button size="sm">Open Care Plans</Button></Link>
+                <Link href="/dashboard/chores"><Button size="sm" variant="outline">Today&apos;s Chores</Button></Link>
+              </div>
             </Card>
           </div>
         </div>
