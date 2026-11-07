@@ -352,4 +352,46 @@ select pg_temp.as_user(:J);
 select pg_temp.ok(to_char(now() at time zone 'UTC', 'HH24:MI') < '08:00'
   or (select count(*) from notifications where kind = 'assignment_overdue') = 1, 'an overdue assignment reminds the person');
 reset role;
+
+-- ===================== 030: people, hours, pay =====================
+set role authenticated;
+select pg_temp.as_user(:A);
+select pg_temp.ok((select count(*) from farm_members m where m.farm_id = public.current_farm_id() and not exists (select 1 from farm_people p where p.user_id = m.user_id and p.farm_id = m.farm_id)) = 0, 'everyone with a login has a profile (former workers keep theirs for history)');
+insert into farm_people (id, name, kind) values ('d0000000-0000-0000-0000-000000000001', 'Grandpa', 'family');
+insert into person_pay (person_id, pay_type, rate) values ('d0000000-0000-0000-0000-000000000001', 'hourly', 12);
+select pg_temp.as_user(:J);
+select pg_temp.ok((select count(*) from farm_people where name = 'Grandpa') = 1, 'workers can see who works here (to hand out jobs)');
+select pg_temp.ok((select count(*) from person_pay) = 0, 'workers cannot see pay rates');
+select pg_temp.raises($$insert into farm_people (name) values ('Sneaky')$$, 'workers cannot add people');
+select pg_temp.raises($$insert into time_entries (person_id, hours, user_id) values ('d0000000-0000-0000-0000-000000000001', 3, '00000000-0000-0000-0000-0000000000d1')$$, 'workers cannot log hours for someone else');
+insert into time_entries (id, person_id, work_date, start_time, end_time, break_minutes, hours, task, user_id)
+select 'e0000000-0000-0000-0000-000000000001', id, '2026-11-02', '06:00', '10:30', 30, 1, 'Milking', :J from farm_people where user_id = :J;
+select pg_temp.ok((select hours from time_entries where id = 'e0000000-0000-0000-0000-000000000001') = 4.00, 'hours are worked out from start, end and break');
+update time_entries set person_id = 'd0000000-0000-0000-0000-000000000001' where id = 'e0000000-0000-0000-0000-000000000001';
+select pg_temp.ok((select person_id from time_entries where id = 'e0000000-0000-0000-0000-000000000001') <> 'd0000000-0000-0000-0000-000000000001', 'a worker cannot move their hours to someone else');
+
+select pg_temp.as_user(:A);
+insert into time_entries (person_id, work_date, hours, task, user_id) values ('d0000000-0000-0000-0000-000000000001', '2026-11-03', 5, 'Fencing (from paper sheet)', :A),
+                                                                          ('d0000000-0000-0000-0000-000000000001', '2026-11-20', 2, 'Later', :A);
+select pg_temp.ok((select count(*) from time_entries) = 3, 'the owner sees everyone''s hours');
+insert into pay_payments (id, person_id, amount, period_start, period_end, hours, user_id) values ('f0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 60, '2026-11-01', '2026-11-07', 5, :A);
+select pg_temp.ok((select count(*) from time_entries where paid_payment_id = 'f0000000-0000-0000-0000-000000000001') = 1, 'a payment marks the hours in its period as paid (and only those)');
+
+select pg_temp.as_user(:J);
+select pg_temp.ok((select count(*) from time_entries) = 1, 'a worker sees only their own hours');
+select pg_temp.ok((select count(*) from pay_payments) = 0, 'a worker cannot see others'' payments');
+select pg_temp.ok((select count(*) from audit_log where table_name in ('person_pay', 'pay_payments', 'time_entries')) = 0, 'pay is hidden from workers in the change history');
+
+-- Paper sheet: owner ticks a chore on Grandpa's behalf
+select pg_temp.as_user(:A);
+insert into chore_completions (care_plan_id, chore_date, slot, person_id, user_id) values ('50000000-0000-0000-0000-000000000001', '2026-11-08', '07:00', 'd0000000-0000-0000-0000-000000000001', :A);
+select pg_temp.ok((select person_id from chore_completions where chore_date = '2026-11-08') = 'd0000000-0000-0000-0000-000000000001', 'a chore can record which person did it');
+insert into assignment_people values ('30000000-0000-0000-0000-0000000000f1', 'd0000000-0000-0000-0000-000000000001');
+select pg_temp.ok((select count(*) from assignment_people) = 1, 'jobs can be given to people without a login');
+select pg_temp.as_user(:W);
+select pg_temp.ok((select count(*) from farm_people where name = 'Grandpa') = 0, 'another farm cannot see our people');
+insert into herds (id, name, user_id) values ('10000000-0000-0000-0000-0000000000c9', 'Jake herd', :W);
+insert into care_plans (id, kind, herd_id, title, times, user_id) values ('50000000-0000-0000-0000-0000000000c9', 'feeding', '10000000-0000-0000-0000-0000000000c9', 'Hay', array['07:00'], :W);
+select pg_temp.raises($$insert into chore_completions (care_plan_id, chore_date, slot, person_id, user_id) values ('50000000-0000-0000-0000-0000000000c9', '2026-11-09', '07:00', 'd0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000c1')$$, 'cannot credit another farm''s person');
+reset role;
 \echo ALL TESTS PASSED

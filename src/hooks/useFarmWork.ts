@@ -110,6 +110,8 @@ export interface Assignment {
   completed_by: string | null;
   completion_note: string | null;
   assignment_assignees: { user_id: string }[];
+  assignment_people: { person_id: string }[];
+  completed_by_person_id: string | null;
   animals: { name: string } | null;
   herds: { name: string } | null;
   paddocks: { name: string } | null;
@@ -137,7 +139,7 @@ export function useAssignments(opts: { includeDone?: boolean } = {}) {
     queryFn: async () => {
       let q = (getSupabaseClient() as any)
         .from('assignments')
-        .select('*, assignment_assignees(user_id), animals(name), herds(name), paddocks(name)')
+        .select('*, assignment_assignees(user_id), assignment_people(person_id), animals(name), herds(name), paddocks(name)')
         .order('due_date', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false });
       if (!opts.includeDone) {
@@ -164,6 +166,24 @@ export interface AssignmentInput {
   herd_id: string;
   paddock_id: string;
   assignees: string[];
+  /** People without a login (farm_people ids). */
+  people: string[];
+}
+
+async function syncAssignmentPeople(supabase: any, assignmentId: string, people: string[]) {
+  const { data: current, error } = await supabase.from('assignment_people').select('person_id').eq('assignment_id', assignmentId);
+  if (error) throw error;
+  const have: string[] = (current ?? []).map((r: any) => r.person_id);
+  const toRemove = have.filter((x) => !people.includes(x));
+  const toAdd = people.filter((x) => !have.includes(x));
+  if (toRemove.length) {
+    const { error: e } = await supabase.from('assignment_people').delete().eq('assignment_id', assignmentId).in('person_id', toRemove);
+    if (e) throw e;
+  }
+  if (toAdd.length) {
+    const { error: e } = await supabase.from('assignment_people').insert(toAdd.map((person_id) => ({ assignment_id: assignmentId, person_id })));
+    if (e) throw e;
+  }
 }
 
 export function useSaveAssignment() {
@@ -199,6 +219,7 @@ export function useSaveAssignment() {
           const { error: e } = await supabase.from('assignment_assignees').insert(toAdd.map((user_id) => ({ assignment_id: id, user_id })));
           if (e) throw e;
         }
+        await syncAssignmentPeople(supabase, id!, input.people);
       } else {
         const { data, error } = await supabase.from('assignments').insert(values).select('id').single();
         if (error) throw error;
@@ -209,6 +230,7 @@ export function useSaveAssignment() {
             .insert(input.assignees.map((user_id) => ({ assignment_id: id, user_id })));
           if (e) throw e;
         }
+        await syncAssignmentPeople(supabase, id!, input.people);
       }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: assignmentKeys.all }); pokeDispatch(); },
@@ -218,9 +240,10 @@ export function useSaveAssignment() {
 export function useSetAssignmentStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status, note }: { id: string; status: AssignmentStatus; note?: string | null }) => {
+    mutationFn: async ({ id, status, note, personId }: { id: string; status: AssignmentStatus; note?: string | null; personId?: string | null }) => {
       const update: Record<string, unknown> = { status };
       if (note !== undefined) update.completion_note = note || null;
+      if (personId !== undefined) update.completed_by_person_id = personId;
       const { error } = await (getSupabaseClient() as any).from('assignments').update(update).eq('id', id);
       if (error) throw error;
     },

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { addDays, format, parseISO } from 'date-fns';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, ListChecks, Undo2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, ListChecks, Undo2, Printer } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFarm, useFarmMembers, memberName } from '@/hooks/useFarm';
 import { useTickChore, useUntickChore } from '@/hooks/useCare';
@@ -11,6 +11,8 @@ import { useChoresForDay, useTargetLabeler } from '@/hooks/useTodaysChores';
 import { KIND_ICON } from '@/components/farm/careIcons';
 import { formatSlot, isLate, localISODate } from '@/lib/chores';
 import { Badge, Button, Card, EmptyState, LoadingSpinner } from '@/components/ui';
+import { usePeople, useMyPerson, personName } from '@/hooks/usePeople';
+import { DoneByDialog } from '@/components/farm/DoneByDialog';
 
 export default function ChoresPage() {
   const today = localISODate();
@@ -23,15 +25,15 @@ export default function ChoresPage() {
   const tick = useTickChore();
   const untick = useUntickChore();
 
+  const myPersonFor = (userId: string | null) => people.find((pp) => pp.user_id === userId)?.id;
   const done = chores.filter((c) => c.completion).length;
   const slots = Array.from(new Set(chores.map((c) => c.slot)));
   const shift = (n: number) => setDate(format(addDays(parseISO(date), n), 'yyyy-MM-dd'));
 
-  const onTick = (planId: string, slot: string, title: string) => {
-    const note = window.prompt(`"${title}" done. Add a note? (optional)`, '');
-    if (note === null) return;
-    tick.mutate({ care_plan_id: planId, chore_date: date, slot, note }, { onError: (e: any) => alert(e.message) });
-  };
+  const { data: people = [] } = usePeople();
+  const { data: myPerson } = useMyPerson();
+  const [ticking, setTicking] = useState<{ planId: string; slot: string; title: string } | null>(null);
+  const onTick = (planId: string, slot: string, title: string) => setTicking({ planId, slot, title });
 
   return (
     <div className="space-y-6">
@@ -48,6 +50,7 @@ export default function ChoresPage() {
             className="rounded-lg border border-[#DDD8D4] px-2 py-1.5 text-sm" />
           <Button variant="outline" size="sm" aria-label="Next day" onClick={() => shift(1)}><ChevronRight className="h-4 w-4" /></Button>
           {date !== today && <Button variant="ghost" size="sm" onClick={() => setDate(today)}>Today</Button>}
+          <Link href={`/print/day?date=${date}`} target="_blank"><Button variant="outline" size="sm" leftIcon={<Printer className="h-4 w-4" />}>Print</Button></Link>
         </div>
       </div>
 
@@ -121,7 +124,9 @@ export default function ChoresPage() {
                           </p>
                           {c.completion && (
                             <p className="text-xs text-[#105040] mt-0.5">
-                              Done by {memberName(members, c.completion.user_id)} at {format(new Date(c.completion.done_at), 'h:mm a')}
+                              Done by {(c.completion as any).person_id && (c.completion as any).person_id !== myPersonFor(c.completion.user_id)
+                                ? `${personName(people, (c.completion as any).person_id)} (entered by ${memberName(members, c.completion.user_id)})`
+                                : memberName(members, c.completion.user_id)} at {format(new Date(c.completion.done_at), 'h:mm a')}
                               {waitingToSend && ' · waiting for signal to send'}
                               {c.completion.note ? ` — “${c.completion.note}”` : ''}
                             </p>
@@ -143,6 +148,17 @@ export default function ChoresPage() {
           )}
         </>
       )}
+      <DoneByDialog
+        open={!!ticking}
+        title={ticking ? `"${ticking.title}" done` : ''}
+        busy={tick.isPending}
+        onClose={() => setTicking(null)}
+        onConfirm={({ personId, note }) => {
+          if (!ticking) return;
+          tick.mutate({ care_plan_id: ticking.planId, chore_date: date, slot: ticking.slot, note, person_id: personId && personId !== myPerson?.id ? personId : null } as any,
+            { onSuccess: () => setTicking(null), onError: (e: any) => alert(e.message) });
+        }}
+      />
     </div>
   );
 }

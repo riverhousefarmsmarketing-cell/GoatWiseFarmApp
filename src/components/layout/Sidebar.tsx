@@ -49,6 +49,7 @@ MapPin,
   PackageMinus,
   Siren,
   Bell,
+  Clock,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useFarm, ROLE_LABELS } from '@/hooks/useFarm';
@@ -131,6 +132,7 @@ const farmNavigation = [
   { name: 'Restock List', href: '/dashboard/restock', icon: PackageMinus },
   { name: 'Approvals', href: '/dashboard/approvals', icon: ShieldCheck },
   { name: 'Change History', href: '/dashboard/history', icon: History },
+  { name: 'People & Hours', href: '/dashboard/people', icon: Clock },
   { name: 'Team', href: '/dashboard/team', icon: UserPlus },
 ];
 

@@ -169,6 +169,24 @@ Migrations 024–029 add the following.
 - The last loaded data is kept on the device for 3 days, and cleared on sign-out.
 - Ticking chores and doses, flagging restock items, logging minerals and reporting concerns (without a photo) are saved on the device and sent when the connection returns (`src/lib/offline.ts`, unit tested). Each row carries its own id, so retries never duplicate.
 
+## 🧑‍🌾 People, Hours, Pay & Printable Sheets
+
+Migration 030 adds the following.
+
+- **People** (`farm_people`): everyone who works on the farm. People with a login get a profile automatically. Family and helpers who won't use the app are added by hand.
+- **Pay settings** (`person_pay`): hourly, daily, salary, per job or unpaid. Owners and managers only.
+- **Hours** (`time_entries`):
+  - Start and end time with a break (worked out by the database), or total hours.
+  - Owners and managers enter hours for anyone. People log their own until those hours are paid.
+- **Payments** (`pay_payments`): recording a payment for a period marks those hours as paid. It can optionally add a labor expense in Money.
+- **This is record keeping only**: no tax or withholding. Pay is hidden from workers, including in Change History.
+- **Paper sheets**:
+  - `/print/day`: the day's chores, medicine doses, jobs, an hours box and a notes box.
+  - `/print/week`: a weekly chore grid.
+  - `/print/assignments`: jobs per person, one page each.
+- **Entering a paper sheet back in**: ticking a chore, dose or job asks **who did it**. This is stored as `person_id` / `completed_by_person_id`, while `user_id` still records who entered it.
+- **Jobs for people without a login**: assignments can go to these people via `assignment_people`.
+
 ## 📊 Features
 
 ### Dashboard

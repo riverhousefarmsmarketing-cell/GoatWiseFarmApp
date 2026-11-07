@@ -62,3 +62,17 @@
     @apply block text-sm font-medium text-[#384E42] mb-1;
   }
 }
+
+/* Printable sheets (/print/...) */
+@media print {
+  .no-print { display: none !important; }
+  @page { size: letter; margin: 0.5in; }
+  body { background: #fff !important; }
+  .print-sheet { font-size: 11pt; }
+  .print-sheet table { page-break-inside: auto; }
+  .print-sheet tr { page-break-inside: avoid; }
+}
+.print-sheet table { width: 100%; border-collapse: collapse; }
+.print-sheet th { text-align: left; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid #000; padding: 4px 6px; }
+.print-sheet td { border-bottom: 1px solid #bbb; padding: 7px 6px; vertical-align: top; }
+.print-sheet .blank { border-bottom: 1px solid #555; min-width: 6rem; display: inline-block; }
