@@ -13,6 +13,8 @@ import {
 import { formatSlot, localISODate } from '@/lib/chores';
 import { Badge, Button, Card, EmptyState, Input, LoadingSpinner, Modal, Select } from '@/components/ui';
 import { DoseCell } from '@/components/farm/DoseCell';
+import { useMyPerson, usePeople } from '@/hooks/usePeople';
+import { DoneByDialog } from '@/components/farm/DoneByDialog';
 
 type CourseForm = {
   animal_id: string; medicine_id: string; medicine_lot_id: string; medication: string; reason: string; dose: string; dose_unit: string;
@@ -40,14 +42,10 @@ export default function TreatmentsPage() {
 
   const doseMap = useMemo(() => new Map(doses.map((d) => [`${d.course_id}|${d.dose_date}|${d.slot}`, d])), [doses]);
 
-  const giveDose = (c: TreatmentCourse, date: string, slot: string) => {
-    const amountStr = window.prompt(`${c.medication} for ${animalLabel(c.animals)} — ${formatSlot(slot)}, ${format(parseISO(date), 'MMM d')}.\n\nAmount given (${c.dose_unit ?? 'units'}):`, c.dose?.toString() ?? '');
-    if (amountStr === null) return;
-    const note = window.prompt('Note? (optional)', '');
-    if (note === null) return;
-    give.mutate({ course_id: c.id, dose_date: date, slot, amount: amountStr.trim() === '' ? null : Number(amountStr), dose_unit: c.dose_unit, medicine_lot_id: c.medicine_lot_id, note },
-      { onError: (e: any) => alert(e.message) });
-  };
+  const { data: myPerson } = useMyPerson();
+  const { data: people = [] } = usePeople();
+  const [giving, setGiving] = useState<{ c: TreatmentCourse; date: string; slot: string } | null>(null);
+  const giveDose = (c: TreatmentCourse, date: string, slot: string) => setGiving({ c, date, slot });
   const skipDose = (c: TreatmentCourse, date: string, slot: string) => {
     const reason = window.prompt(`Skip the ${formatSlot(slot)} dose for ${animalLabel(c.animals)}? Why?`, '');
     if (reason === null) return;
@@ -136,7 +134,7 @@ export default function TreatmentsPage() {
                 {daySlots.map((slot) => {
                   const dose = doseMap.get(`${c.id}|${date}|${slot}`);
                   return (
-                    <DoseCell key={slot} course={c} date={date} slot={slot} dose={dose} today={today} members={members}
+                    <DoseCell key={slot} course={c} date={date} slot={slot} dose={dose} today={today} members={members} people={people}
                       canUndo={!!dose && !(dose as any).pending && (dose.user_id === user?.id || isManager)}
                       onGive={() => c.status !== 'stopped' && giveDose(c, date, slot)}
                       onSkip={() => c.status !== 'stopped' && skipDose(c, date, slot)}
@@ -231,6 +229,22 @@ export default function TreatmentsPage() {
           </div>
         )}
       </Modal>
+      <DoneByDialog
+        open={!!giving}
+        title={giving ? `${giving.c.medication} for ${animalLabel(giving.c.animals)} — ${formatSlot(giving.slot)}, ${format(parseISO(giving.date), 'MMM d')}` : ''}
+        confirmLabel="Dose given"
+        amountLabel={giving ? `Amount given (${giving.c.dose_unit ?? 'units'})` : undefined}
+        defaultAmount={giving?.c.dose?.toString() ?? ''}
+        busy={give.isPending}
+        onClose={() => setGiving(null)}
+        onConfirm={({ personId, note, amount }) => {
+          if (!giving) return;
+          const { c, date, slot } = giving;
+          give.mutate({ course_id: c.id, dose_date: date, slot, amount: !amount ? null : Number(amount), dose_unit: c.dose_unit,
+            medicine_lot_id: c.medicine_lot_id, note, person_id: personId && personId !== myPerson?.id ? personId : null } as any,
+            { onSuccess: () => setGiving(null), onError: (e: any) => alert(e.message) });
+        }}
+      />
     </div>
   );
 }

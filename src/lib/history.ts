@@ -61,6 +61,10 @@ export const TABLE_LABELS: Record<string, string> = {
   concern_reports: 'Concern',
   lab_tests: 'Lab test',
   notifications: 'Notification',
+  farm_people: 'Person',
+  person_pay: 'Pay setting',
+  time_entries: 'Hours',
+  pay_payments: 'Payment',
 };
 
 export function tableLabel(table: string): string {

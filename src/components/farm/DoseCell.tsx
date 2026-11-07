@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, XCircle, Undo2 } from 'lucide-react';
 import { memberName, type FarmMember } from '@/hooks/useFarm';
 import type { CourseDose, TreatmentCourse } from '@/hooks/useAnimalHealth';
 import { formatSlot } from '@/lib/chores';
+import { personName, type Person } from '@/hooks/usePeople';
 
 function nowHHMM() {
   const d = new Date();
@@ -12,9 +13,9 @@ function nowHHMM() {
 }
 
 /** One scheduled dose of a treatment course: given, skipped, late or still to do. */
-export function DoseCell({ course, date, slot, dose, onGive, onSkip, onUndo, canUndo, members, today }: {
+export function DoseCell({ course, date, slot, dose, onGive, onSkip, onUndo, canUndo, members, people, today }: {
   course: TreatmentCourse; date: string; slot: string; dose: CourseDose | undefined; today: string;
-  onGive: () => void; onSkip: () => void; onUndo: () => void; canUndo: boolean; members: FarmMember[] | undefined;
+  onGive: () => void; onSkip: () => void; onUndo: () => void; canUndo: boolean; members: FarmMember[] | undefined; people?: Person[];
 }) {
   const late = !dose && (date < today || (date === today && slot < nowHHMM()));
   if (dose) {
@@ -24,7 +25,7 @@ export function DoseCell({ course, date, slot, dose, onGive, onSkip, onUndo, can
         <div className="text-xs flex-1 min-w-0">
           <p className="font-medium text-gray-900">{formatSlot(slot)} {dose.skipped ? 'skipped' : 'given'}</p>
           <p className="text-gray-600">
-            {memberName(members, dose.user_id)} · {format(new Date(dose.given_at), "MMM d 'at' h:mm a")}
+            {(dose as any).person_id && people ? `${personName(people, (dose as any).person_id)} (entered by ${memberName(members, dose.user_id)})` : memberName(members, dose.user_id)} · {format(new Date(dose.given_at), "MMM d 'at' h:mm a")}
             {(dose as any).pending ? ' · waiting for signal to send' : ''}
             {dose.amount != null && !dose.skipped ? ` · ${dose.amount} ${dose.dose_unit ?? course.dose_unit ?? ''}` : ''}
           </p>
