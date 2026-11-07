@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useFarm } from '@/hooks/useFarm';
+import { pokeDispatch } from '@/lib/push';
 
 // ---------------------------------------------------------------------------
 // Farm updates feed (migration 021)
@@ -54,7 +55,7 @@ export function useSavePost() {
         : await supabase.from('farm_posts').insert({ ...values, author_id: user!.id });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: postKeys.all }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: postKeys.all }); pokeDispatch(); },
   });
 }
 
@@ -210,7 +211,7 @@ export function useSaveAssignment() {
         }
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: assignmentKeys.all }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: assignmentKeys.all }); pokeDispatch(); },
   });
 }
 

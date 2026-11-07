@@ -48,6 +48,7 @@ MapPin,
   Wheat,
   PackageMinus,
   Siren,
+  Bell,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useFarm, ROLE_LABELS } from '@/hooks/useFarm';
@@ -55,6 +56,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 
 // Global Search imports
 import { GlobalSearchDialog, SearchTrigger, useGlobalSearch } from '@/components/GlobalSearch';
+import { useNotifications } from '@/hooks/useNotifications';
 
 // PRIMARY NAVIGATION - 6 core items only
 const primaryNavigation = [
@@ -160,6 +162,9 @@ export function Sidebar() {
   const { farm, farms, role, isManager, switchFarm } = useFarm();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const { data: notifications = [] } = useNotifications();
+  const unreadNotifications = notifications.filter((n) => !n.read_at).length;
+
   // Pending deletion requests: owners/managers see how many need a decision.
   const { data: pendingApprovals = 0 } = useQuery({
     queryKey: ['deletion_requests', 'pending_count', farm?.farm_id],
@@ -257,8 +262,25 @@ export function Sidebar() {
           {/* Current farm + switcher */}
           {farm && (
             <div className="px-6 py-3 border-b border-white/10">
-              <p className="text-sm font-medium text-white truncate" title={farm.name}>{farm.name}</p>
-              <p className="text-xs text-[#E8E0D8]/60">{role ? ROLE_LABELS[role] : ''}</p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white truncate" title={farm.name}>{farm.name}</p>
+                  <p className="text-xs text-[#E8E0D8]/60">{role ? ROLE_LABELS[role] : ''}</p>
+                </div>
+                <Link
+                  href="/dashboard/notifications"
+                  onClick={() => setMobileOpen(false)}
+                  className="relative p-1.5 rounded-lg text-[#E8E0D8] hover:bg-white/10"
+                  aria-label={unreadNotifications ? `${unreadNotifications} unread notifications` : 'Notifications'}
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-[#9B1C1C] text-white text-[10px] font-semibold flex items-center justify-center">
+                      {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                    </span>
+                  )}
+                </Link>
+              </div>
               {farms.length > 1 && (
                 <label className="mt-2 flex items-center gap-2 text-xs text-[#E8E0D8]/80">
                   <ArrowLeftRight className="h-3.5 w-3.5 flex-shrink-0" />

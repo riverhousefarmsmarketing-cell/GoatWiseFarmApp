@@ -60,6 +60,7 @@ export const TABLE_LABELS: Record<string, string> = {
   health_protocols: 'Health rule',
   concern_reports: 'Concern',
   lab_tests: 'Lab test',
+  notifications: 'Notification',
 };
 
 export function tableLabel(table: string): string {

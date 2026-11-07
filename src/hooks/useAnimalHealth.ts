@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFarm } from '@/hooks/useFarm';
 import { deleteOrRequest } from '@/lib/deleteRecord';
 import type { HealthProtocol, ProtocolRecord, ScheduleAnimal } from '@/lib/healthSchedule';
+import { pokeDispatch } from '@/lib/push';
 
 const db = () => getSupabaseClient() as any;
 
@@ -525,7 +526,7 @@ export function useReportConcern() {
       });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ahKeys.concerns }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ahKeys.concerns }); pokeDispatch(); },
   });
 }
 
@@ -536,7 +537,7 @@ export function useUpdateConcern() {
       const { error } = await db().from('concern_reports').update(patch).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ahKeys.concerns }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ahKeys.concerns }); pokeDispatch(); },
   });
 }
 

@@ -65,6 +65,20 @@ export function FarmProvider({ children }: { children: ReactNode }) {
     setFarmSessionRole(role);
   }, [role]);
 
+  // Chore and dose times are farm time. The database needs the farm's time
+  // zone to know when something is late; fill it in from the owner's browser
+  // the first time (it can be changed on the Team page).
+  const farmId = farm?.farm_id;
+  useEffect(() => {
+    if (role !== 'owner' || !farmId) return;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!tz || tz === 'UTC') return;
+    const supabase = getSupabaseClient() as any;
+    supabase.from('farms').select('timezone').eq('id', farmId).maybeSingle().then(({ data }: any) => {
+      if (data && data.timezone === 'UTC') supabase.from('farms').update({ timezone: tz }).eq('id', farmId).then(() => undefined);
+    });
+  }, [role, farmId]);
+
   const switchFarm = async (farmId: string) => {
     const { error } = await (getSupabaseClient() as any).rpc('switch_farm', { p_farm_id: farmId });
     if (error) throw error;

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useFarm } from '@/hooks/useFarm';
+import { pokeDispatch } from '@/lib/push';
 
 const db = () => getSupabaseClient() as any;
 
@@ -81,7 +82,7 @@ export function useFlagRestock() {
       });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: restockKeys.all }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: restockKeys.all }); pokeDispatch(); },
   });
 }
 

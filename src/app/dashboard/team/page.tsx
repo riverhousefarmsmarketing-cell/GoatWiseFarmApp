@@ -20,6 +20,14 @@ interface Invite {
   revoked_at: string | null;
 }
 
+const TIMEZONES: string[] = (() => {
+  try {
+    return (Intl as any).supportedValuesOf('timeZone') as string[];
+  } catch {
+    return ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu', 'UTC'];
+  }
+})();
+
 const ROLE_HELP: Record<FarmRole, string> = {
   owner: 'Everything, including managing the team.',
   manager: 'Everything except changing roles or removing people. Approves deletions, posts updates, makes assignments.',
@@ -102,6 +110,24 @@ export default function TeamPage() {
     onError: (e: any) => alert(e.message),
   });
 
+  const { data: timezone } = useQuery<string | null>({
+    queryKey: ['farm_timezone', farm?.farm_id],
+    queryFn: async () => {
+      const { data } = await supabase.from('farms').select('timezone').eq('id', farm!.farm_id).maybeSingle();
+      return data?.timezone ?? null;
+    },
+    enabled: !!farm && isOwner,
+  });
+
+  const saveTimezone = useMutation({
+    mutationFn: async (tz: string) => {
+      const { error } = await supabase.from('farms').update({ timezone: tz }).eq('id', farm!.farm_id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['farm_timezone'] }),
+    onError: (e: any) => alert(e.message),
+  });
+
   const renameFarm = useMutation({
     mutationFn: async (name: string) => {
       const { error } = await supabase.from('farms').update({ name }).eq('id', farm!.farm_id);
@@ -176,6 +202,19 @@ export default function TeamPage() {
           {farm.complimentary && (
             <p className="mt-3 text-sm text-[#105040]">This farm has a complimentary account.</p>
           )}
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center gap-2">
+            <label htmlFor="farm-tz" className="text-sm font-medium text-gray-700 sm:w-28">Time zone</label>
+            <select
+              id="farm-tz"
+              value={timezone ?? ''}
+              onChange={(e) => saveTimezone.mutate(e.target.value)}
+              className="flex-1 rounded-lg border border-[#DDD8D4] px-3 py-2 text-sm"
+            >
+              {timezone && !TIMEZONES.includes(timezone) && <option value={timezone}>{timezone}</option>}
+              {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>)}
+            </select>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Used to tell when chores and doses are late, and to send alerts at the right time.</p>
         </Card>
       )}
 

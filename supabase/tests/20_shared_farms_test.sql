@@ -302,4 +302,54 @@ select pg_temp.ok((select value from lab_tests) = 1200, 'worker records a lab re
 select pg_temp.as_user(:W);
 select pg_temp.ok((select count(*) from lab_tests) = 0 and (select count(*) from concern_reports) = 0, 'another farm cannot see our lab tests or concerns');
 reset role;
+
+-- ===================== 029: notifications =====================
+reset role;
+delete from notifications;
+set role authenticated;
+select pg_temp.as_user(:J);
+insert into concern_reports (description, urgency, user_id) values ('Fence down by the creek', 'urgent', :J);
+select pg_temp.as_user(:A);
+select pg_temp.ok((select count(*) from notifications where kind = 'concern' and urgent) = 1, 'an urgent concern notifies the owner straight away');
+select pg_temp.as_user(:J);
+select pg_temp.ok((select count(*) from notifications where kind = 'concern') = 0, 'the reporter is not notified of their own concern');
+select pg_temp.raises($$insert into notifications (farm_id, user_id, kind, title) values (public.current_farm_id(), '00000000-0000-0000-0000-0000000000d1', 'x', 'x')$$, 'nobody can write notifications directly');
+select pg_temp.as_user(:A);
+update concern_reports set status = 'resolved', resolution_note = 'Fixed it' where description = 'Fence down by the creek';
+select pg_temp.as_user(:J);
+select pg_temp.ok((select count(*) from notifications where kind = 'concern_resolved') = 1, 'the reporter hears when it is resolved');
+update notifications set read_at = now();
+select pg_temp.ok((select count(*) from notifications where read_at is null) = 0, 'people mark their own notifications read');
+select pg_temp.raises($$update notifications set title = 'hacked'$$, 'only the read mark can be changed');
+
+-- Assignment and restock
+select pg_temp.as_user(:A);
+insert into assignments (id, title, due_date) values ('30000000-0000-0000-0000-0000000000f1', 'Fix gate', current_date - 1);
+insert into assignment_assignees values ('30000000-0000-0000-0000-0000000000f1', :J);
+select pg_temp.as_user(:J);
+select pg_temp.ok((select count(*) from notifications where kind = 'assignment') = 1, 'a new assignment notifies the person');
+insert into restock_requests (item_name, level, user_id) values ('Straw', 'out', :J);
+select pg_temp.as_user(:A);
+select pg_temp.ok((select count(*) from notifications where kind = 'restock' and title = 'Out of Straw') = 1, 'running out notifies managers');
+
+-- Time-based: a dose two hours late (farm time zone UTC)
+reset role;
+update farms set timezone = 'UTC';
+select set_config('test.slot', to_char(now() at time zone 'UTC' - interval '2 hours', 'HH24:MI'), false);
+insert into animals (id, name, sex, category, user_id, farm_id) select '20000000-0000-0000-0000-0000000000a3', 'Clover', 'doe', 'milking_doe', :A, farm_id from farm_members where user_id = :A;
+insert into treatment_courses (id, farm_id, animal_id, medication, times, start_date, days, user_id)
+select 'a0000000-0000-0000-0000-0000000000f1', farm_id, '20000000-0000-0000-0000-0000000000a3', 'LA-200', array[current_setting('test.slot')], (now() at time zone 'UTC')::date, 1, :A
+  from farm_members where user_id = :A;
+select public.generate_due_notifications();
+select public.generate_due_notifications();
+set role authenticated;
+select pg_temp.as_user(:A);
+select pg_temp.ok(
+  ((now() at time zone 'UTC') - interval '2 hours')::date <> (now() at time zone 'UTC')::date
+  or (select count(*) from notifications where kind = 'dose_late') = 1,
+  'a late dose is flagged once (not every 10 minutes)');
+select pg_temp.as_user(:J);
+select pg_temp.ok(to_char(now() at time zone 'UTC', 'HH24:MI') < '08:00'
+  or (select count(*) from notifications where kind = 'assignment_overdue') = 1, 'an overdue assignment reminds the person');
+reset role;
 \echo ALL TESTS PASSED
