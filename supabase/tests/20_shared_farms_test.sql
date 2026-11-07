@@ -192,4 +192,25 @@ select pg_temp.as_user(:W);
 select pg_temp.ok((select count(*) from restock_requests) = 0, 'another farm cannot see our restock list');
 select pg_temp.raises($$insert into restock_requests (item_name, feed_type_id, user_id) values ('Steal', '60000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000c1')$$, 'cannot link another farm''s feed');
 reset role;
+
+-- ===================== 024: money privacy, emergency info =====================
+set role authenticated;
+select pg_temp.as_user(:A);
+insert into transactions (type, category, amount, date, user_id) values ('expense', 'feed', 120, '2026-11-07', :A);
+select pg_temp.ok((select count(*) from transactions) = 1, 'owner sees money');
+select pg_temp.as_user(:J);
+select pg_temp.ok((select count(*) from transactions) = 0, 'worker cannot see money');
+select pg_temp.raises($$insert into transactions (type, category, amount, date, user_id) values ('income', 'milk', 5, '2026-11-07', '00000000-0000-0000-0000-0000000000d1')$$, 'worker cannot add money entries');
+select pg_temp.ok((select count(*) from audit_log where table_name = 'transactions') = 0, 'worker cannot see money in the change history');
+select pg_temp.as_user(:A);
+select pg_temp.ok((select count(*) from audit_log where table_name = 'transactions') = 1, 'owner sees money in the change history');
+insert into farm_emergency_info (address, medicine_location) values ('123 River Rd', 'Fridge in the milk room');
+insert into emergency_contacts (name, role, phone) values ('Dr. Smith', 'Vet', '555-0100');
+select pg_temp.as_user(:J);
+select pg_temp.ok((select medicine_location from farm_emergency_info) = 'Fridge in the milk room' and (select count(*) from emergency_contacts) = 1, 'worker can read emergency info');
+update emergency_contacts set phone = '000';
+select pg_temp.ok((select phone from emergency_contacts) = '555-0100', 'worker cannot change emergency contacts');
+select pg_temp.as_user(:W);
+select pg_temp.ok((select count(*) from emergency_contacts) = 0, 'another farm cannot see our emergency contacts');
+reset role;
 \echo ALL TESTS PASSED

@@ -51,6 +51,8 @@ export const TABLE_LABELS: Record<string, string> = {
   chore_completions: 'Chore check-off',
   mineral_refills: 'Mineral refill',
   restock_requests: 'Restock item',
+  farm_emergency_info: 'Emergency info',
+  emergency_contacts: 'Emergency contact',
 };
 
 export function tableLabel(table: string): string {

@@ -47,6 +47,7 @@ MapPin,
   ListChecks,
   Wheat,
   PackageMinus,
+  Siren,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useFarm, ROLE_LABELS } from '@/hooks/useFarm';
@@ -278,10 +279,25 @@ export function Sidebar() {
             <SearchTrigger onClick={openSearch} />
           </div>
 
+          {/* Emergency: always one tap away */}
+          <div className="px-3 pb-2">
+            <Link
+              href="/dashboard/emergency"
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors',
+                pathname === '/dashboard/emergency' ? 'bg-[#9B1C1C] text-white' : 'bg-[#9B1C1C]/90 text-white hover:bg-[#9B1C1C]'
+              )}
+            >
+              <Siren className="h-5 w-5" />
+              Emergency
+            </Link>
+          </div>
+
           {/* Navigation */}
           <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
             {/* PRIMARY NAVIGATION */}
-            {primaryNavigation.map((item) => {
+            {primaryNavigation.filter((item) => isManager || item.href !== '/dashboard/finances').map((item) => {
               const isActive = isPrimaryItemActive(item);
               const isExpanded = expandedItem === item.name;
               const hasSubItems = item.subItems && item.subItems.length > 0;
