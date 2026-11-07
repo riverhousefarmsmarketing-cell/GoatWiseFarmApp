@@ -213,4 +213,93 @@ select pg_temp.ok((select phone from emergency_contacts) = '555-0100', 'worker c
 select pg_temp.as_user(:W);
 select pg_temp.ok((select count(*) from emergency_contacts) = 0, 'another farm cannot see our emergency contacts');
 reset role;
+
+-- ===================== 025-028: animal health =====================
+set role authenticated;
+select pg_temp.as_user(:A);
+insert into animals (id, name, sex, category, user_id, date_of_birth) values ('20000000-0000-0000-0000-0000000000a2', 'Willow', 'doe', 'milking_doe', :A, '2024-03-01');
+
+-- Medicine cabinet
+select pg_temp.as_user(:J);
+insert into medicines (id, name, kind, stock_unit, meat_withdrawal_days, milk_withdrawal_days, user_id)
+values ('90000000-0000-0000-0000-000000000001', 'Penicillin G', 'antibiotic', 'ml', 10, 4, :J);
+insert into medicine_lots (id, medicine_id, lot_number, expiry_date, quantity_received, quantity_remaining, user_id)
+values ('90000000-0000-0000-0000-0000000000a1', '90000000-0000-0000-0000-000000000001', 'L123', '2027-06-30', 100, 100, :J);
+select pg_temp.ok((select count(*) from medicine_lots) = 1, 'worker adds a medicine and a lot');
+update medicine_lots set quantity_remaining = 0 where id = '90000000-0000-0000-0000-0000000000a1';
+select pg_temp.ok((select status from medicine_lots) = 'finished', 'a lot that runs out is marked finished');
+update medicine_lots set quantity_remaining = 80, status = 'in_stock' where id = '90000000-0000-0000-0000-0000000000a1';
+delete from medicine_lots where id = '90000000-0000-0000-0000-0000000000a1';
+select pg_temp.ok((select count(*) from medicine_lots) = 1, 'worker cannot delete a lot directly');
+select pg_temp.as_user(:A);
+select pg_temp.raises($$delete from medicines where id = '90000000-0000-0000-0000-000000000001'$$, 'a medicine with lots cannot be deleted');
+
+-- Treatment course
+select pg_temp.as_user(:J);
+insert into treatment_courses (id, animal_id, medicine_id, medicine_lot_id, medication, reason, dose, dose_unit, route, times, start_date, days, withdrawal_days, user_id)
+values ('a0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-0000000000a2', '90000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-0000000000a1',
+        'Penicillin G', 'Foot abscess', 3, 'ml', 'IM', array['18:00','08:00'], '2026-11-07', 2, 10, :J);
+select pg_temp.ok((select times from treatment_courses) = array['08:00','18:00'], 'course times are sorted');
+select pg_temp.ok((select count(*) from health_records where treatment_course_id = 'a0000000-0000-0000-0000-000000000001' and date = '2026-11-08' and withdrawal_days = 10) = 1,
+                  'starting a course writes one health record dated its last day (withdrawal covers the course)');
+select pg_temp.ok((select health_record_id from treatment_courses) is not null, 'course links to its health record');
+insert into course_doses (course_id, dose_date, slot, amount, user_id) values ('a0000000-0000-0000-0000-000000000001', '2026-11-07', '08:00', 3, :J);
+select pg_temp.raises($$insert into course_doses (course_id, dose_date, slot, user_id) values ('a0000000-0000-0000-0000-000000000001', '2026-11-07', '08:00', '00000000-0000-0000-0000-0000000000d1')$$, 'a dose cannot be given twice');
+select pg_temp.raises($$insert into course_doses (course_id, dose_date, slot, user_id) values ('a0000000-0000-0000-0000-000000000001', '2026-11-07', '12:00', '00000000-0000-0000-0000-0000000000d1')$$, 'only scheduled times can be ticked');
+select pg_temp.raises($$insert into course_doses (course_id, dose_date, slot, user_id) values ('a0000000-0000-0000-0000-000000000001', '2026-11-09', '08:00', '00000000-0000-0000-0000-0000000000d1')$$, 'only scheduled days can be ticked');
+select pg_temp.ok((select user_id from course_doses limit 1) = :J and (select given_at from course_doses limit 1) is not null, 'a dose is stamped with who gave it and when');
+insert into course_doses (course_id, dose_date, slot, user_id) values ('a0000000-0000-0000-0000-000000000001', '2026-11-07', '18:00', :J);
+insert into course_doses (course_id, dose_date, slot, user_id, skipped, note) values ('a0000000-0000-0000-0000-000000000001', '2026-11-08', '08:00', :J, true, 'Vet said skip');
+select pg_temp.ok((select status from treatment_courses) = 'active', 'course still active with a dose left');
+insert into course_doses (course_id, dose_date, slot, user_id) values ('a0000000-0000-0000-0000-000000000001', '2026-11-08', '18:00', :J);
+select pg_temp.ok((select status from treatment_courses) = 'completed', 'the last dose completes the course');
+
+insert into treatment_courses (id, animal_id, medication, times, start_date, days, withdrawal_days, user_id)
+values ('a0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-0000000000a2', 'Banamine', array['09:00'], '2026-11-01', 5, 4, :J);
+insert into course_doses (course_id, dose_date, slot, user_id) values ('a0000000-0000-0000-0000-000000000002', '2026-11-01', '09:00', :J), ('a0000000-0000-0000-0000-000000000002', '2026-11-02', '09:00', :J);
+update treatment_courses set status = 'stopped', stopped_reason = 'Better' where id = 'a0000000-0000-0000-0000-000000000002';
+select pg_temp.ok((select date from health_records where treatment_course_id = 'a0000000-0000-0000-0000-000000000002') = '2026-11-02', 'stopping early moves the health record to the last dose given');
+select pg_temp.ok((select stopped_by from treatment_courses where id = 'a0000000-0000-0000-0000-000000000002') = :J, 'stopping is stamped with who');
+select pg_temp.as_user(:W);
+select pg_temp.ok((select count(*) from treatment_courses) = 0 and (select count(*) from medicines) = 0, 'another farm cannot see our treatments or medicines');
+select pg_temp.raises($$insert into treatment_courses (animal_id, medication, times, days, user_id) values ('20000000-0000-0000-0000-0000000000a2', 'x', array['08:00'], 1, '00000000-0000-0000-0000-0000000000c1')$$, 'cannot treat another farm''s animal');
+
+-- Health schedule
+select pg_temp.as_user(:J);
+select pg_temp.raises($$insert into health_protocols (name, schedule_kind, interval_days, user_id) values ('Hoof trim', 'interval', 56, '00000000-0000-0000-0000-0000000000d1')$$, 'worker cannot create health rules');
+select pg_temp.as_user(:A);
+insert into health_protocols (id, name, health_type, schedule_kind, age_days, user_id) values ('b0000000-0000-0000-0000-000000000001', 'Kid CD&T', 'vaccination', 'age', array[56, 28, 28], :A);
+select pg_temp.ok((select age_days from health_protocols) = array[28, 56], 'age steps are de-duplicated and sorted');
+select pg_temp.raises($$insert into health_protocols (name, schedule_kind, user_id) values ('Broken', 'yearly', '00000000-0000-0000-0000-00000000000a')$$, 'a yearly rule needs a date');
+select pg_temp.as_user(:J);
+insert into health_records (animal_id, type, date, protocol_id, protocol_step, user_id) values ('20000000-0000-0000-0000-0000000000a2', 'vaccination', '2026-11-07', 'b0000000-0000-0000-0000-000000000001', 0, :J);
+select pg_temp.ok((select count(*) from health_records where protocol_id is not null) = 1, 'worker records a scheduled treatment');
+
+-- Watch list
+update animals set care_status = 'isolated', care_status_note = 'Coughing' where id = '20000000-0000-0000-0000-0000000000a2';
+select pg_temp.ok((select care_status_by from animals where id = '20000000-0000-0000-0000-0000000000a2') = :J, 'isolating an animal is stamped with who');
+update animals set care_status_by = :A where id = '20000000-0000-0000-0000-0000000000a2';
+select pg_temp.ok((select care_status_by from animals where id = '20000000-0000-0000-0000-0000000000a2') = :J, 'the watch stamp cannot be forged');
+select pg_temp.as_user(:A);
+update animals set status = 'deceased', death_date = '2026-11-08', death_category = 'illness', death_cause = 'Pneumonia' where id = '20000000-0000-0000-0000-0000000000a2';
+select pg_temp.ok((select care_status from animals where id = '20000000-0000-0000-0000-0000000000a2') = 'normal', 'a deceased animal leaves the watch list');
+select pg_temp.ok((select death_category from animals where id = '20000000-0000-0000-0000-0000000000a2') = 'illness', 'cause of death is recorded');
+
+-- Concerns
+select pg_temp.as_user(:J);
+insert into concern_reports (id, animal_id, description, urgency, user_id) values ('c0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-0000000000a2', 'Limping on the left front', 'urgent', :J);
+update concern_reports set status = 'resolved' where id = 'c0000000-0000-0000-0000-000000000001';
+select pg_temp.ok((select status from concern_reports) = 'open', 'a worker cannot close a concern');
+select pg_temp.as_user(:A);
+update concern_reports set status = 'acknowledged' where id = 'c0000000-0000-0000-0000-000000000001';
+update concern_reports set status = 'resolved', resolution_note = 'Trimmed hoof' where id = 'c0000000-0000-0000-0000-000000000001';
+select pg_temp.ok((select resolved_by from concern_reports) = :A and (select acknowledged_at from concern_reports) is not null, 'acknowledging and resolving are stamped');
+
+-- Lab tests
+select pg_temp.as_user(:J);
+insert into lab_tests (animal_id, test_type, result, value, value_unit, user_id) values ('20000000-0000-0000-0000-0000000000a2', 'fecal_egg_count', 'value', 1200, 'epg', :J);
+select pg_temp.ok((select value from lab_tests) = 1200, 'worker records a lab result');
+select pg_temp.as_user(:W);
+select pg_temp.ok((select count(*) from lab_tests) = 0 and (select count(*) from concern_reports) = 0, 'another farm cannot see our lab tests or concerns');
+reset role;
 \echo ALL TESTS PASSED
