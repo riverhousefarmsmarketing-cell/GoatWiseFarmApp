@@ -125,7 +125,11 @@ Migration 022 adds the following:
   - An optional `check_every_days` flags pastures that are due.
   - Deleting a refill follows the normal approval rules.
 
-All three are farm-scoped and recorded in the change history.
+- **Restock list** (`restock_requests`, migration 023): anyone flags an item as low or out (optionally linked to a feed type or mineral), marks it ordered, or marks it restocked.
+  - Each step is stamped with who and when by a trigger, and the stamps can't be edited from the app.
+  - Only owners and managers can delete finished entries.
+
+All of these are farm-scoped and recorded in the change history.
 
 ## 📊 Features
 

@@ -46,6 +46,7 @@ MapPin,
   ArrowLeftRight,
   ListChecks,
   Wheat,
+  PackageMinus,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useFarm, ROLE_LABELS } from '@/hooks/useFarm';
@@ -119,6 +120,7 @@ const farmNavigation = [
   { name: 'Chores', href: '/dashboard/chores', icon: ListChecks },
   { name: 'Care Plans', href: '/dashboard/care-plans', icon: Wheat },
   { name: 'Minerals', href: '/dashboard/minerals', icon: Sparkles },
+  { name: 'Restock List', href: '/dashboard/restock', icon: PackageMinus },
   { name: 'Approvals', href: '/dashboard/approvals', icon: ShieldCheck },
   { name: 'Change History', href: '/dashboard/history', icon: History },
   { name: 'Team', href: '/dashboard/team', icon: UserPlus },
@@ -164,6 +166,20 @@ export function Sidebar() {
     },
     enabled: !!farm && isManager,
     refetchInterval: 60_000,
+  });
+
+  // Items flagged low/out and not yet restocked (everyone sees this).
+  const { data: restockCount = 0 } = useQuery({
+    queryKey: ['restock_requests', 'open_count', farm?.farm_id],
+    queryFn: async () => {
+      const { count } = await (getSupabaseClient() as any)
+        .from('restock_requests')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['open', 'ordered']);
+      return count ?? 0;
+    },
+    enabled: !!farm,
+    refetchInterval: 2 * 60_000,
   });
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [utilitiesOpen, setUtilitiesOpen] = useState(false);
@@ -343,7 +359,10 @@ export function Sidebar() {
             <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-[#E8E0D8]/50">Farm</p>
             {farmNavigation.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-              const badge = item.href === '/dashboard/approvals' && pendingApprovals > 0 ? pendingApprovals : null;
+              const badge =
+                item.href === '/dashboard/approvals' && pendingApprovals > 0 ? pendingApprovals
+                : item.href === '/dashboard/restock' && restockCount > 0 ? restockCount
+                : null;
               return (
                 <Link
                   key={item.name}
