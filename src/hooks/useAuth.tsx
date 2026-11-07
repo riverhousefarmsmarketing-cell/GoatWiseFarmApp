@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { User, Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import { clearCache } from '@/lib/offline';
 
 interface AuthContextType {
   user: User | null;
@@ -106,6 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     const supabase = getSupabaseClient();
     await supabase.auth.signOut();
+    // Farm data kept for offline use must not outlive the session on a shared device.
+    clearCache();
     // Drop every cached query so the next user on this browser can't see the
     // previous user's data. The auth-state handler also clears on identity
     // change; doing it here too avoids any window before that fires.

@@ -25,6 +25,7 @@ export function DoseCell({ course, date, slot, dose, onGive, onSkip, onUndo, can
           <p className="font-medium text-gray-900">{formatSlot(slot)} {dose.skipped ? 'skipped' : 'given'}</p>
           <p className="text-gray-600">
             {memberName(members, dose.user_id)} · {format(new Date(dose.given_at), "MMM d 'at' h:mm a")}
+            {(dose as any).pending ? ' · waiting for signal to send' : ''}
             {dose.amount != null && !dose.skipped ? ` · ${dose.amount} ${dose.dose_unit ?? course.dose_unit ?? ''}` : ''}
           </p>
           {dose.note && <p className="text-gray-600 italic">“{dose.note}”</p>}

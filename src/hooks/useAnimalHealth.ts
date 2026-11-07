@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,6 +8,9 @@ import { useFarm } from '@/hooks/useFarm';
 import { deleteOrRequest } from '@/lib/deleteRecord';
 import type { HealthProtocol, ProtocolRecord, ScheduleAnimal } from '@/lib/healthSchedule';
 import { pokeDispatch } from '@/lib/push';
+import { insertOrQueue } from '@/lib/offline';
+import { notify } from '@/components/ui/toast';
+import { usePendingRows } from '@/hooks/useOffline';
 
 const db = () => getSupabaseClient() as any;
 
@@ -246,7 +250,8 @@ export function useTreatmentCourses(opts: { includeFinished?: boolean } = {}) {
 
 export function useCourseDoses(courseIds: string[]) {
   const { farm } = useFarm();
-  return useQuery<CourseDose[]>({
+  const pending = usePendingRows<CourseDose>('course_doses');
+  const query = useQuery<CourseDose[]>({
     queryKey: [...ahKeys.doses, farm?.farm_id, courseIds.join(',')],
     queryFn: async () => {
       if (courseIds.length === 0) return [];
@@ -257,6 +262,15 @@ export function useCourseDoses(courseIds: string[]) {
     enabled: !!farm,
     refetchInterval: 60_000,
   });
+  // Doses saved on this device but not sent yet still show as given.
+  const data = useMemo(() => {
+    const sent = query.data ?? [];
+    const extra = pending.filter((p) => courseIds.includes(p.course_id)
+      && !sent.some((s) => s.course_id === p.course_id && s.dose_date === p.dose_date && s.slot === p.slot))
+      .map((p) => ({ ...p, given_at: p.given_at ?? new Date().toISOString() }));
+    return [...sent, ...extra];
+  }, [query.data, pending, courseIds]);
+  return { ...query, data };
 }
 
 export function useStartCourse() {
@@ -287,8 +301,8 @@ export function useGiveDose() {
   const invalidate = useInvalidateHealth();
   return useMutation({
     mutationFn: async (d: { course_id: string; dose_date: string; slot: string; amount?: number | null; dose_unit?: string | null; medicine_lot_id?: string | null; skipped?: boolean; note?: string | null }) => {
-      const { error } = await db().from('course_doses').insert({ ...d, note: d.note?.trim() || null, user_id: user!.id });
-      if (error && error.code !== '23505') throw error;
+      const result = await insertOrQueue('course_doses', [{ ...d, note: d.note?.trim() || null, user_id: user!.id }], d.skipped ? 'Dose skipped' : 'Dose given');
+      if (result === 'queued') notify('No signal: dose recorded on this device. It will be sent when you’re back online.');
     },
     onSuccess: () => invalidate(ahKeys.doses, ahKeys.courses),
   });
@@ -514,6 +528,9 @@ export function useReportConcern() {
     mutationFn: async (c: { animal_id: string | null; description: string; urgency: 'low' | 'normal' | 'urgent'; photo: File | null }) => {
       let photo_url: string | null = null;
       let photo_path: string | null = null;
+      if (c.photo && typeof navigator !== 'undefined' && navigator.onLine === false) {
+        throw new Error('Photos need a signal. Send the report without the photo now, or try again when you’re back online.');
+      }
       if (c.photo) {
         const ext = (c.photo.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
         photo_path = `${user!.id}/concerns/${Date.now()}.${ext || 'jpg'}`;
@@ -521,10 +538,10 @@ export function useReportConcern() {
         if (upErr) throw upErr;
         photo_url = getSupabaseClient().storage.from('photos').getPublicUrl(photo_path).data.publicUrl;
       }
-      const { error } = await db().from('concern_reports').insert({
+      const result = await insertOrQueue('concern_reports', [{
         animal_id: c.animal_id, description: c.description.trim(), urgency: c.urgency, photo_url, photo_path, user_id: user!.id,
-      });
-      if (error) throw error;
+      }], 'Concern report');
+      if (result === 'queued') notify('No signal: report saved on this device. It will be sent when you’re back online.');
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ahKeys.concerns }); pokeDispatch(); },
   });

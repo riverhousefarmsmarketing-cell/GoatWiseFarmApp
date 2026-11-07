@@ -97,7 +97,8 @@ export default function ChoresPage() {
                   {chores.filter((c) => c.slot === slot).map((c) => {
                     const t = labelFor(c.plan);
                     const late = isLate(c, date);
-                    const canUndo = c.completion && (c.completion.user_id === user?.id || isManager);
+                    const waitingToSend = !!(c.completion as any)?.pending;
+                    const canUndo = c.completion && !waitingToSend && (c.completion.user_id === user?.id || isManager);
                     return (
                       <li key={c.key} className="px-5 py-3 flex items-start gap-3">
                         <button
@@ -121,6 +122,7 @@ export default function ChoresPage() {
                           {c.completion && (
                             <p className="text-xs text-[#105040] mt-0.5">
                               Done by {memberName(members, c.completion.user_id)} at {format(new Date(c.completion.done_at), 'h:mm a')}
+                              {waitingToSend && ' · waiting for signal to send'}
                               {c.completion.note ? ` — “${c.completion.note}”` : ''}
                             </p>
                           )}

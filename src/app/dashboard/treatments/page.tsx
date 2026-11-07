@@ -137,7 +137,7 @@ export default function TreatmentsPage() {
                   const dose = doseMap.get(`${c.id}|${date}|${slot}`);
                   return (
                     <DoseCell key={slot} course={c} date={date} slot={slot} dose={dose} today={today} members={members}
-                      canUndo={!!dose && (dose.user_id === user?.id || isManager)}
+                      canUndo={!!dose && !(dose as any).pending && (dose.user_id === user?.id || isManager)}
                       onGive={() => c.status !== 'stopped' && giveDose(c, date, slot)}
                       onSkip={() => c.status !== 'stopped' && skipDose(c, date, slot)}
                       onUndo={() => dose && undo.mutate(dose.id, { onError: (e: any) => alert(e.message) })} />
