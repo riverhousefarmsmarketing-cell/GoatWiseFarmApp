@@ -1,7 +1,8 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { DM_Sans, DM_Serif_Display } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/Providers';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 
 const dmSans = DM_Sans({ 
   subsets: ['latin'],
@@ -20,6 +21,12 @@ export const metadata: Metadata = {
   description: 'Track your herd\'s health, breeding, milk production, and finances. FAMACHA scoring, kidding calendars, Schedule F tax export, and 14 breed profiles — built by a goat farmer, for goat farmers.',
   icons: {
     icon: '/favicon.ico',
+    apple: '/icons/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'GoatWise',
+    statusBarStyle: 'default',
   },
   openGraph: {
     title: 'GoatWise — Farm Management Built by a Goat Farmer',
@@ -30,6 +37,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: '#105040',
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -38,6 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${dmSans.variable} ${dmSerif.variable} font-sans`}>
+        <OfflineIndicator />
         <Providers>{children}</Providers>
       </body>
     </html>
