@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import { withSignedPhotoUrls } from '@/lib/photoUrls';
 import { useAuth } from '@/hooks/useAuth';
 import { useHerds } from '@/hooks/useHerds';
 import {
@@ -305,7 +306,7 @@ export default function GuardiansPage() {
         .eq('guardian_id', selectedGuardian?.id)
         .order('date_taken', { ascending: false });
       if (error) throw error;
-      return data;
+      return withSignedPhotoUrls(supabase, data);
     },
     enabled: !!user && !!selectedGuardian?.id,
   });
