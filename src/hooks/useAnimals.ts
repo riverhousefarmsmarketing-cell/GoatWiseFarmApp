@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { createOrQueue } from '@/lib/offlineCreate';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { categoryIs, isFemale } from '@/lib/animalVocab';
 import type { Animal, AnimalInsert, AnimalUpdate } from '@/types/database';
@@ -134,13 +135,8 @@ export function useCreateAnimal() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await mutationFrom('animals')
-        .insert({ ...animal, user_id: user.id })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as Animal;
+      const res = await createOrQueue(supabase, user.id, 'animals', { ...animal, user_id: user.id }, { label: 'animal' });
+      return res.data as Animal;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: animalKeys.all });

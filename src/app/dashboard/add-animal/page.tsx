@@ -225,13 +225,35 @@ export default function AddAnimalPage() {
       // flush is idempotent.
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         const offlineId = crypto.randomUUID();
+        const label = typeof data.name === 'string' ? data.name : 'Animal';
         enqueue(user!.id, {
           id: offlineId,
           table: 'animals',
           payload: { ...data, id: offlineId, user_id: user?.id },
-          label: typeof data.name === 'string' ? data.name : 'Animal',
+          label,
           createdAt: Date.now(),
         });
+        // Also queue the intake weight so it isn't lost (same as the online path).
+        // Group assignments are applied online only; an offline-added animal can
+        // be put in groups after it syncs.
+        if (!data.is_reference && data.weight != null) {
+          const weightId = crypto.randomUUID();
+          enqueue(user!.id, {
+            id: weightId,
+            table: 'weight_records',
+            payload: {
+              id: weightId,
+              user_id: user?.id,
+              animal_id: offlineId,
+              weight: data.weight,
+              weight_unit: 'lbs',
+              date: data.date_of_birth || format(new Date(), 'yyyy-MM-dd'),
+              notes: 'Intake weight',
+            },
+            label: `${label} · intake weight`,
+            createdAt: Date.now(),
+          });
+        }
         return { queued: true } as any;
       }
 
