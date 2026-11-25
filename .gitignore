@@ -63,3 +63,11 @@ next-env.d.ts
 patch-*.js
 desktop.ini
 Thumbs.db
+
+# PWA (service worker generated at build time by @ducanh2912/next-pwa)
+/public/sw.js
+/public/sw.js.map
+/public/workbox-*.js
+/public/workbox-*.js.map
+/public/swe-worker-*.js
+/public/fallback-*.js

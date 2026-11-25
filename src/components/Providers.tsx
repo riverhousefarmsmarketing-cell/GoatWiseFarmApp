@@ -12,7 +12,15 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 60 * 1000, // 1 minute
+            // Keep fetched data in memory for an hour so it stays visible if the
+            // connection drops mid-session (e.g. walking to a dead-zone barn).
+            gcTime: 1000 * 60 * 60,
             refetchOnWindowFocus: false,
+            // Serve cached data first and don't hang on requests while offline.
+            networkMode: 'offlineFirst',
+          },
+          mutations: {
+            networkMode: 'offlineFirst',
           },
         },
       })
