@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import { toCanonicalCategory, toCanonicalSex } from '@/lib/animalVocab';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Card,
@@ -96,8 +97,8 @@ const IMPORT_CONFIGS: Record<ImportType, {
       purchase_cost: 'number',
     },
     selectOptions: {
-      sex: ['doe', 'buck', 'wether'],
-      category: ['milking_doe', 'dry_doe', 'bred_doe', 'doeling', 'buckling', 'buck', 'wether', 'kid', 'milking_female', 'dry_female', 'bred_female', 'young_female', 'male', 'young_male', 'castrated', 'young'],
+      sex: ['female', 'male', 'castrated'],
+      category: ['milking_female', 'dry_female', 'bred_female', 'young_female', 'male', 'young_male', 'castrated', 'young'],
       status: ['active', 'sold', 'deceased', 'culled'],
     },
   },
@@ -477,6 +478,11 @@ export default function ImportPage() {
               result.errors.push(`Row ${i + 2}: Buck "${value}" not found`);
               hasError = true;
             }
+          } else if (field === 'sex') {
+            // Accept legacy goat words in uploaded CSVs but store the neutral value.
+            record['sex'] = toCanonicalSex(value);
+          } else if (field === 'category') {
+            record['category'] = toCanonicalCategory(value);
           } else {
             record[field] = value;
           }

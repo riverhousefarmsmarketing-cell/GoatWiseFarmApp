@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import { isFemale, isIntactMale } from '@/lib/animalVocab';
 import { 
   Card, 
   Button, 
@@ -40,22 +41,22 @@ const SAMPLE_HERDS = [
 // loader never got past step 2. (public.guardians really does use birth_date --
 // the two tables genuinely differ, so don't "fix" SAMPLE_GUARDIANS to match.)
 const SAMPLE_ANIMALS = [
-  { name: 'Maple', breed: 'Nigerian Dwarf', sex: 'doe', category: 'milking_doe', date_of_birth: '2021-03-15', tag_number: 'ND-001', registration_number: 'ADGA N001234', status: 'active' },
-  { name: 'Willow', breed: 'LaMancha', sex: 'doe', category: 'milking_doe', date_of_birth: '2020-04-22', tag_number: 'LM-001', registration_number: 'ADGA L002345', status: 'active' },
-  { name: 'Clover', breed: 'Mini-LaMancha', sex: 'doe', category: 'milking_doe', date_of_birth: '2022-02-10', tag_number: 'MLM-001', status: 'active' },
-  { name: 'Daisy', breed: 'Nigerian Dwarf', sex: 'doe', category: 'milking_doe', date_of_birth: '2021-05-08', tag_number: 'ND-002', registration_number: 'ADGA N001567', status: 'active' },
-  { name: 'Rosemary', breed: 'LaMancha', sex: 'doe', category: 'milking_doe', date_of_birth: '2019-03-20', tag_number: 'LM-002', status: 'active' },
-  { name: 'Sage', breed: 'Nigerian Dwarf', sex: 'doe', category: 'bred_doe', date_of_birth: '2022-04-12', tag_number: 'ND-003', status: 'active' },
-  { name: 'Ivy', breed: 'Mini-LaMancha', sex: 'doe', category: 'bred_doe', date_of_birth: '2021-06-18', tag_number: 'MLM-002', status: 'active' },
-  { name: 'Hazel', breed: 'LaMancha', sex: 'doe', category: 'dry_doe', date_of_birth: '2018-04-05', tag_number: 'LM-003', status: 'active' },
-  { name: 'Poppy', breed: 'Nigerian Dwarf', sex: 'doe', category: 'doeling', date_of_birth: '2024-03-10', tag_number: 'ND-004', status: 'active' },
-  { name: 'Violet', breed: 'Mini-LaMancha', sex: 'doe', category: 'doeling', date_of_birth: '2024-04-02', tag_number: 'MLM-003', status: 'active' },
-  { name: 'Fern', breed: 'LaMancha', sex: 'doe', category: 'doeling', date_of_birth: '2024-02-28', tag_number: 'LM-004', status: 'active' },
-  { name: 'Thunder', breed: 'Nigerian Dwarf', sex: 'buck', category: 'buck', date_of_birth: '2020-09-15', tag_number: 'ND-B01', registration_number: 'ADGA N003456', status: 'active' },
-  { name: 'Apollo', breed: 'LaMancha', sex: 'buck', category: 'buck', date_of_birth: '2021-08-22', tag_number: 'LM-B01', registration_number: 'ADGA L004567', status: 'active' },
-  { name: 'Comet', breed: 'Nigerian Dwarf', sex: 'buck', category: 'buckling', date_of_birth: '2024-03-12', tag_number: 'ND-B02', status: 'active' },
-  { name: 'Biscuit', breed: 'Nigerian Dwarf', sex: 'buck', category: 'wether', date_of_birth: '2023-04-05', tag_number: 'ND-W01', status: 'active' },
-  { name: 'Juniper', breed: 'Nigerian Dwarf', sex: 'doe', category: 'milking_doe', date_of_birth: '2019-05-10', tag_number: 'ND-005', status: 'sold', notes: 'Sold to Happy Acres Farm' },
+  { name: 'Maple', breed: 'Nigerian Dwarf', sex: 'female', category: 'milking_female', date_of_birth: '2021-03-15', tag_number: 'ND-001', registration_number: 'ADGA N001234', status: 'active' },
+  { name: 'Willow', breed: 'LaMancha', sex: 'female', category: 'milking_female', date_of_birth: '2020-04-22', tag_number: 'LM-001', registration_number: 'ADGA L002345', status: 'active' },
+  { name: 'Clover', breed: 'Mini-LaMancha', sex: 'female', category: 'milking_female', date_of_birth: '2022-02-10', tag_number: 'MLM-001', status: 'active' },
+  { name: 'Daisy', breed: 'Nigerian Dwarf', sex: 'female', category: 'milking_female', date_of_birth: '2021-05-08', tag_number: 'ND-002', registration_number: 'ADGA N001567', status: 'active' },
+  { name: 'Rosemary', breed: 'LaMancha', sex: 'female', category: 'milking_female', date_of_birth: '2019-03-20', tag_number: 'LM-002', status: 'active' },
+  { name: 'Sage', breed: 'Nigerian Dwarf', sex: 'female', category: 'bred_female', date_of_birth: '2022-04-12', tag_number: 'ND-003', status: 'active' },
+  { name: 'Ivy', breed: 'Mini-LaMancha', sex: 'female', category: 'bred_female', date_of_birth: '2021-06-18', tag_number: 'MLM-002', status: 'active' },
+  { name: 'Hazel', breed: 'LaMancha', sex: 'female', category: 'dry_female', date_of_birth: '2018-04-05', tag_number: 'LM-003', status: 'active' },
+  { name: 'Poppy', breed: 'Nigerian Dwarf', sex: 'female', category: 'young_female', date_of_birth: '2024-03-10', tag_number: 'ND-004', status: 'active' },
+  { name: 'Violet', breed: 'Mini-LaMancha', sex: 'female', category: 'young_female', date_of_birth: '2024-04-02', tag_number: 'MLM-003', status: 'active' },
+  { name: 'Fern', breed: 'LaMancha', sex: 'female', category: 'young_female', date_of_birth: '2024-02-28', tag_number: 'LM-004', status: 'active' },
+  { name: 'Thunder', breed: 'Nigerian Dwarf', sex: 'male', category: 'male', date_of_birth: '2020-09-15', tag_number: 'ND-B01', registration_number: 'ADGA N003456', status: 'active' },
+  { name: 'Apollo', breed: 'LaMancha', sex: 'male', category: 'male', date_of_birth: '2021-08-22', tag_number: 'LM-B01', registration_number: 'ADGA L004567', status: 'active' },
+  { name: 'Comet', breed: 'Nigerian Dwarf', sex: 'male', category: 'young_male', date_of_birth: '2024-03-12', tag_number: 'ND-B02', status: 'active' },
+  { name: 'Biscuit', breed: 'Nigerian Dwarf', sex: 'male', category: 'castrated', date_of_birth: '2023-04-05', tag_number: 'ND-W01', status: 'active' },
+  { name: 'Juniper', breed: 'Nigerian Dwarf', sex: 'female', category: 'milking_female', date_of_birth: '2019-05-10', tag_number: 'ND-005', status: 'sold', notes: 'Sold to Happy Acres Farm' },
 ];
 
 // Every table the loader writes to, ordered children-before-parents so a
@@ -210,9 +211,9 @@ function SampleDataSection() {
       // 2. Create Animals
       addProgress('Creating animals...');
       for (const animal of SAMPLE_ANIMALS) {
-        const herdId = animal.category.includes('doe') || animal.category === 'milking_doe' 
+        const herdId = isFemale(animal) 
           ? herdIds['Main Dairy Herd']
-          : animal.category.includes('buck') 
+          : isIntactMale(animal)
             ? herdIds['Breeding Stock']
             : herdIds['Kids & Youngstock'];
 
@@ -223,12 +224,12 @@ function SampleDataSection() {
         if (error) throw new Error(`Animal error: ${error.message}`);
         
         animalIds[animal.name] = data.id;
-        // Track bucks (category is 'buck')
-        if (animal.category === 'buck') {
+        // Track adult bucks (category is 'male')
+        if (animal.category === 'male') {
           buckIds[animal.name] = data.id;
         }
         // Track milking does
-        if (animal.category === 'milking_doe') {
+        if (animal.category === 'milking_female') {
           milkingDoeIds[animal.name] = data.id;
         }
       }
@@ -407,7 +408,7 @@ function SampleDataSection() {
       // 9. Create Breeding Records
       addProgress('Creating breeding records...');
       const doeEntries = Object.entries(animalIds).filter(([name]) => 
-        SAMPLE_ANIMALS.find(a => a.name === name)?.sex === 'doe'
+        SAMPLE_ANIMALS.find(a => a.name === name)?.sex === 'female'
       );
       const buckEntries = Object.entries(buckIds);
       let breedingCount = 0;
