@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layout/Sidebar';
 import { LoadingPage } from '@/components/ui';
 import { FeedbackButton } from '@/components/FeedbackButton';
+import { NotificationBanner } from '@/components/NotificationBanner';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <DashboardLayout>
+      <NotificationBanner />
       {children}
       <FeedbackButton />
     </DashboardLayout>
