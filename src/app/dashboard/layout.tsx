@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/layout/Sidebar';
 import { LoadingPage } from '@/components/ui';
+import { FeedbackButton } from '@/components/FeedbackButton';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -24,5 +25,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <DashboardLayout>
+      {children}
+      <FeedbackButton />
+    </DashboardLayout>
+  );
 }
