@@ -5,8 +5,9 @@ import { WifiOff } from 'lucide-react';
 
 /**
  * Thin banner shown when the device goes offline. Reassures the user the app is
- * still usable for viewing, and is honest that saving new records needs a
- * connection (a background write-queue is a planned follow-up).
+ * still usable for viewing, and that a new animal added offline is saved and
+ * syncs on reconnect (via the outbox). Other record types still need a
+ * connection until the outbox is generalized to them.
  */
 export function OfflineIndicator() {
   const [offline, setOffline] = useState(false);
@@ -32,7 +33,7 @@ export function OfflineIndicator() {
       style={{ top: 'env(safe-area-inset-top, 0px)' }}
     >
       <WifiOff className="h-4 w-4 shrink-0" />
-      <span>Offline — showing saved data. Saving new records needs a connection.</span>
+      <span>Offline — showing saved data. New animals save and sync when you reconnect; other new records need a connection.</span>
     </div>
   );
 }
