@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { createOrQueue } from '@/lib/offlineCreate';
 import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
 import { format, subDays, addDays, parseISO } from 'date-fns';
 import type { HealthRecord, HealthRecordInsert, Inspection, InspectionInsert } from '@/types/database';
@@ -116,13 +117,8 @@ export function useCreateHealthRecord() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await mutationFrom('health_records')
-        .insert({ ...record, user_id: user.id })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as HealthRecord;
+      const res = await createOrQueue(supabase, user.id, 'health_records', { ...record, user_id: user.id }, { label: 'health record' });
+      return res.data as HealthRecord;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: healthKeys.all });
@@ -237,13 +233,8 @@ export function useCreateInspection() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await mutationFrom('inspections')
-        .insert({ ...inspection, user_id: user.id })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      const res = await createOrQueue(supabase, user.id, 'inspections', { ...inspection, user_id: user.id }, { label: 'inspection' });
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: healthKeys.all });
