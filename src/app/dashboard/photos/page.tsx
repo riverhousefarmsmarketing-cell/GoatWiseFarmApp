@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import { withSignedPhotoUrls } from '@/lib/photoUrls';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Card,
@@ -118,7 +119,7 @@ export default function PhotoGalleryPage() {
         .eq('user_id', user!.id)
         .order('date_taken', { ascending: false });
       if (error) throw error;
-      return data as Photo[];
+      return withSignedPhotoUrls(supabase, data as Photo[]);
     },
     enabled: !!user,
   });
