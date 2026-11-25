@@ -25,6 +25,7 @@ import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
 import { isFemale, isIntactMale, categoriesForSex, isCategoryConsistentWithSex, type CanonicalCategory } from '@/lib/animalVocab';
 import { BREEDS } from '@/lib/breedData';
 import { normalizeMicrochip, findAnimalByMicrochip } from '@/lib/microchip';
+import { enqueue } from '@/lib/outbox';
 
 // ==========================================
 // STATIC OPTIONS (species-independent)
@@ -219,6 +220,21 @@ export default function AddAnimalPage() {
   // Create mutation
   const createAnimal = useMutation({
     mutationFn: async (data: Record<string, any>) => {
+      // Offline: queue the create and replay it on reconnect instead of losing
+      // the entry. A client id doubles as the row's primary key so a retried
+      // flush is idempotent.
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const offlineId = crypto.randomUUID();
+        enqueue(user!.id, {
+          id: offlineId,
+          table: 'animals',
+          payload: { ...data, id: offlineId, user_id: user?.id },
+          label: typeof data.name === 'string' ? data.name : 'Animal',
+          createdAt: Date.now(),
+        });
+        return { queued: true } as any;
+      }
+
       const { data: result, error } = await supabase
          .from('animals')
          .insert([{ ...data, user_id: user?.id }] as any)
@@ -265,6 +281,12 @@ export default function AddAnimalPage() {
       return result;
     },
     onSuccess: (data: any) => {
+      if (data?.queued) {
+        // Saved to the offline outbox; it syncs automatically on reconnect.
+        alert("Saved offline — this animal will sync automatically when you're back online.");
+        router.push('/dashboard/herd');
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ['animals'] });
       queryClient.invalidateQueries({ queryKey: ['weight_records'] });
       queryClient.invalidateQueries({ queryKey: ['animal_groups'] });
