@@ -75,6 +75,15 @@ export function toCanonicalCategory(category?: string | null): string {
   return CATEGORY_TO_CANONICAL[category] ?? category;
 }
 
+/** Normalize any (possibly goat-word) sex to its neutral canonical value. */
+export function toCanonicalSex(sex?: string | null): string {
+  if (!sex) return '';
+  if (FEMALE_SEXES.includes(sex)) return 'female';
+  if (CASTRATED_SEXES.includes(sex)) return 'castrated';
+  if (MALE_SEXES.includes(sex)) return 'male';
+  return sex;
+}
+
 // ---- sex <-> category consistency ----
 // Which canonical categories are consistent with a given sex value (accepts
 // either vocabulary). 'young' (an unsexed kid/lamb) is allowed for any sex.

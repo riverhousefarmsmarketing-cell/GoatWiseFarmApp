@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import { withSignedPhotoUrls } from '@/lib/photoUrls';
 import { useAuth } from '@/hooks/useAuth';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
 import { BREEDS } from '@/lib/breedData';
@@ -122,7 +123,7 @@ export default function AnimalDetailPage() {
         .eq('animal_id', animalId)
         .order('date_taken', { ascending: false });
       if (error) throw error;
-      return data;
+      return withSignedPhotoUrls(supabase, data);
     },
     enabled: !!user && !!animalId,
   });
