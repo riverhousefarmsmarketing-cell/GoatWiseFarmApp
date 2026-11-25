@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, ReactNode } from 'react';
 import { AuthProvider } from '@/hooks/useAuth';
+import { OfflinePersistence } from '@/components/OfflinePersistence';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -12,9 +13,10 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 60 * 1000, // 1 minute
-            // Keep fetched data in memory for an hour so it stays visible if the
-            // connection drops mid-session (e.g. walking to a dead-zone barn).
-            gcTime: 1000 * 60 * 60,
+            // Keep fetched data in memory for 24h (matches the persisted cache
+            // window) so it stays visible when the connection drops and is
+            // available on a cold offline open.
+            gcTime: 1000 * 60 * 60 * 24,
             refetchOnWindowFocus: false,
             // Serve cached data first and don't hang on requests while offline.
             networkMode: 'offlineFirst',
@@ -29,6 +31,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <OfflinePersistence />
         {children}
       </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />
