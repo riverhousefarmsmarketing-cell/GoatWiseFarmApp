@@ -20,6 +20,7 @@ import {
   type PaddockMove,
 } from '@/hooks/useGrazing';
 import { useGroups } from '@/hooks/useGroups';
+import { useToast } from '@/components/ToastProvider';
 import {
   Card,
   Button,
@@ -84,6 +85,7 @@ function RiskBadge({ movedInAt }: { movedInAt: string }) {
 
 export default function GrazingPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'paddocks' | 'history'>('paddocks');
 
   // Data
@@ -174,7 +176,7 @@ export default function GrazingPage() {
         await createPaddock.mutateAsync(values);
       }
     } catch (e: any) {
-      alert(`Could not save the paddock: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the paddock: ${e?.message || 'please try again.'}`);
       return;
     }
     closePaddockModal();
@@ -187,12 +189,12 @@ export default function GrazingPage() {
     // orphaned from the Paddocks view). Require moving out first.
     const paddockOccupied = getActiveMove(assignForm.paddock_id);
     if (paddockOccupied) {
-      alert(`That paddock is already occupied by ${paddockOccupied.groups?.name || 'another group'}. Move them out first.`);
+      toast.error(`That paddock is already occupied by ${paddockOccupied.groups?.name || 'another group'}. Move them out first.`);
       return;
     }
     const groupBusy = getGroupActiveMove(assignForm.group_id);
     if (groupBusy) {
-      alert(`That group is already grazing ${groupBusy.paddocks?.name || 'another paddock'}. Move them out first.`);
+      toast.error(`That group is already grazing ${groupBusy.paddocks?.name || 'another paddock'}. Move them out first.`);
       return;
     }
     try {
@@ -203,7 +205,7 @@ export default function GrazingPage() {
         notes: assignForm.notes || null,
       });
     } catch (e: any) {
-      alert(`Could not record the move: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not record the move: ${e?.message || 'please try again.'}`);
       return;
     }
     setShowAssign(false);
@@ -222,7 +224,7 @@ export default function GrazingPage() {
         notes: moveOutForm.notes || null,
       });
     } catch (e: any) {
-      alert(`Could not record the move-out: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not record the move-out: ${e?.message || 'please try again.'}`);
       return;
     }
     setShowMoveOut(false);
@@ -259,7 +261,7 @@ export default function GrazingPage() {
     try {
       await updatePaddockMove.mutateAsync({ id: editingMove.id, updates });
     } catch (e: any) {
-      alert(`Could not save the move: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the move: ${e?.message || 'please try again.'}`);
       return;
     }
     closeEditMove();
@@ -384,12 +386,12 @@ export default function GrazingPage() {
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             if (isOccupied) {
-                              alert('Move the current group out before deleting this paddock.');
+                              toast.error('Move the current group out before deleting this paddock.');
                               return;
                             }
-                            if (confirm(`Delete paddock "${paddock.name}"?`)) {
+                            if (await toast.confirm({ message: `Delete paddock "${paddock.name}"?`, confirmText: 'Delete', destructive: true })) {
                               deletePaddock.mutate(paddock.id);
                             }
                           }}
@@ -522,8 +524,8 @@ export default function GrazingPage() {
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm('Delete this move record?')) deletePaddockMove.mutate(move.id);
+                        onClick={async () => {
+                          if (await toast.confirm({ message: 'Delete this move record?', confirmText: 'Delete', destructive: true })) deletePaddockMove.mutate(move.id);
                         }}
                         className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100"
                         aria-label="Delete move record"

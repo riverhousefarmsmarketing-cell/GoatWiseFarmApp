@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import { useToast } from '@/components/ToastProvider';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import type { MilkRecord, MilkRecordInsert } from '@/types/database';
 
@@ -219,6 +220,7 @@ export function useUpdateMilkRecord() {
 export function useDeleteMilkRecord() {
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -232,7 +234,7 @@ export function useDeleteMilkRecord() {
       queryClient.invalidateQueries({ queryKey: milkKeys.all });
     },
     onError: (e: any) => {
-      alert(`Could not delete the milk record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not delete the milk record: ${e?.message || 'please try again.'}`);
     },
   });
 }

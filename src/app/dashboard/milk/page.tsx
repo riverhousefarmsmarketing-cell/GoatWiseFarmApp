@@ -6,6 +6,7 @@ import { useAnimals } from '@/hooks/useAnimals';
 import { useActiveWithdrawals } from '@/hooks/useHealth';
 import { categoryIs } from '@/lib/animalVocab';
 import { Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, LoadingSpinner, AnimalLink, ErrorState } from '@/components/ui';
+import { useToast } from '@/components/ToastProvider';
 import { formatDate, formatWeight } from '@/lib/utils';
 import { Milk, Plus, TrendingUp, TrendingDown, Droplets, Calendar, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import {
@@ -40,6 +41,7 @@ const sessionOptions = [
 ];
 
 export default function MilkPage() {
+  const toast = useToast();
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [newRecord, setNewRecord] = useState({
     animal_id: '',
@@ -180,7 +182,7 @@ export default function MilkPage() {
       }
     } catch (error) {
       console.error('Error recording milk:', error);
-      alert('Could not record the milk entry. Please try again.');
+      toast.error('Could not record the milk entry. Please try again.');
       return;
     }
 
@@ -350,8 +352,8 @@ export default function MilkPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (confirm('Delete this milk record?')) {
+                          onClick={async () => {
+                            if (await toast.confirm({ message: 'Delete this milk record?', confirmText: 'Delete', destructive: true })) {
                               deleteRecord.mutate(record.id);
                             }
                           }}

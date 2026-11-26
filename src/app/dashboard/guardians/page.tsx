@@ -6,6 +6,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { withSignedPhotoUrls } from '@/lib/photoUrls';
 import { useAuth } from '@/hooks/useAuth';
 import { useHerds } from '@/hooks/useHerds';
+import { useToast } from '@/components/ToastProvider';
 import {
   Card, Button, Input, Select, Modal, StatCard, Badge, EmptyState, ErrorState, LoadingSpinner,
 } from '@/components/ui';
@@ -99,6 +100,7 @@ export default function GuardiansPage() {
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
   const { data: herds } = useHerds();
+  const toast = useToast();
 
   const [activeTab, setActiveTab] = useState<'guardians' | 'health' | 'incidents'>('guardians');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -213,7 +215,7 @@ export default function GuardiansPage() {
       queryClient.invalidateQueries({ queryKey: ['guardian_health_records'] });
       queryClient.invalidateQueries({ queryKey: ['guardian_vaccinations'] });
     },
-    onError: (e: any) => alert(`Could not delete the guardian: ${e?.message || 'please try again.'}`),
+    onError: (e: any) => toast.error(`Could not delete the guardian: ${e?.message || 'please try again.'}`),
   });
 
   const createHealthRecord = useMutation({
@@ -239,7 +241,7 @@ export default function GuardiansPage() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_health_records'] }),
-    onError: (e: any) => alert(`Could not delete the health record: ${e?.message || 'please try again.'}`),
+    onError: (e: any) => toast.error(`Could not delete the health record: ${e?.message || 'please try again.'}`),
   });
 
   const createVaccination = useMutation({
@@ -265,7 +267,7 @@ export default function GuardiansPage() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guardian_vaccinations'] }),
-    onError: (e: any) => alert(`Could not delete the vaccination: ${e?.message || 'please try again.'}`),
+    onError: (e: any) => toast.error(`Could not delete the vaccination: ${e?.message || 'please try again.'}`),
   });
 
   const createPredation = useMutation({
@@ -291,7 +293,7 @@ export default function GuardiansPage() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['predation_events'] }),
-    onError: (e: any) => alert(`Could not delete the incident: ${e?.message || 'please try again.'}`),
+    onError: (e: any) => toast.error(`Could not delete the incident: ${e?.message || 'please try again.'}`),
   });
 
   const activeGuardians = guardians?.filter((g: any) => g.status === 'active').length || 0;
@@ -345,10 +347,10 @@ export default function GuardiansPage() {
       setGuardianPhotoCaption('');
       // A silent `continue` on failure told the user the upload succeeded while
       // photos went missing -- surface how many didn't save.
-      if (failed > 0) alert(`${failed} photo${failed === 1 ? '' : 's'} could not be uploaded. Please try again.`);
+      if (failed > 0) toast.error(`${failed} photo${failed === 1 ? '' : 's'} could not be uploaded. Please try again.`);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Could not upload the photos. Please try again.');
+      toast.error('Could not upload the photos. Please try again.');
     } finally {
       setIsUploadingGuardianPhoto(false);
     }
@@ -419,7 +421,7 @@ export default function GuardiansPage() {
 
     queryClient.invalidateQueries({ queryKey: ['photos'] });
     // The incident itself already saved; let the user know if photos didn't.
-    if (failed > 0) alert(`The incident was saved, but ${failed} photo${failed === 1 ? '' : 's'} could not be uploaded.`);
+    if (failed > 0) toast.error(`The incident was saved, but ${failed} photo${failed === 1 ? '' : 's'} could not be uploaded.`);
   };
 
   const openCreateGuardian = () => {
@@ -458,7 +460,7 @@ export default function GuardiansPage() {
         await createGuardian.mutateAsync(fields);
       }
     } catch (e: any) {
-      alert(`Could not save the guardian: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the guardian: ${e?.message || 'please try again.'}`);
       return;
     }
     setEditingGuardianId(null);
@@ -501,7 +503,7 @@ export default function GuardiansPage() {
         await createHealthRecord.mutateAsync(fields);
       }
     } catch (e: any) {
-      alert(`Could not save the health record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the health record: ${e?.message || 'please try again.'}`);
       return;
     }
     setEditingHealthRecordId(null);
@@ -538,7 +540,7 @@ export default function GuardiansPage() {
         await createVaccination.mutateAsync(fields);
       }
     } catch (e: any) {
-      alert(`Could not save the vaccination: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the vaccination: ${e?.message || 'please try again.'}`);
       return;
     }
     setEditingVaccineId(null);
@@ -568,7 +570,7 @@ export default function GuardiansPage() {
   const handleCreatePredation = async () => {
     if (!newPredation.predator_type) return;
     if (!newPredation.description.trim()) {
-      alert('Please add a description of the incident.');
+      toast.error('Please add a description of the incident.');
       return;
     }
 
@@ -598,7 +600,7 @@ export default function GuardiansPage() {
       resetPredationForm();
     } catch (error: any) {
       console.error('Error saving predation event:', error);
-      alert(`Could not save the incident: ${error?.message || 'please try again.'}`);
+      toast.error(`Could not save the incident: ${error?.message || 'please try again.'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -682,7 +684,7 @@ export default function GuardiansPage() {
                       <button type="button" className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded"
                         onClick={(e) => { e.stopPropagation(); openEditGuardian(g); }}><Pencil className="h-4 w-4" /></button>
                       <button type="button" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded"
-                        onClick={(e) => { e.stopPropagation(); if (confirm('Delete this guardian? This cannot be undone.')) deleteGuardian.mutate(g.id); }}><Trash2 className="h-4 w-4" /></button>
+                        onClick={async (e) => { e.stopPropagation(); if (await toast.confirm({ message: 'Delete this guardian? This cannot be undone.', confirmText: 'Delete', destructive: true })) deleteGuardian.mutate(g.id); }}><Trash2 className="h-4 w-4" /></button>
                     </div>
                     <ChevronRight className="h-5 w-5 text-gray-400" />
                   </div>
@@ -714,7 +716,7 @@ export default function GuardiansPage() {
                       <button type="button" className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded"
                         onClick={() => openEditHealthRecord(r)}><Pencil className="h-4 w-4" /></button>
                       <button type="button" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded"
-                        onClick={() => { if (confirm('Delete this health record?')) deleteHealthRecord.mutate(r.id); }}><Trash2 className="h-4 w-4" /></button>
+                        onClick={async () => { if (await toast.confirm({ message: 'Delete this health record?', confirmText: 'Delete', destructive: true })) deleteHealthRecord.mutate(r.id); }}><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </div>
                 </div>
@@ -739,7 +741,7 @@ export default function GuardiansPage() {
                       <button type="button" className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded"
                         onClick={() => openEditPredation(e)}><Pencil className="h-4 w-4" /></button>
                       <button type="button" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded"
-                        onClick={() => { if (confirm('Delete this incident?')) deletePredation.mutate(e.id); }}><Trash2 className="h-4 w-4" /></button>
+                        onClick={async () => { if (await toast.confirm({ message: 'Delete this incident?', confirmText: 'Delete', destructive: true })) deletePredation.mutate(e.id); }}><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </div>
                   <p className="font-medium">{predatorTypes.find(p => p.value === e.predator_type)?.label}</p>
@@ -976,7 +978,7 @@ export default function GuardiansPage() {
                         <button type="button" className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded"
                           onClick={() => { setShowDetailModal(false); openEditVaccination(v); }}><Pencil className="h-4 w-4" /></button>
                         <button type="button" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded"
-                          onClick={() => { if (confirm('Delete this vaccination record?')) deleteVaccination.mutate(v.id); }}><Trash2 className="h-4 w-4" /></button>
+                          onClick={async () => { if (await toast.confirm({ message: 'Delete this vaccination record?', confirmText: 'Delete', destructive: true })) deleteVaccination.mutate(v.id); }}><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </div>
                   ))}

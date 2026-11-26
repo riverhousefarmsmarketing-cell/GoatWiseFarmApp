@@ -16,6 +16,7 @@ import {
   LoadingSpinner,
   ErrorState,
 } from '@/components/ui';
+import { useToast } from '@/components/ToastProvider';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import {
   DollarSign,
@@ -82,6 +83,7 @@ export default function FinancesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+  const toast = useToast();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'reports'>('overview');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -178,7 +180,7 @@ export default function FinancesPage() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
     onError: (e: any) => {
-      alert(`Could not delete the transaction: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not delete the transaction: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -360,7 +362,7 @@ export default function FinancesPage() {
   const handleExportCsv = () => {
     const rows = transactions || [];
     if (!rows.length) {
-      alert('There are no transactions in the selected date range to export.');
+      toast.info('There are no transactions in the selected date range to export.');
       return;
     }
     const header = ['Date', 'Type', 'Category', 'Description', 'Amount', 'Payment Method', 'Tax Deductible', 'Notes'];
@@ -625,7 +627,7 @@ export default function FinancesPage() {
                               <Pencil className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => { if (confirm('Delete this transaction?')) deleteTransaction.mutate(t.id); }}
+                              onClick={async () => { if (await toast.confirm({ message: 'Delete this transaction?', confirmText: 'Delete', destructive: true })) deleteTransaction.mutate(t.id); }}
                               className="text-gray-400 hover:text-red-600"
                               aria-label="Delete transaction"
                             >

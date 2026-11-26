@@ -13,6 +13,7 @@ import {
   Badge,
   LoadingSpinner,
 } from '@/components/ui';
+import { useToast } from '@/components/ToastProvider';
 import {
   Upload,
   FileSpreadsheet,
@@ -246,6 +247,7 @@ export default function ImportPage() {
   const { user } = useAuth();
   const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const [step, setStep] = useState<'select' | 'upload' | 'map' | 'preview' | 'result'>('select');
   const [importType, setImportType] = useState<ImportType | null>(null);
@@ -351,7 +353,7 @@ export default function ImportPage() {
         setColumnMappings(autoMappings);
         setStep('map');
       } catch (error) {
-        alert('Error parsing CSV file. Please check the format.');
+        toast.error('Error parsing CSV file. Please check the format.');
       }
     };
     reader.readAsText(file);

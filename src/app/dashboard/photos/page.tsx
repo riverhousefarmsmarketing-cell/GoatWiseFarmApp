@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
 import { withSignedPhotoUrls } from '@/lib/photoUrls';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/components/ToastProvider';
 import {
   Card,
   Button,
@@ -67,6 +68,7 @@ const PHOTO_CATEGORIES = [
 
 export default function PhotoGalleryPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
 
@@ -191,7 +193,7 @@ export default function PhotoGalleryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['photos'] });
     },
-    onError: (e: any) => alert(`Could not delete the photo: ${e?.message || 'please try again.'}`),
+    onError: (e: any) => toast.error(`Could not delete the photo: ${e?.message || 'please try again.'}`),
   });
 
   // Update photo metadata mutation
@@ -248,7 +250,7 @@ export default function PhotoGalleryPage() {
       // Keep only the files that did NOT upload, so a retry doesn't re-insert the
       // ones that already succeeded (which produced duplicate photos before).
       setUploadForm((prev) => ({ ...prev, files: prev.files.slice(uploaded) }));
-      alert(
+      toast.error(
         uploaded > 0
           ? `Uploaded ${uploaded} of ${total}. The remaining ${total - uploaded} could not be uploaded and are still selected — please try again.`
           : 'Error uploading photos. Please try again.'
@@ -352,7 +354,7 @@ export default function PhotoGalleryPage() {
       setShowLightbox(false);
     } catch (error) {
       console.error('Update error:', error);
-      alert('Error saving changes. Please try again.');
+      toast.error('Error saving changes. Please try again.');
     }
   };
 
@@ -519,9 +521,9 @@ export default function PhotoGalleryPage() {
                   <Pencil className="h-3 w-3" />
                 </button>
                 <button
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    if (confirm('Delete this photo?')) {
+                    if (await toast.confirm({ message: 'Delete this photo?', confirmText: 'Delete', destructive: true })) {
                       deleteMutation.mutate(photo);
                     }
                   }}

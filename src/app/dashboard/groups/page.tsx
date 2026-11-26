@@ -6,6 +6,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnimals } from '@/hooks/useAnimals';
 import { useUpdateGroup } from '@/hooks/useGroups';
+import { useToast } from '@/components/ToastProvider';
 import {
   Card,
   Button,
@@ -49,6 +50,7 @@ const colorOptions = [
 
 export default function GroupsPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
 
@@ -122,7 +124,7 @@ export default function GroupsPage() {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       queryClient.invalidateQueries({ queryKey: ['animal_groups'] });
     },
-    onError: (e: any) => alert(`Could not delete the group: ${e?.message || 'please try again.'}`),
+    onError: (e: any) => toast.error(`Could not delete the group: ${e?.message || 'please try again.'}`),
   });
 
   const assignAnimals = useMutation({
@@ -212,7 +214,7 @@ export default function GroupsPage() {
         await createGroup.mutateAsync(fields);
       }
     } catch (e: any) {
-      alert(
+      toast.error(
         `Could not ${editingGroupId ? 'update' : 'create'} the group: ${
           e?.message || 'please try again.'
         }`
@@ -248,7 +250,7 @@ export default function GroupsPage() {
         currentIds,
       });
     } catch (e: any) {
-      alert(`Could not assign animals: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not assign animals: ${e?.message || 'please try again.'}`);
       return;
     }
 
@@ -336,8 +338,8 @@ export default function GroupsPage() {
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm('Delete this group?')) {
+                      onClick={async () => {
+                        if (await toast.confirm({ message: 'Delete this group?', confirmText: 'Delete', destructive: true })) {
                           deleteGroup.mutate(group.id);
                         }
                       }}

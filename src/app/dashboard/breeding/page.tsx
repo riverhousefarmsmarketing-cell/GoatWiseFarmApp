@@ -19,6 +19,7 @@ import {
 } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import { isFemale, isIntactMale } from '@/lib/animalVocab';
+import { useToast } from '@/components/ToastProvider';
 import {
   Baby,
   Plus,
@@ -85,6 +86,7 @@ export default function BreedingPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+  const toast = useToast();
   const printRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState<'pregnant' | 'planner' | 'history'>('pregnant');
@@ -209,7 +211,7 @@ export default function BreedingPage() {
       resetForms();
     },
     onError: (e: any) => {
-      alert(`Could not save the breeding record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the breeding record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -231,7 +233,7 @@ export default function BreedingPage() {
       setEditingRecord(null);
     },
     onError: (e: any) => {
-      alert(`Could not update the breeding record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not update the breeding record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -244,7 +246,7 @@ export default function BreedingPage() {
       invalidateBreeding();
     },
     onError: (e: any) => {
-      alert(`Could not delete the breeding record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not delete the breeding record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -282,7 +284,7 @@ export default function BreedingPage() {
       setNewBuck({ name: '', registration_number: '', breed: '' });
     },
     onError: (e: any) => {
-      alert(`Could not save the outside buck: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the outside buck: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -293,7 +295,7 @@ export default function BreedingPage() {
   };
 
   const handleSaveOutsideBuck = () => {
-    if (!newBuck.name.trim()) { alert("Please enter the buck's name."); return; }
+    if (!newBuck.name.trim()) { toast.error("Please enter the buck's name."); return; }
     createReferenceBuck.mutate(newBuck);
   };
 
@@ -533,7 +535,7 @@ export default function BreedingPage() {
       selectedRecord.breeding_date &&
       kiddingForm.kidding_date < String(selectedRecord.breeding_date).slice(0, 10)
     ) {
-      alert('The kidding date cannot be before the breeding date.');
+      toast.error('The kidding date cannot be before the breeding date.');
       return;
     }
 
@@ -808,12 +810,12 @@ export default function BreedingPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => {
+                                onClick={async () => {
                                   // Confirm: this removes the doe from the pregnant
                                   // list (open/aborted records aren't shown on this
                                   // page). Clear the due_date too so we don't leave a
                                   // "not pregnant" record still carrying a due date.
-                                  if (confirm(`Mark ${record.doe?.name || 'this doe'} as not pregnant? This clears the due date and removes it from the pregnant list.`)) {
+                                  if (await toast.confirm({ message: `Mark ${record.doe?.name || 'this doe'} as not pregnant? This clears the due date and removes it from the pregnant list.` })) {
                                     updateBreeding.mutate({ id: record.id, status: 'open', due_date: null });
                                   }
                                 }}
@@ -830,8 +832,8 @@ export default function BreedingPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => {
-                                  if (confirm('Delete this breeding record?')) {
+                                onClick={async () => {
+                                  if (await toast.confirm({ message: 'Delete this breeding record?', confirmText: 'Delete', destructive: true })) {
                                     deleteBreeding.mutate(record.id);
                                   }
                                 }}
@@ -962,8 +964,8 @@ export default function BreedingPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => {
-                                  if (confirm('Delete this breeding plan?')) {
+                                onClick={async () => {
+                                  if (await toast.confirm({ message: 'Delete this breeding plan?', confirmText: 'Delete', destructive: true })) {
                                     deleteBreeding.mutate(record.id);
                                   }
                                 }}
@@ -1053,8 +1055,8 @@ export default function BreedingPage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => {
-                                if (confirm('Delete this record?')) {
+                              onClick={async () => {
+                                if (await toast.confirm({ message: 'Delete this record?', confirmText: 'Delete', destructive: true })) {
                                   deleteBreeding.mutate(record.id);
                                 }
                               }}

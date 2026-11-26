@@ -17,6 +17,7 @@ import {
   AnimalLink,
 } from '@/components/ui';
 import { formatDate, calculateAge } from '@/lib/utils';
+import { useToast } from '@/components/ToastProvider';
 import { format, parseISO, differenceInCalendarDays, startOfToday } from 'date-fns';
 import {
   Baby,
@@ -90,6 +91,7 @@ export default function KiddingPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+  const toast = useToast();
 
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history' | 'kids'>('upcoming');
   const [showKiddingModal, setShowKiddingModal] = useState(false);
@@ -203,7 +205,7 @@ export default function KiddingPage() {
       setSelectedBreeding(null);
     },
     onError: (e: any) => {
-      alert(`Could not record the kidding: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not record the kidding: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -274,7 +276,7 @@ export default function KiddingPage() {
       resetKidForm();
     },
     onError: (e: any) => {
-      alert(`Could not add the kid record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not add the kid record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -311,7 +313,7 @@ export default function KiddingPage() {
       resetKidForm();
     },
     onError: (e: any) => {
-      alert(`Could not update the kid record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not update the kid record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -328,7 +330,7 @@ export default function KiddingPage() {
       queryClient.invalidateQueries({ queryKey: ['kid_records'] });
     },
     onError: (e: any) => {
-      alert(`Could not delete the kid record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not delete the kid record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -356,7 +358,7 @@ export default function KiddingPage() {
       selectedBreeding.breeding_date &&
       kiddingForm.kidding_date < String(selectedBreeding.breeding_date).slice(0, 10)
     ) {
-      alert('The kidding date cannot be before the breeding date.');
+      toast.error('The kidding date cannot be before the breeding date.');
       return;
     }
     updateKidding.mutate({
@@ -768,8 +770,8 @@ export default function KiddingPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (confirm('Delete this kid record?')) deleteKid.mutate(kid.id);
+                        onClick={async () => {
+                          if (await toast.confirm({ message: 'Delete this kid record?', confirmText: 'Delete', destructive: true })) deleteKid.mutate(kid.id);
                         }}
                         className="text-gray-400 hover:text-red-600 transition-colors"
                         aria-label="Delete kid record"

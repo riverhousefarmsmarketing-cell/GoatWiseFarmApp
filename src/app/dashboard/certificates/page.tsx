@@ -12,6 +12,7 @@ import {
   LoadingSpinner,
   ErrorState,
 } from '@/components/ui';
+import { useToast } from '@/components/ToastProvider';
 import { formatDate, weightToLbs } from '@/lib/utils';
 import { milkAmountToLbs } from '@/hooks/useMilk';
 import { format, parseISO, subDays } from 'date-fns';
@@ -41,6 +42,7 @@ type CertificateType = 'sale' | 'health' | 'registration' | 'pedigree';
 export default function CertificatesPage() {
   const { user } = useAuth();
   const supabase = getSupabaseClient();
+  const toast = useToast();
 
   const [selectedAnimal, setSelectedAnimal] = useState<string>('');
   const [certificateType, setCertificateType] = useState<CertificateType>('sale');
@@ -220,7 +222,7 @@ export default function CertificatesPage() {
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Please allow popups to print certificates');
+      toast.error('Please allow popups to print certificates');
       return;
     }
 
@@ -411,7 +413,7 @@ export default function CertificatesPage() {
   const printBlankBillOfSale = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Please allow popups to print certificates');
+      toast.error('Please allow popups to print certificates');
       return;
     }
 

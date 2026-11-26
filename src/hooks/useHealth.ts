@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import { useToast } from '@/components/ToastProvider';
 import { format, subDays, addDays, parseISO } from 'date-fns';
 import type { HealthRecord, HealthRecordInsert, Inspection, InspectionInsert } from '@/types/database';
 
@@ -153,6 +154,7 @@ export function useUpdateHealthRecord() {
 export function useMarkFollowUpComplete() {
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -169,7 +171,7 @@ export function useMarkFollowUpComplete() {
       queryClient.invalidateQueries({ queryKey: healthKeys.all });
     },
     onError: (e: any) => {
-      alert(`Could not update the follow-up: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not update the follow-up: ${e?.message || 'please try again.'}`);
     },
   });
 }
@@ -273,6 +275,7 @@ export function useUpdateInspection() {
 
 export function useDeleteInspection() {
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -286,7 +289,7 @@ export function useDeleteInspection() {
       queryClient.invalidateQueries({ queryKey: healthKeys.all });
     },
     onError: (e: any) => {
-      alert(`Could not delete the inspection: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not delete the inspection: ${e?.message || 'please try again.'}`);
     },
   });
 }

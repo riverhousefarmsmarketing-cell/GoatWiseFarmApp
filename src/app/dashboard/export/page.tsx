@@ -11,6 +11,7 @@ import {
   Badge,
   LoadingSpinner,
 } from '@/components/ui';
+import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
 import { milkAmountToLbs } from '@/hooks/useMilk';
 import { isFemale, isIntactMale } from '@/lib/animalVocab';
@@ -35,6 +36,7 @@ type ExportType = 'animals' | 'health' | 'breeding' | 'milk' | 'financial' | 'he
 export default function ExportPage() {
   const { user } = useAuth();
   const supabase = getSupabaseClient();
+  const toast = useToast();
 
   const [selectedExport, setSelectedExport] = useState<ExportType | null>(null);
   const [dateRange, setDateRange] = useState('all');
@@ -137,7 +139,7 @@ export default function ExportPage() {
   // CSV Export functions
   const exportToCSV = (data: any[], filename: string, headers: string[]) => {
     if (data.length === 0) {
-      alert('No data to export');
+      toast.info('No data to export');
       return;
     }
 
@@ -191,7 +193,7 @@ export default function ExportPage() {
   const printReport = (title: string, content: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Please allow popups to print reports');
+      toast.error('Please allow popups to print reports');
       return;
     }
 

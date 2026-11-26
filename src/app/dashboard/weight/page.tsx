@@ -17,6 +17,7 @@ import {
 } from '@/components/ui';
 import { formatDate, weightToLbs } from '@/lib/utils';
 import { toCanonicalCategory } from '@/lib/animalVocab';
+import { useToast } from '@/components/ToastProvider';
 import { format } from 'date-fns';
 import {
   Scale,
@@ -72,6 +73,7 @@ export default function WeightTrackingPage() {
   const { user } = useAuth();
   const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -138,7 +140,7 @@ export default function WeightTrackingPage() {
       resetForm();
     },
     onError: (e: any) => {
-      alert(`Could not save the weight record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the weight record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -157,7 +159,7 @@ export default function WeightTrackingPage() {
       resetForm();
     },
     onError: (e: any) => {
-      alert(`Could not update the weight record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not update the weight record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -174,7 +176,7 @@ export default function WeightTrackingPage() {
       queryClient.invalidateQueries({ queryKey: ['weight_records'] });
     },
     onError: (e: any) => {
-      alert(`Could not delete the weight record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not delete the weight record: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -192,7 +194,7 @@ export default function WeightTrackingPage() {
       setBulkWeights({});
     },
     onError: (e: any) => {
-      alert(`Could not save the weigh-in: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the weigh-in: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -646,8 +648,8 @@ export default function WeightTrackingPage() {
                                   <Edit2 className="h-4 w-4" />
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    if (confirm('Delete this weight record?')) {
+                                  onClick={async () => {
+                                    if (await toast.confirm({ message: 'Delete this weight record?', confirmText: 'Delete', destructive: true })) {
                                       deleteWeightMutation.mutate(record.id);
                                     }
                                   }}
