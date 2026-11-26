@@ -718,7 +718,7 @@ export default function AddAnimalPage() {
                         : 'border-gray-300 bg-white'
                     }`}
                     style={{
-                      backgroundColor: form.group_ids.includes(group.id) ? group.color : undefined,
+                      backgroundColor: form.group_ids.includes(group.id) ? (group.color ?? undefined) : undefined,
                     }}
                   >
                     {group.name}

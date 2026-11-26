@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 import { differenceInCalendarDays, parseISO, startOfToday, addDays, format } from 'date-fns';
 
@@ -79,8 +79,9 @@ export function useCreatePaddock() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (paddock: { name: string; acres?: number | null; notes?: string | null }) => {
-      const { data, error } = await mutationFrom('paddocks')
-        .insert([{ ...paddock, user_id: user?.id }])
+      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await getSupabaseClient().from('paddocks')
+        .insert([{ ...paddock, user_id: user.id }])
         .select()
         .single();
       if (error) throw error;
@@ -94,7 +95,7 @@ export function useUpdatePaddock() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Paddock> }) => {
-      const { data, error } = await mutationFrom('paddocks')
+      const { data, error } = await getSupabaseClient().from('paddocks')
         .update(updates)
         .eq('id', id)
         .select()
@@ -194,8 +195,9 @@ export function useCreatePaddockMove() {
       moved_in_at: string;
       notes?: string | null;
     }) => {
-      const { data, error } = await mutationFrom('paddock_moves')
-        .insert([{ ...move, user_id: user?.id }])
+      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await getSupabaseClient().from('paddock_moves')
+        .insert([{ ...move, user_id: user.id }])
         .select()
         .single();
       if (error) throw error;
@@ -211,7 +213,7 @@ export function useUpdatePaddockMove() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<PaddockMove> }) => {
-      const { data, error } = await mutationFrom('paddock_moves')
+      const { data, error } = await getSupabaseClient().from('paddock_moves')
         .update(updates)
         .eq('id', id)
         .select()
@@ -229,7 +231,7 @@ export function useDeletePaddockMove() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await mutationFrom('paddock_moves').delete().eq('id', id);
+      const { error } = await getSupabaseClient().from('paddock_moves').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -260,14 +262,14 @@ export function useRecordMoveOut() {
       notes?: string | null;
     }) => {
       // Close current move
-      const { error } = await mutationFrom('paddock_moves')
+      const { error } = await getSupabaseClient().from('paddock_moves')
         .update({ moved_out_at: movedOutAt })
         .eq('id', moveId);
       if (error) throw error;
 
       // Optionally open new move
       if (nextPaddockId && groupId && userId) {
-        const { error: err2 } = await mutationFrom('paddock_moves')
+        const { error: err2 } = await getSupabaseClient().from('paddock_moves')
           .insert([{
             group_id: groupId,
             paddock_id: nextPaddockId,

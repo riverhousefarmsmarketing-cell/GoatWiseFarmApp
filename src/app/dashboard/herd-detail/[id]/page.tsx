@@ -198,7 +198,7 @@ export default function HerdDetailPage() {
           <div className="flex items-start gap-4">
             <div
               className="w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl"
-              style={{ backgroundColor: herd.color }}
+              style={{ backgroundColor: herd.color ?? undefined }}
             >
               🐐
             </div>
@@ -237,7 +237,7 @@ export default function HerdDetailPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
           <div className="text-center">
-            <p className="text-2xl font-bold" style={{ color: herd.color }}>{herdAnimals?.length || 0}</p>
+            <p className="text-2xl font-bold" style={{ color: herd.color ?? undefined }}>{herdAnimals?.length || 0}</p>
             <p className="text-sm text-gray-500">Total Animals</p>
           </div>
           <div className="text-center">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import type { MilkRecord, MilkRecordInsert } from '@/types/database';
 
@@ -184,7 +184,7 @@ export function useCreateMilkRecord() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await mutationFrom('milk_records')
+      const { data, error } = await getSupabaseClient().from('milk_records')
         .insert({ ...record, user_id: user.id })
         .select()
         .single();
@@ -204,7 +204,7 @@ export function useUpdateMilkRecord() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<MilkRecordInsert> & { id: string }) => {
-      const { error } = await mutationFrom('milk_records')
+      const { error } = await getSupabaseClient().from('milk_records')
         .update(updates)
         .eq('id', id);
 

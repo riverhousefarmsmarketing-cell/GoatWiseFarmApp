@@ -1,4 +1,7 @@
 import { getSupabaseClient } from '@/lib/supabase';
+import type { Database } from '@/types/database';
+
+type TableName = keyof Database['public']['Tables'];
 
 // Offline write-outbox: records a user creates while offline are queued in
 // localStorage and replayed when the connection returns, so a dropped submit
@@ -76,7 +79,14 @@ export async function flushOutbox(uid: string): Promise<{ synced: number; remain
 
   for (const item of [...items]) {
     try {
-      const { error } = await (supabase.from(item.table) as any).insert(item.payload);
+      // The outbox replays dynamic {table, payload} records captured at enqueue
+      // time, so the table name and payload are only known as strings here. The
+      // table name is narrowed to a real table; the payload is cast to `never`
+      // to satisfy the per-table Insert union (its shape was validated when the
+      // original online insert's types were checked at the call site).
+      const { error } = await supabase
+        .from(item.table as TableName)
+        .insert(item.payload as never);
       if (error) {
         // 23505 = unique_violation: this row was already inserted on a prior
         // attempt, so treat it as done. Anything else, stop and keep the queue.

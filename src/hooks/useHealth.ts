@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { format, subDays, addDays, parseISO } from 'date-fns';
 import type { HealthRecord, HealthRecordInsert, Inspection, InspectionInsert } from '@/types/database';
 
@@ -116,7 +116,7 @@ export function useCreateHealthRecord() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await mutationFrom('health_records')
+      const { data, error } = await getSupabaseClient().from('health_records')
         .insert({ ...record, user_id: user.id })
         .select()
         .single();
@@ -135,7 +135,7 @@ export function useUpdateHealthRecord() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<HealthRecord> & { id: string }) => {
-      const { data, error } = await mutationFrom('health_records')
+      const { data, error } = await getSupabaseClient().from('health_records')
         .update(updates)
         .eq('id', id)
         .select()
@@ -156,7 +156,7 @@ export function useMarkFollowUpComplete() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await mutationFrom('health_records')
+      const { data, error } = await getSupabaseClient().from('health_records')
         .update({ follow_up_completed: true })
         .eq('id', id)
         .select()
@@ -237,7 +237,7 @@ export function useCreateInspection() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await mutationFrom('inspections')
+      const { data, error } = await getSupabaseClient().from('inspections')
         .insert({ ...inspection, user_id: user.id })
         .select()
         .single();
@@ -256,7 +256,7 @@ export function useUpdateInspection() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Inspection> & { id: string }) => {
-      const { data, error } = await mutationFrom('inspections')
+      const { data, error } = await getSupabaseClient().from('inspections')
         .update(updates)
         .eq('id', id)
         .select()
@@ -276,7 +276,7 @@ export function useDeleteInspection() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await mutationFrom('inspections')
+      const { error } = await getSupabaseClient().from('inspections')
         .delete()
         .eq('id', id);
 
