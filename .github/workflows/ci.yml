@@ -1,4 +1,4 @@
-name: CI — Lint & Typecheck
+name: CI — Lint, Typecheck, Test & Build
 
 on:
   push:
@@ -37,3 +37,32 @@ jobs:
           # The build needs these env vars to exist or Next.js will fail at compile time.
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key-for-ci-build-only
+
+  test:
+    name: Jest tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Jest
+        run: npm test
+        env:
+          # The RLS isolation suite needs a live project to run. When these
+          # secrets are set on the repo it runs for real (provisioning and
+          # tearing down its own throwaway users); when they are absent it
+          # self-skips and the job stays green. No real Supabase calls happen
+          # without the service-role key.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

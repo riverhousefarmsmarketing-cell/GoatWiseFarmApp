@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabaseClient, mutationFrom } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 import { categoryIs } from '@/lib/animalVocab';
 import type { Herd, Animal, FeedSchedule as DBFeedSchedule, FeedInventoryRecord, FeedType } from '@/types/database';
@@ -172,8 +172,9 @@ export function useCreateHerd() {
 
   return useMutation({
     mutationFn: async (herd: { name: string; description?: string | null; color?: string; location?: string | null; pasture_name?: string | null; species?: 'goat' | 'sheep' }) => {
-      const { data, error } = await mutationFrom('herds')
-        .insert([{ ...herd, user_id: user?.id }])
+      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await supabase.from('herds')
+        .insert([{ ...herd, user_id: user.id }])
         .select()
         .single();
 
@@ -192,7 +193,7 @@ export function useUpdateHerd() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Herd> }) => {
-      const { data, error } = await mutationFrom('herds')
+      const { data, error } = await supabase.from('herds')
         .update(updates)
         .eq('id', id)
         .select()
@@ -215,7 +216,7 @@ export function useDeleteHerd() {
   return useMutation({
     mutationFn: async (id: string) => {
       // First, unassign all animals from this herd
-      await mutationFrom('animals')
+      await supabase.from('animals')
         .update({ herd_id: null })
         .eq('herd_id', id);
 
@@ -236,7 +237,7 @@ export function useAssignAnimalToHerd() {
 
   return useMutation({
     mutationFn: async ({ animalId, herdId }: { animalId: string; herdId: string | null }) => {
-      const { data, error } = await mutationFrom('animals')
+      const { data, error } = await supabase.from('animals')
         .update({ herd_id: herdId })
         .eq('id', animalId)
         .select()
@@ -290,6 +291,7 @@ export function useHerdTransfers(filter?: string) {
 export function useCreateHerdTransfer() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const supabase = getSupabaseClient();
 
   return useMutation({
     mutationFn: async (input: {
@@ -298,10 +300,11 @@ export function useCreateHerdTransfer() {
       from_herd_id: string | null;
       reason?: string | null;
     }) => {
-      const { data, error } = await mutationFrom('herd_transfers')
+      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await supabase.from('herd_transfers')
         .insert([
           {
-            user_id: user?.id,
+            user_id: user.id,
             animal_id: input.animal_id,
             to_herd_id: input.to_herd_id,
             from_herd_id: input.from_herd_id,
@@ -338,13 +341,13 @@ export function useCompleteHerdTransfer() {
       const transfer = data as { id: string; animal_id: string; to_herd_id: string };
 
       // Move the animal into the destination herd.
-      const { error: animalError } = await mutationFrom('animals')
+      const { error: animalError } = await supabase.from('animals')
         .update({ herd_id: transfer.to_herd_id })
         .eq('id', transfer.animal_id);
       if (animalError) throw animalError;
 
       // Stamp the transfer completed.
-      const { error: transferError } = await mutationFrom('herd_transfers')
+      const { error: transferError } = await supabase.from('herd_transfers')
         .update({ status: 'completed', completed_date: new Date().toISOString() })
         .eq('id', transferId);
       if (transferError) throw transferError;
@@ -361,10 +364,11 @@ export function useCompleteHerdTransfer() {
 
 export function useCancelHerdTransfer() {
   const queryClient = useQueryClient();
+  const supabase = getSupabaseClient();
 
   return useMutation({
     mutationFn: async (transferId: string) => {
-      const { error } = await mutationFrom('herd_transfers')
+      const { error } = await supabase.from('herd_transfers')
         .update({ status: 'cancelled' })
         .eq('id', transferId);
       if (error) throw error;
@@ -400,11 +404,13 @@ export function useFeedTypes() {
 export function useCreateFeedType() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const supabase = getSupabaseClient();
 
   return useMutation({
     mutationFn: async (item: Omit<FeedType, 'id' | 'user_id' | 'created_at'>) => {
-      const { data, error } = await mutationFrom('feed_types')
-        .insert([{ ...item, user_id: user?.id }])
+      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await supabase.from('feed_types')
+        .insert([{ ...item, user_id: user.id }])
         .select()
         .single();
 
@@ -420,10 +426,11 @@ export function useCreateFeedType() {
 
 export function useUpdateFeedType() {
   const queryClient = useQueryClient();
+  const supabase = getSupabaseClient();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FeedType> & { id: string }) => {
-      const { data, error } = await mutationFrom('feed_types')
+      const { data, error } = await supabase.from('feed_types')
         .update(updates)
         .eq('id', id)
         .select()
@@ -440,10 +447,11 @@ export function useUpdateFeedType() {
 
 export function useDeleteFeedType() {
   const queryClient = useQueryClient();
+  const supabase = getSupabaseClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await mutationFrom('feed_types').delete().eq('id', id);
+      const { error } = await supabase.from('feed_types').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -481,8 +489,9 @@ export function useCreateFeedInventory() {
 
   return useMutation({
     mutationFn: async (item: Omit<FeedInventory, 'id' | 'user_id'>) => {
-      const { data, error } = await mutationFrom('feed_inventory')
-        .insert([{ ...item, user_id: user?.id }])
+      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await supabase.from('feed_inventory')
+        .insert([{ ...item, user_id: user.id }])
         .select()
         .single();
 
@@ -501,7 +510,7 @@ export function useUpdateFeedInventory() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<FeedInventory> }) => {
-      const { data, error } = await mutationFrom('feed_inventory')
+      const { data, error } = await supabase.from('feed_inventory')
         .update(updates)
         .eq('id', id)
         .select()
@@ -568,8 +577,9 @@ export function useCreateFeedSchedule() {
 
   return useMutation({
     mutationFn: async (schedule: Omit<FeedSchedule, 'id' | 'user_id'>) => {
-      const { data, error } = await mutationFrom('feed_schedules')
-        .insert([{ ...schedule, user_id: user?.id }])
+      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await supabase.from('feed_schedules')
+        .insert([{ ...schedule, user_id: user.id }])
         .select()
         .single();
 
@@ -588,7 +598,7 @@ export function useUpdateFeedSchedule() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<FeedSchedule> }) => {
-      const { data, error } = await mutationFrom('feed_schedules')
+      const { data, error } = await supabase.from('feed_schedules')
         .update(updates)
         .eq('id', id)
         .select()

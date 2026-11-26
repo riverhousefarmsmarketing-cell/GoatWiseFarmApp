@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import type { Database as DatabaseSchema } from '@/types/database';
 import { isFemale, isIntactMale } from '@/lib/animalVocab';
 import { 
   Card, 
@@ -88,7 +89,7 @@ const SAMPLE_DATA_TABLES = [
   'animals',
   'herds',
   'photos',
-];
+] as const satisfies readonly (keyof DatabaseSchema['public']['Tables'])[];
 
 const SAMPLE_GROUPS = [
   { name: 'Morning Milkers', type: 'milking', color: '#F59E0B', description: 'Does milked in AM shift' },
@@ -129,7 +130,7 @@ function SampleDataSection() {
     let failures = 0;
     for (const table of SAMPLE_DATA_TABLES) {
       if (announce) addProgress(`Deleting ${table}...`);
-      const { error: delError } = await (supabase.from(table) as any)
+      const { error: delError } = await supabase.from(table)
         .delete()
         .eq('user_id', user!.id);
       // Surface failures instead of swallowing them -- a table that silently
@@ -166,7 +167,7 @@ function SampleDataSection() {
       addProgress('Checking for existing data...');
       const existing = await Promise.all(
         SAMPLE_DATA_TABLES.map(async (table) => {
-          const { count, error: countErr } = await (supabase.from(table) as any)
+          const { count, error: countErr } = await supabase.from(table)
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id);
           // A count error (e.g. a table that isn't present) shouldn't block the

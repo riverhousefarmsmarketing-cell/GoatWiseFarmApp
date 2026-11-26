@@ -117,8 +117,11 @@ export function getStatusColor(status: string): string {
  * Get category display name. Accepts both the goat and species-neutral
  * vocabularies and is species-aware; see src/lib/animalVocab.ts.
  */
-export function getCategoryDisplay(category: string, species: Species = 'goat'): string {
-  return getCategoryLabel(category, species);
+export function getCategoryDisplay(category: string, species?: string | null): string {
+  // The animals.species column is a free string in the DB; normalize it to the
+  // Species union here so callers can pass the raw column value directly.
+  const normalized: Species = species === 'sheep' ? 'sheep' : 'goat';
+  return getCategoryLabel(category, normalized);
 }
 
 /**

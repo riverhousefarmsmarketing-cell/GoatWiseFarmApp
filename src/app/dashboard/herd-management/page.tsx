@@ -590,7 +590,7 @@ export default function HerdManagementPage() {
                       <div className="flex items-center gap-3">
                         <div
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
-                          style={{ backgroundColor: herd.color }}
+                          style={{ backgroundColor: herd.color ?? undefined }}
                         >
                           {herdEmoji}
                         </div>
@@ -894,7 +894,7 @@ export default function HerdManagementPage() {
                           className="h-full rounded-full transition-all"
                           style={{
                             width: `${(herd.animalCount / totalAnimals) * 100}%`,
-                            backgroundColor: herd.color,
+                            backgroundColor: herd.color ?? undefined,
                           }}
                         />
                       </div>

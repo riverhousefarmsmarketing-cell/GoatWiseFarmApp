@@ -1,9 +1,23 @@
 import { createBrowserClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 
-// Browser client for client components
-export function createBrowserSupabaseClient() {
+// Annotating the clients as the plain `SupabaseClient<Database>` is what makes
+// insert/update payloads type-check. The *inferred* return of createClient /
+// createBrowserClient carries extra schema generics that collapse mutation
+// payloads to `never` (the reason the old `mutationFrom` cast to `any`); the
+// explicit annotation selects the overload that reads the generated Insert/
+// Update types instead.
+
+// Browser client for client components.
+//
+// The `as unknown as SupabaseClient<Database>` bridges a version skew: this app
+// pins @supabase/ssr 0.1.0, which bundles an older SupabaseClient type (fewer
+// schema generics) than the installed @supabase/supabase-js 2.90.1. The runtime
+// object is a genuine supabase-js client (ssr just wraps createClient), so the
+// cast only reconciles the two type declarations — not a behavior change. Once
+// @supabase/ssr is upgraded to match, this cast can be dropped.
+export function createBrowserSupabaseClient(): SupabaseClient<Database> {
   return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,11 +44,11 @@ export function createBrowserSupabaseClient() {
         flowType: 'implicit',
       },
     }
-  );
+  ) as unknown as SupabaseClient<Database>;
 }
 
 // Server client for server components and API routes
-export function createServerSupabaseClient() {
+export function createServerSupabaseClient(): SupabaseClient<Database> {
   return createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -47,9 +61,9 @@ export function createServerSupabaseClient() {
 }
 
 // Singleton browser client
-let browserClient: ReturnType<typeof createBrowserSupabaseClient> | null = null;
+let browserClient: SupabaseClient<Database> | null = null;
 
-export function getSupabaseClient() {
+export function getSupabaseClient(): SupabaseClient<Database> {
   if (typeof window === 'undefined') {
     throw new Error('getSupabaseClient should only be called on the client');
   }
@@ -61,15 +75,7 @@ export function getSupabaseClient() {
   return browserClient;
 }
 
-/**
- * Helper for mutation operations (insert/update/delete).
- * 
- * Supabase's typed client infers `never` for mutation payloads when using
- * a hand-written Database interface (rather than CLI-generated types).
- * This casts .from() to `any` only for mutations, preserving type safety
- * on read operations. Replace this with proper CLI-generated types when
- * available: npx supabase gen types typescript --project-id <id>
- */
-export function mutationFrom(table: string): any {
-  return getSupabaseClient().from(table) as any;
-}
+// Mutations now go straight through the typed client, e.g.
+// `getSupabaseClient().from('animals').insert(...)`. The former `mutationFrom`
+// `any` escape hatch is gone: with `database.ts` generated from the live
+// schema, insert/update payloads are type-checked against the real columns.
