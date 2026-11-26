@@ -26,6 +26,7 @@ import { isFemale, isIntactMale, categoriesForSex, isCategoryConsistentWithSex, 
 import { BREEDS } from '@/lib/breedData';
 import { normalizeMicrochip, findAnimalByMicrochip } from '@/lib/microchip';
 import { enqueue } from '@/lib/outbox';
+import { useToast } from '@/components/ToastProvider';
 
 // ==========================================
 // STATIC OPTIONS (species-independent)
@@ -110,6 +111,7 @@ export default function AddAnimalPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+  const toast = useToast();
 
   const { data: herds } = useHerds();
   const { data: groups } = useGroups();
@@ -283,7 +285,7 @@ export default function AddAnimalPage() {
     onSuccess: (data: any) => {
       if (data?.queued) {
         // Saved to the offline outbox; it syncs automatically on reconnect.
-        alert("Saved offline — this animal will sync automatically when you're back online.");
+        toast.success("Saved offline — this animal will sync automatically when you're back online.");
         router.push('/dashboard/herd');
         return;
       }
@@ -293,20 +295,20 @@ export default function AddAnimalPage() {
       router.push(`/dashboard/herd/${data.id}`);
     },
     onError: (e: any) => {
-      alert(`Could not save the animal: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the animal: ${e?.message || 'please try again.'}`);
     },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
-      alert('Please enter a name for the animal.');
+      toast.error('Please enter a name for the animal.');
       return;
     }
     // category is NOT NULL with a CHECK constraint, and a sex change can clear it
     // to '' -- submitting that would be rejected by the database. Ask for one.
     if (!form.category) {
-      alert('Please choose a category.');
+      toast.error('Please choose a category.');
       return;
     }
 
@@ -316,7 +318,14 @@ export default function AddAnimalPage() {
     if (microchip) {
       try {
         const owner = await findAnimalByMicrochip(microchip);
-        if (owner && !confirm(`Microchip ${microchip} is already assigned to ${owner.name}. Save anyway?`)) {
+        if (
+          owner &&
+          !(await toast.confirm({
+            title: 'Microchip already in use',
+            message: `Microchip ${microchip} is already assigned to ${owner.name}. Save anyway?`,
+            confirmText: 'Save anyway',
+          }))
+        ) {
           return;
         }
       } catch (err) {

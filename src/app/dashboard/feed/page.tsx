@@ -15,6 +15,7 @@ import {
   Modal,
   ErrorState,
 } from '@/components/ui';
+import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
@@ -73,6 +74,7 @@ export default function FeedInventoryPage() {
   const { user } = useAuth();
   const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const { data: herds } = useHerds();
 
@@ -620,8 +622,8 @@ export default function FeedInventoryPage() {
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`Delete "${item.name}"? This will also delete all inventory records.`)) {
+                        onClick={async () => {
+                          if (await toast.confirm({ message: `Delete "${item.name}"? This will also delete all inventory records.`, confirmText: 'Delete', destructive: true })) {
                             deleteTypeMutation.mutate(item.id);
                           }
                         }}
@@ -741,8 +743,8 @@ export default function FeedInventoryPage() {
                           </div>
                           <div className="flex gap-1">
                             <button
-                              onClick={() => {
-                                const newQty = prompt('Enter new quantity:', inv.quantity.toString());
+                              onClick={async () => {
+                                const newQty = await toast.prompt({ message: 'Enter new quantity:', defaultValue: inv.quantity.toString() });
                                 if (newQty && !isNaN(parseFloat(newQty))) {
                                   updateInventoryMutation.mutate({
                                     id: inv.id,
@@ -755,8 +757,8 @@ export default function FeedInventoryPage() {
                               <Edit2 className="h-3 w-3" />
                             </button>
                             <button
-                              onClick={() => {
-                                if (confirm('Delete this stock record?')) {
+                              onClick={async () => {
+                                if (await toast.confirm({ message: 'Delete this stock record?', confirmText: 'Delete', destructive: true })) {
                                   deleteInventoryMutation.mutate(inv.id);
                                 }
                               }}
@@ -839,7 +841,7 @@ export default function FeedInventoryPage() {
                           <td className="px-4 py-3 text-sm">{cost > 0 ? `$${cost.toFixed(2)}` : '—'}</td>
                           <td className="px-4 py-3 text-sm text-gray-500">{usage.notes || '—'}</td>
                           <td className="px-4 py-1">
-                            <button onClick={() => { if (confirm('Delete this usage record?')) deleteUsageMutation.mutate(usage.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all" title="Delete">
+                            <button onClick={async () => { if (await toast.confirm({ message: 'Delete this usage record?', confirmText: 'Delete', destructive: true })) deleteUsageMutation.mutate(usage.id); }} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all" title="Delete">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </td>

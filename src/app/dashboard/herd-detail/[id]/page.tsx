@@ -11,6 +11,7 @@ import {
   useHerdsWithStats,
 } from '@/hooks/useHerds';
 import { useAnimals } from '@/hooks/useAnimals';
+import { useToast } from '@/components/ToastProvider';
 import {
   Card,
   Button,
@@ -65,6 +66,7 @@ const herdColors = [
 export default function HerdDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const herdId = params.id as string;
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -115,7 +117,7 @@ export default function HerdDetailPage() {
     try {
       await updateHerd.mutateAsync({ id: herdId, updates: editForm });
     } catch (e: any) {
-      alert(`Could not save the herd: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save the herd: ${e?.message || 'please try again.'}`);
       return;
     }
     setShowEditModal(false);
@@ -128,14 +130,14 @@ export default function HerdDetailPage() {
         herdId: herdId === 'unassigned' ? null : herdId
       });
     } catch (e: any) {
-      alert(`Could not add the animal: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not add the animal: ${e?.message || 'please try again.'}`);
       return;
     }
     setShowAddAnimalModal(false);
   };
 
   const handleRemoveAnimal = async (animalId: string) => {
-    if (!confirm('Remove this animal from the herd?')) return;
+    if (!(await toast.confirm({ message: 'Remove this animal from the herd?', confirmText: 'Remove', destructive: true }))) return;
     await assignAnimal.mutateAsync({ animalId, herdId: null });
   };
 
@@ -147,7 +149,7 @@ export default function HerdDetailPage() {
         herdId: transferToHerdId
       });
     } catch (e: any) {
-      alert(`Could not transfer the animal: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not transfer the animal: ${e?.message || 'please try again.'}`);
       return;
     }
     setShowTransferModal(false);

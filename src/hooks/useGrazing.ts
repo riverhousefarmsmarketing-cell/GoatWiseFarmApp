@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/lib/supabase';
+import { useToast } from '@/components/ToastProvider';
 import { useAuth } from './useAuth';
 import { differenceInCalendarDays, parseISO, startOfToday, addDays, format } from 'date-fns';
 
@@ -110,6 +111,7 @@ export function useUpdatePaddock() {
 export function useDeletePaddock() {
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('paddocks').delete().eq('id', id);
@@ -121,7 +123,7 @@ export function useDeletePaddock() {
       queryClient.invalidateQueries({ queryKey: ['paddock_moves'] });
     },
     onError: (e: any) => {
-      alert(`Could not delete the paddock: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not delete the paddock: ${e?.message || 'please try again.'}`);
     },
   });
 }
@@ -229,6 +231,7 @@ export function useUpdatePaddockMove() {
 
 export function useDeletePaddockMove() {
   const queryClient = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await getSupabaseClient().from('paddock_moves').delete().eq('id', id);
@@ -238,7 +241,7 @@ export function useDeletePaddockMove() {
       queryClient.invalidateQueries({ queryKey: ['paddock_moves'] });
     },
     onError: (e: any) => {
-      alert(`Could not delete the move record: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not delete the move record: ${e?.message || 'please try again.'}`);
     },
   });
 }

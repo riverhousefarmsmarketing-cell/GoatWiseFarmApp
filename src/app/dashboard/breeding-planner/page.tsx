@@ -18,6 +18,7 @@ import {
   AnimalLink,
   ErrorState,
 } from '@/components/ui';
+import { useToast } from '@/components/ToastProvider';
 import { formatDate } from '@/lib/utils';
 import {
   Calendar,
@@ -50,6 +51,7 @@ export default function BreedingPlannerPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+  const toast = useToast();
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
@@ -252,7 +254,7 @@ export default function BreedingPlannerPage() {
   };
 
   const handleMarkCancelled = async (planId: string) => {
-    if (!confirm('Cancel this breeding plan?')) return;
+    if (!(await toast.confirm({ message: 'Cancel this breeding plan?' }))) return;
     await updatePlan.mutateAsync({
       id: planId,
       updates: { status: 'cancelled' },
@@ -260,7 +262,7 @@ export default function BreedingPlannerPage() {
   };
 
   const handleDelete = async (planId: string) => {
-    if (!confirm('Delete this breeding plan?')) return;
+    if (!(await toast.confirm({ message: 'Delete this breeding plan?', confirmText: 'Delete', destructive: true }))) return;
     await deletePlan.mutateAsync(planId);
   };
 

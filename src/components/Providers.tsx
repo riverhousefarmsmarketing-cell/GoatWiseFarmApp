@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, ReactNode } from 'react';
 import { AuthProvider } from '@/hooks/useAuth';
 import { OfflinePersistence } from '@/components/OfflinePersistence';
+import { ToastProvider } from '@/components/ToastProvider';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -32,7 +33,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <OfflinePersistence />
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </AuthProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

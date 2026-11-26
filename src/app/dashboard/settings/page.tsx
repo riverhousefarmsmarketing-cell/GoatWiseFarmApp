@@ -10,9 +10,10 @@ import {
   Card, 
   Button, 
   Input, 
-  Select, 
-  Modal 
+  Select,
+  Modal
 } from '@/components/ui';
+import { useToast } from '@/components/ToastProvider';
 import { 
   User, 
   Building2, 
@@ -823,6 +824,7 @@ export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [saved, setSaved] = useState(false);
 
   const [farmSettings, setFarmSettings] = useState({
@@ -884,7 +886,7 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['user_settings'] });
     },
     onError: (e: any) => {
-      alert(`Could not save your settings: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save your settings: ${e?.message || 'please try again.'}`);
     },
   });
 

@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { type Species, getSpeciesConfig } from '@/lib/speciesConfig';
 import { BREEDS } from '@/lib/breedData';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ToastProvider';
 
 const statusOptions = [
   { value: 'all', label: 'All Status' },
@@ -22,6 +23,7 @@ const statusOptions = [
 
 export default function HerdPage() {
   const router = useRouter();
+  const toast = useToast();
   const [search, setSearch] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState<'all' | Species>('all');
   const [category, setCategory] = useState('all');
@@ -46,7 +48,7 @@ export default function HerdPage() {
       }
       setScanNotFound(chip);
     } catch (e: any) {
-      alert(`Could not look up the microchip: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not look up the microchip: ${e?.message || 'please try again.'}`);
     } finally {
       setScanLookingUp(false);
       setScanValue('');
@@ -124,7 +126,7 @@ export default function HerdPage() {
         species: speciesFilter === 'all' ? 'goat' : speciesFilter,
       });
     } catch (e: any) {
-      alert(`Could not add the animal: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not add the animal: ${e?.message || 'please try again.'}`);
       return;
     }
     setShowAddModal(false);
@@ -295,9 +297,9 @@ export default function HerdPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.preventDefault();
-                      if (confirm('Are you sure you want to delete this animal?')) {
+                      if (await toast.confirm({ message: 'Are you sure you want to delete this animal?', confirmText: 'Delete', destructive: true })) {
                         deleteAnimal.mutate(animal.id);
                       }
                     }}

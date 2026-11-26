@@ -23,6 +23,7 @@ import {
   useDeleteFeedSchedule,
 } from '@/hooks/useHerds';
 import { useAnimals } from '@/hooks/useAnimals';
+import { useToast } from '@/components/ToastProvider';
 import {
   Card,
   Button,
@@ -190,6 +191,7 @@ Use targeted selective treatment (TST) - only deworm animals that need it to pre
 // ==========================================
 
 export default function HerdManagementPage() {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'herds' | 'transfers' | 'feed' | 'tips' | 'analytics'>('herds');
   
   // Herds state
@@ -286,7 +288,7 @@ export default function HerdManagementPage() {
   // Handlers - WITH ERROR HANDLING
   const handleCreateHerd = async () => {
     if (!newHerd.name.trim()) {
-      alert('Please enter a herd name');
+      toast.error('Please enter a herd name');
       return;
     }
     
@@ -296,7 +298,7 @@ export default function HerdManagementPage() {
       setNewHerd({ name: '', description: '', color: '#16a34a', location: '', pasture_name: '', species: 'goat' });
     } catch (error: any) {
       console.error('Failed to create herd:', error);
-      alert(`Failed to create herd: ${error?.message || JSON.stringify(error)}`);
+      toast.error(`Failed to create herd: ${error?.message || JSON.stringify(error)}`);
     }
   };
 
@@ -340,7 +342,7 @@ export default function HerdManagementPage() {
 
   const handleCreateFeed = async () => {
     if (!newFeed.feed_type) {
-      alert('Please enter a feed name');
+      toast.error('Please enter a feed name');
       return;
     }
 
@@ -393,7 +395,7 @@ export default function HerdManagementPage() {
       setEditingFeedOnHand(0);
     } catch (error: any) {
       console.error('Failed to save feed item:', error);
-      alert(`Failed to save feed item: ${error?.message || JSON.stringify(error)}`);
+      toast.error(`Failed to save feed item: ${error?.message || JSON.stringify(error)}`);
     }
   };
 
@@ -422,7 +424,7 @@ export default function HerdManagementPage() {
 
   const handleSaveSchedule = async () => {
     if (!newSchedule.herd_id || !newSchedule.feed_type || !newSchedule.quantity_per_feeding) {
-      alert('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -447,17 +449,17 @@ export default function HerdManagementPage() {
       closeScheduleModal();
     } catch (error: any) {
       console.error('Failed to save schedule:', error);
-      alert(`Failed to save schedule: ${error?.message || JSON.stringify(error)}`);
+      toast.error(`Failed to save schedule: ${error?.message || JSON.stringify(error)}`);
     }
   };
 
   const handleDeleteSchedule = async (id: string) => {
-    if (!confirm('Delete this feeding schedule?')) return;
+    if (!(await toast.confirm({ message: 'Delete this feeding schedule?', confirmText: 'Delete', destructive: true }))) return;
     try {
       await deleteSchedule.mutateAsync(id);
     } catch (error: any) {
       console.error('Failed to delete schedule:', error);
-      alert(`Failed to delete schedule: ${error?.message || JSON.stringify(error)}`);
+      toast.error(`Failed to delete schedule: ${error?.message || JSON.stringify(error)}`);
     }
   };
 
@@ -607,9 +609,9 @@ export default function HerdManagementPage() {
                       </div>
                       {herd.id !== 'unassigned' && (
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.preventDefault();
-                            if (confirm(`Delete "${herd.name}"? Animals will be unassigned.`)) {
+                            if (await toast.confirm({ message: `Delete "${herd.name}"? Animals will be unassigned.`, confirmText: 'Delete', destructive: true })) {
                               deleteHerd.mutate(herd.id);
                             }
                           }}
@@ -712,8 +714,8 @@ export default function HerdManagementPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => {
-                              if (confirm('Cancel this transfer request?')) {
+                            onClick={async () => {
+                              if (await toast.confirm({ message: 'Cancel this transfer request?' })) {
                                 cancelTransfer.mutate(transfer.id);
                               }
                             }}
@@ -791,8 +793,8 @@ export default function HerdManagementPage() {
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => {
-                              if (confirm('Delete this feed item?')) {
+                            onClick={async () => {
+                              if (await toast.confirm({ message: 'Delete this feed item?', confirmText: 'Delete', destructive: true })) {
                                 deleteFeedItem.mutate(item.id);
                               }
                             }}
@@ -1196,7 +1198,7 @@ export default function HerdManagementPage() {
                     reason: newTransfer.reason || null,
                   });
                 } catch (e: any) {
-                  alert(`Could not request the transfer: ${e?.message || 'please try again.'}`);
+                  toast.error(`Could not request the transfer: ${e?.message || 'please try again.'}`);
                   return;
                 }
                 setShowTransferModal(false);

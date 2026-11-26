@@ -19,6 +19,7 @@ import { useAnimals } from '@/hooks/useAnimals';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/components/ToastProvider';
 import type { HealthRecord } from '@/types/database';
 import {
   Card,
@@ -257,9 +258,10 @@ function FamachaCard({ score, count, onClick, isSelected }: { score: number; cou
 
 export default function HealthPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const supabase = getSupabaseClient();
   const queryClient = useQueryClient();
-  
+
   const [activeTab, setActiveTab] = useState<'overview' | 'records' | 'inspections'>('overview');
   const [typeFilter, setTypeFilter] = useState('all');
   const [animalFilter, setAnimalFilter] = useState('all');
@@ -368,7 +370,7 @@ export default function HealthPage() {
   };
   const handleFamachaClick = (score: number) => { if (famachaFilter === score) setFamachaFilter(null); else { setFamachaFilter(score); setActiveTab('inspections'); } };
   const handleAlertClick = (type: string) => { if (type === 'followups' || type === 'withdrawals') setActiveTab('overview'); else if (type === 'deworming') { setFamachaFilter('deworm'); setActiveTab('inspections'); } };
-  const handleDeleteRecord = async (id: string) => { try { const { error } = await supabase.from('health_records').delete().eq('id', id); if (error) throw error; queryClient.invalidateQueries({ queryKey: healthKeys.all }); setShowDeleteConfirm(null); } catch(e: any) { console.error(e); alert(`Could not delete the record: ${e?.message || 'please try again.'}`); } };
+  const handleDeleteRecord = async (id: string) => { try { const { error } = await supabase.from('health_records').delete().eq('id', id); if (error) throw error; queryClient.invalidateQueries({ queryKey: healthKeys.all }); setShowDeleteConfirm(null); } catch(e: any) { console.error(e); toast.error(`Could not delete the record: ${e?.message || 'please try again.'}`); } };
   // "Something's Wrong" handlers
   const handleSwOpen = () => {
     setShowSomethingsWrong(true); setSwStep('symptoms'); setSwSelectedSymptoms([]); setSwMatchedConditions([]); setSwExpandedCondition(null); setSwAnimalId('');
@@ -513,7 +515,7 @@ export default function HealthPage() {
       }
     } catch (error) {
       console.error('Error saving inspection:', error);
-      alert('Could not save the inspection. Please try again.');
+      toast.error('Could not save the inspection. Please try again.');
       return;
     }
 
@@ -1110,7 +1112,7 @@ export default function HealthPage() {
                                 <Pencil className="h-4 w-4" />
                               </button>
                               <button
-                                onClick={() => { if (confirm('Delete this inspection?')) deleteInspection.mutate(insp.id); }}
+                                onClick={async () => { if (await toast.confirm({ message: 'Delete this inspection?', confirmText: 'Delete', destructive: true })) deleteInspection.mutate(insp.id); }}
                                 className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                                 title="Delete inspection"
                               >

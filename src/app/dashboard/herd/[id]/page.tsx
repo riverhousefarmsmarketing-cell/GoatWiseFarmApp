@@ -29,6 +29,7 @@ import {
   getFamachaColor,
 } from '@/lib/utils';
 import { isFemale, toCanonicalCategory, getCategoryOptions, isCategoryConsistentWithSex } from '@/lib/animalVocab';
+import { useToast } from '@/components/ToastProvider';
 import {
   ArrowLeft,
   Edit,
@@ -79,6 +80,7 @@ export default function AnimalDetailPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const supabase = getSupabaseClient();
+  const toast = useToast();
   const animalId = params.id as string;
 
   const [activeTab, setActiveTab] = useState<'overview' | 'health' | 'breeding' | 'milk' | 'lineage' | 'photos'>('overview');
@@ -245,7 +247,7 @@ export default function AnimalDetailPage() {
       setShowEditModal(false);
     },
     onError: (e: any) => {
-      alert(`Could not save changes: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not save changes: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -264,7 +266,7 @@ export default function AnimalDetailPage() {
       router.push('/dashboard/herd');
     },
     onError: (e: any) => {
-      alert(`Could not delete this animal: ${e?.message || 'please try again.'}`);
+      toast.error(`Could not delete this animal: ${e?.message || 'please try again.'}`);
     },
   });
 
@@ -323,7 +325,7 @@ export default function AnimalDetailPage() {
     if (microchip && microchip !== normalizeMicrochip(animal?.microchip_id)) {
       try {
         const owner = await findAnimalByMicrochip(microchip, animalId);
-        if (owner && !confirm(`Microchip ${microchip} is already assigned to ${owner.name}. Save anyway?`)) {
+        if (owner && !(await toast.confirm({ message: `Microchip ${microchip} is already assigned to ${owner.name}. Save anyway?` }))) {
           return;
         }
       } catch (err) {
@@ -341,8 +343,8 @@ export default function AnimalDetailPage() {
     });
   };
 
-  const handleDelete = () => {
-    if (confirm(`Are you sure you want to delete ${animal?.name}? This cannot be undone.`)) {
+  const handleDelete = async () => {
+    if (await toast.confirm({ message: `Are you sure you want to delete ${animal?.name}? This cannot be undone.`, confirmText: 'Delete', destructive: true })) {
       deleteAnimal.mutate();
     }
   };
@@ -396,7 +398,7 @@ export default function AnimalDetailPage() {
       setPhotoCategory('general');
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Error uploading photos. Please try again.');
+      toast.error('Error uploading photos. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -1150,9 +1152,9 @@ export default function AnimalDetailPage() {
                   </div>
 
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      if (confirm('Delete this photo?')) {
+                      if (await toast.confirm({ message: 'Delete this photo?', confirmText: 'Delete', destructive: true })) {
                         deletePhoto.mutate(photo);
                       }
                     }}
